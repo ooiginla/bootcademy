@@ -193,6 +193,24 @@ class PublicWebsiteTest extends TestCase
             ['academy_id' => $academy->id, 'name' => 'First payment', 'amount_minor' => 6000000, 'sequence' => 1],
             ['academy_id' => $academy->id, 'name' => 'Final payment', 'amount_minor' => 6000000, 'sequence' => 2],
         ]);
+        $plan = $offering->paymentPlans()->create([
+            'academy_id' => $academy->id,
+            'term_scope_id' => 0,
+            'cohort_scope_id' => 0,
+            'name' => 'Two payments',
+            'description' => 'Two equal payments.',
+            'currency' => 'NGN',
+            'total_minor' => 12000000,
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+        $plan->items()->create([
+            'academy_id' => $academy->id, 'name' => 'Tuition', 'amount_minor' => 12000000, 'sort_order' => 0,
+        ]);
+        $plan->installments()->createMany([
+            ['academy_id' => $academy->id, 'name' => 'First payment', 'amount_minor' => 6000000, 'sequence' => 1],
+            ['academy_id' => $academy->id, 'name' => 'Final payment', 'amount_minor' => 6000000, 'sequence' => 2],
+        ]);
         $cohort = Cohort::query()->create([
             'academy_id' => $academy->id, 'programme_cycle_id' => $offering->id,
             'branch_id' => $branch->id, 'name' => '2027 cohort',
@@ -222,6 +240,11 @@ class PublicWebsiteTest extends TestCase
             ->where('intakes.0.application_fee', '5000.00')
             ->where('intakes.0.total', '120000.00')
             ->has('intakes.0.installments', 2)
+            ->has('intakes.0.payment_plans', 1)
+            ->where('intakes.0.payment_plans.0.name', 'Two payments')
+            ->where('intakes.0.payment_plans.0.total', '120000.00')
+            ->has('intakes.0.payment_plans.0.items', 1)
+            ->has('intakes.0.payment_plans.0.installments', 2)
             ->where('academy.guardian_singular', 'Guardian')
             ->where('academy.collect_guardian_information', true)
             ->where('locations.0.id', $branch->id)

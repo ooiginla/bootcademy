@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $player_id
  * @property int $academy_cycle_id
  * @property int|null $programme_cycle_id
+ * @property int|null $programme_cycle_payment_plan_id
  * @property int|null $programme_id
  * @property int|null $branch_id
  * @property AcademyInvoicePurpose $purpose
@@ -33,7 +34,7 @@ use Illuminate\Support\Carbon;
  * @property-read ProgrammeCycle|null $programmeCycle
  */
 #[Fillable([
-    'academy_id', 'number', 'fee_name', 'application_id', 'player_id', 'academy_cycle_id', 'programme_cycle_id',
+    'academy_id', 'number', 'fee_name', 'application_id', 'player_id', 'academy_cycle_id', 'programme_cycle_id', 'programme_cycle_payment_plan_id',
     'programme_id', 'branch_id', 'purpose', 'status', 'currency', 'total_minor', 'paid_minor', 'written_off_minor',
     'academy_cycle_fee_id', 'enrollment_term_registration_id', 'scholarship_concession_minor', 'sponsor_responsibility_minor',
     'sponsor_paid_minor', 'issued_at', 'due_on', 'cancellation_reason', 'cancelled_at', 'cancelled_by_user_id', 'created_by_user_id',
@@ -76,6 +77,12 @@ class AcademyInvoice extends Model
         return $this->belongsTo(ProgrammeCycle::class);
     }
 
+    /** @return BelongsTo<ProgrammeCyclePaymentPlan, $this> */
+    public function programmeCyclePaymentPlan(): BelongsTo
+    {
+        return $this->belongsTo(ProgrammeCyclePaymentPlan::class);
+    }
+
     /** @return HasMany<AcademyInvoiceItem, $this> */
     public function items(): HasMany
     {
@@ -94,21 +101,25 @@ class AcademyInvoice extends Model
         return $this->hasMany(AcademyPaymentAllocation::class);
     }
 
+    /** @return HasMany<AcademyInvoiceWriteOff, $this> */
     public function writeOffs(): HasMany
     {
         return $this->hasMany(AcademyInvoiceWriteOff::class);
     }
 
+    /** @return BelongsTo<AcademyCycleFee, $this> */
     public function cycleFee(): BelongsTo
     {
         return $this->belongsTo(AcademyCycleFee::class, 'academy_cycle_fee_id');
     }
 
+    /** @return BelongsTo<EnrollmentTermRegistration, $this> */
     public function enrollmentTermRegistration(): BelongsTo
     {
         return $this->belongsTo(EnrollmentTermRegistration::class);
     }
 
+    /** @return HasMany<ScholarshipInvoiceAllocation, $this> */
     public function scholarshipAllocations(): HasMany
     {
         return $this->hasMany(ScholarshipInvoiceAllocation::class);

@@ -3,11 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Academies\ApplicationIntakeAvailability;
+use App\Academies\PublicProgrammePaymentPlans;
 use App\Enums\AcademyCycleStatus;
 use App\Models\AcademyCustomField;
 use App\Models\AcademyWebsite;
+use App\Models\ApplicationIntake;
+use App\Models\Branch;
+use App\Models\Cohort;
 use App\Models\Programme;
 use App\Models\ProgrammeCycle;
+use App\Models\ProgrammeCycleFeeItem;
+use App\Models\ProgrammeCycleInstallment;
+use App\Models\ProgrammeCyclePaymentPlan;
+use App\Models\ProgrammeCyclePaymentPlanInstallment;
+use App\Models\ProgrammeCyclePaymentPlanItem;
 use App\Support\AccessibleColor;
 use App\Support\Money;
 use Illuminate\Filesystem\FilesystemAdapter;
@@ -64,26 +73,39 @@ class PublicAcademyWebsiteController extends Controller
         ]);
     }
 
-    public function application(Request $request, string $subdomain, ApplicationIntakeAvailability $availability): Response
-    {
+    public function application(
+        Request $request,
+        string $subdomain,
+        ApplicationIntakeAvailability $availability,
+        PublicProgrammePaymentPlans $publicPlans,
+    ): Response {
         [$website, $common] = $this->common($request, $subdomain);
         $academy = $website->academy;
         $intakes = $availability->query($academy)
             ->with(['programmeCycle.cycle', 'programmeCycle.programme', 'programmeCycle.branch', 'programmeCycle.feeItems', 'programmeCycle.installments', 'cohort', 'branch'])
             ->orderBy('programme_cycle_id')->get();
 
-        return Inertia::render('public/application', $common + [
-            'intakes' => $intakes->map(function ($intake): array {
-                $offering = $intake->programmeCycle;
+        $plansByScope = [];
 
-                return $this->offeringData($offering) + [
+        return Inertia::render('public/application', $common + [
+            'intakes' => $intakes->map(function (ApplicationIntake $intake) use ($publicPlans, &$plansByScope): array {
+                $offering = $intake->programmeCycle;
+                $intakeBranch = $intake->getRelation('branch');
+                $offeringBranch = $offering->getRelation('branch');
+                $cohort = $intake->getRelation('cohort');
+                $scopeKey = $offering->id.':'.(int) ($intake->cohort_id ?? 0);
+                $plans = $plansByScope[$scopeKey] ??= $publicPlans->forOffering($offering, $intake->cohort_id);
+
+                return $this->offeringData($offering, $plans) + [
                     'id' => $intake->id,
                     'programme_cycle_id' => $offering->id,
                     'programme_name' => $offering->programme->name,
                     'cohort_id' => $intake->cohort_id,
-                    'cohort_name' => $intake->cohort?->name,
+                    'cohort_name' => $cohort instanceof Cohort ? $cohort->name : null,
                     'branch_id' => $intake->branch_id,
-                    'branch_name' => $intake->branch?->name ?? $offering->branch?->name ?? 'All locations',
+                    'branch_name' => $intakeBranch instanceof Branch
+                        ? $intakeBranch->name
+                        : ($offeringBranch instanceof Branch ? $offeringBranch->name : 'All locations'),
                     'opens_on' => $intake->opens_on?->toDateString(),
                     'closes_on' => $intake->closes_on?->toDateString(),
                 ];
@@ -197,11 +219,15 @@ class PublicAcademyWebsiteController extends Controller
         ];
     }
 
-    /** @return array<string, mixed> */
-    private function offeringData(ProgrammeCycle $offering): array
+    /**
+     * @param  iterable<int, ProgrammeCyclePaymentPlan>  $paymentPlans
+     * @return array<string, mixed>
+     */
+    private function offeringData(ProgrammeCycle $offering, iterable $paymentPlans = []): array
     {
         $publicFeeItems = $offering->feeItems->whereNull('cohort_id');
         $totalMinor = (int) $publicFeeItems->sum('amount_minor');
+        $branch = $offering->getRelation('branch');
 
         return [
             'id' => $offering->id,
@@ -209,21 +235,38 @@ class PublicAcademyWebsiteController extends Controller
             'cycle_name' => $offering->cycle->name,
             'programme_id' => $offering->programme_id,
             'branch_id' => $offering->branch_id,
-            'branch_name' => $offering->branch?->name ?? 'All locations',
+            'branch_name' => $branch instanceof Branch ? $branch->name : 'All locations',
             'fee_name' => $offering->fee_name,
             'currency' => $offering->currency,
             'application_fee' => Money::fromMinor($offering->application_fee_minor),
             'total' => Money::fromMinor($totalMinor),
-            'fee_items' => $publicFeeItems->map(fn ($item): array => [
+            'fee_items' => $publicFeeItems->map(fn (ProgrammeCycleFeeItem $item): array => [
                 'name' => $item->name,
                 'amount' => Money::fromMinor($item->amount_minor),
             ]),
-            'installments' => $offering->installments->sortBy('sequence')->values()->map(fn ($installment): array => [
+            'installments' => $offering->installments->sortBy('sequence')->values()->map(fn (ProgrammeCycleInstallment $installment): array => [
                 'name' => $installment->name,
                 'amount' => Money::fromMinor($installment->amount_minor),
                 'due_on' => $installment->due_on?->toDateString(),
                 'due_offset_days' => $installment->due_offset_days,
             ]),
+            'payment_plans' => collect($paymentPlans)->map(fn (ProgrammeCyclePaymentPlan $plan): array => [
+                'id' => $plan->id,
+                'name' => $plan->name,
+                'description' => $plan->description,
+                'total' => Money::fromMinor($plan->total_minor),
+                'is_default' => $plan->is_default,
+                'items' => $plan->items->sortBy('sort_order')->values()->map(fn (ProgrammeCyclePaymentPlanItem $item): array => [
+                    'name' => $item->name,
+                    'amount' => Money::fromMinor($item->amount_minor),
+                ]),
+                'installments' => $plan->installments->sortBy('sequence')->values()->map(fn (ProgrammeCyclePaymentPlanInstallment $installment): array => [
+                    'name' => $installment->name,
+                    'amount' => Money::fromMinor($installment->amount_minor),
+                    'due_on' => $installment->due_on?->toDateString(),
+                    'due_offset_days' => $installment->due_offset_days,
+                ]),
+            ])->values(),
         ];
     }
 }

@@ -11,9 +11,9 @@ Academies can define how programme membership and fees are tracked without rewri
 
 An academy can have one active cycle. Activating another cycle closes the previously active cycle; historical enrollments, invoices and payments remain attached to their original cycle.
 
-## Terms and fee scope
+## Optional terms and fee scope
 
-A cycle may contain ordered terms. Terms are time periods and are siblings of programme offerings; they do not replace cohorts. A cohort remains a group beneath a programme offering and normally continues across every term in the cycle.
+A fixed cycle may contain ordered terms. Rolling cycles do not use terms: their programme fees, additional fees, enrollments and reporting remain directly scoped to the cycle. Terms are time periods and are siblings of programme offerings; they do not replace cohorts. A cohort remains a group beneath a programme offering and normally continues across every term in a fixed cycle.
 
 ```text
 Academy cycle
@@ -25,11 +25,11 @@ Academy cycle
     └── Cohorts/class arms
 ```
 
-Every new cycle receives a default term. The terms migration creates one default term for every existing cycle and assigns all existing programme fee items to it. Existing general cycle fees remain outside the term structure.
+Every new fixed cycle receives a default term. Rolling cycles do not create a default term. Legacy rolling-cycle term records are retained for auditability but are not exposed for new term-scoped activity; their fees are presented at cycle scope. The original terms migration created one default term for every cycle and assigned existing programme fee items to it. Existing general cycle fees remain outside the term structure.
 
 Programme fee items may remain at the whole-cycle/session level or target a term and, optionally, one cohort belonging to that programme offering. Other cycle fees may likewise remain general or target a term and optional cohort. The cycle workspace displays unscoped programme fees as **Programme cycle fees**, unscoped custom fees as **Additional cycle fees**, and term-scoped fees inside the selected term. A cohort-scoped compulsory fee only invoices an active enrollment with active membership in that cohort. A missing term means the whole cycle; a missing cohort means all otherwise eligible cohorts. Application invoices exclude programme fee items targeting another cohort, while already-issued invoices remain immutable snapshots.
 
-Bulk re-enrollment records one idempotent term registration beneath each player's enrollment. On the first term registration for a new enrollment, unscoped whole-cycle programme fees and compulsory cycle fees are included alongside the selected term's fees. On later term registrations, only newly applicable term-scoped fees are issued. Repeating the same bulk operation returns the existing registration and cannot issue a second registration invoice. Existing application programme invoices are treated as the full historical offering snapshot and are not duplicated by term registration.
+For fixed cycles, bulk re-enrollment records one idempotent term registration beneath each player's enrollment. On the first term registration for a new enrollment, unscoped whole-cycle programme fees and compulsory cycle fees are included alongside the selected term's fees. On later term registrations, only newly applicable term-scoped fees are issued. Repeating the same bulk operation returns the existing registration and cannot issue a second registration invoice. Existing application programme invoices are treated as the full historical offering snapshot and are not duplicated by term registration. Rolling-cycle enrollments use the cycle duration and do not enter the term re-enrollment workflow.
 
 ## Programme offerings and fees
 
@@ -37,12 +37,14 @@ A programme is offered within a cycle through a programme-cycle record. The offe
 
 - an optional application fee;
 - an itemized programme fee breakdown;
-- full payment, which is always available;
-- an optional default installment schedule for students who do not pay in full.
+- a scope-specific payment-plan catalogue with independently itemized contracted totals;
+- one or more repayments per plan, using dates for fixed cycles and activation offsets for rolling cycles.
+
+Every visible programme-fee scope (whole cycle, term and optional cohort) has a details workspace. Plans in one scope cannot appear in or move to another scope. A plan's fee items define its contracted total, while its repayment rows must add up exactly to that total. This permits transparent alternatives such as a ₦100,000 one-off plan, a ₦110,000 two-payment plan or a ₦120,000 monthly plan without treating them as the same invoice amount. Existing offering schedules are preserved as an active default **Standard payment** plan when the payment-plan tables are introduced.
 
 Each programme/cycle can have one academy-wide default fee schedule and one override per branch. Leaving the branch blank creates the default. When an applicant selects a branch, the branch override is used if one exists; otherwise the academy-wide default is retained. The branch belongs to the same tenant, and duplicate defaults or duplicate overrides for the same scope are blocked by validation and database uniqueness constraints.
 
-Application fees are separate invoices and must be settled before acceptance when charged. Fee amounts and installment schedules are copied to immutable invoices when issued, so later offering changes cannot alter an applicant's historical obligation.
+Application fees are separate invoices and must be settled before acceptance when charged. On public registration, the right-hand application summary presents active whole-cycle plans as selectable cards with contracted totals, fee items and repayment schedules. Cohort-specific plans replace general plans when configured for the selected cohort. The selected plan is stored on the application and its amounts are copied to immutable invoice items and installments when the programme invoice is issued, so later plan changes cannot alter the applicant's historical obligation. Offerings without an active plan retain the legacy offering-fee invoice path for backward compatibility.
 
 Before any payment is recorded, an administrator may replace a programme invoice's default plan with a student-specific schedule. One row represents a one-off full payment; multiple rows represent custom installments. Its total must exactly match the invoice total. A schedule cannot be rewritten after payment has started. A student may also settle the full outstanding invoice at once even when the programme has a default installment schedule.
 

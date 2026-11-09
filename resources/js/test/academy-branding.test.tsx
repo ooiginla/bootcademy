@@ -53,6 +53,12 @@ describe('Academy settings', () => {
         );
 
         expect(
+            screen.getByRole('heading', { name: 'Academy profile' }),
+        ).toBeInTheDocument();
+        expect(screen.getByLabelText('Academy name')).toHaveValue(
+            'Example Academy',
+        );
+        expect(
             screen.getByRole('heading', { name: 'Bank details' }),
         ).toBeInTheDocument();
         expect(screen.getByLabelText('Bank name')).toHaveValue('Access Bank');

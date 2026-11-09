@@ -9,32 +9,52 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property int $academy_id
+ * @property int $programme_cycle_id
+ * @property int|null $cohort_id
+ * @property int|null $branch_id
+ * @property Carbon|null $opens_on
+ * @property Carbon|null $closes_on
+ * @property-read ProgrammeCycle $programmeCycle
+ * @property-read Cohort|null $cohort
+ * @property-read Branch|null $branch
+ */
 #[Fillable([
     'academy_id', 'programme_cycle_id', 'cohort_id', 'cohort_scope_id', 'branch_id',
     'branch_scope_id', 'opens_on', 'closes_on', 'is_enabled', 'created_by_user_id',
 ])]
 class ApplicationIntake extends Model
 {
+    /** @return BelongsTo<ProgrammeCycle, $this> */
     public function programmeCycle(): BelongsTo
     {
         return $this->belongsTo(ProgrammeCycle::class);
     }
 
+    /** @return BelongsTo<Cohort, $this> */
     public function cohort(): BelongsTo
     {
         return $this->belongsTo(Cohort::class);
     }
 
+    /** @return BelongsTo<Branch, $this> */
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
     }
 
+    /** @return HasMany<Application, $this> */
     public function applications(): HasMany
     {
         return $this->hasMany(Application::class);
     }
 
+    /**
+     * @param  Builder<ApplicationIntake>  $query
+     * @return Builder<ApplicationIntake>
+     */
     public function scopeOpenOn(Builder $query, Carbon|string $date): Builder
     {
         $date = Carbon::parse($date)->toDateString();

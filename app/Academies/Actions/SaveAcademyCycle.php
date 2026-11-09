@@ -40,7 +40,7 @@ class SaveAcademyCycle
             }
             $cycle->fill(Arr::only($data, ['name', 'type', 'starts_on', 'ends_on', 'duration_months', 'duration_value', 'duration_unit', 'status']));
             $cycle->save();
-            if (! $wasExisting) {
+            if (! $wasExisting && $cycle->supportsTerms()) {
                 $cycle->terms()->create([
                     'academy_id' => $academy->id,
                     'name' => 'Default term',

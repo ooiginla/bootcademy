@@ -8,6 +8,7 @@ use App\Enums\ProgrammeCyclePaymentMode;
 use App\Models\Academy;
 use App\Models\AcademyInvoice;
 use App\Models\Application;
+use App\Models\ProgrammeCyclePaymentPlan;
 use App\Models\User;
 use App\Platform\AuditLogger;
 use Illuminate\Http\Request;
@@ -35,21 +36,41 @@ class IssueApplicationInvoice
         if ($offering === null) {
             return null;
         }
+        $paymentPlan = $application->programmeCyclePaymentPlan()->with(['items', 'installments'])->first();
+        abort_if($paymentPlan !== null && ($paymentPlan->academy_id !== $academy->id
+            || $paymentPlan->programme_cycle_id !== $offering->id), 404);
         $items = [];
-        foreach ($offering->feeItems->sortBy('sort_order') as $item) {
-            if ($item->cohort_id !== null && $item->cohort_id !== $application->cohort_id) {
-                continue;
+        if ($paymentPlan !== null) {
+            foreach ($paymentPlan->items->sortBy('sort_order') as $item) {
+                $items[] = [
+                    'description' => $item->name,
+                    'amount_minor' => (int) $item->amount_minor,
+                ];
             }
-            $items[] = [
-                'description' => $item->name,
-                'amount_minor' => (int) $item->amount_minor,
-            ];
+        } else {
+            foreach ($offering->feeItems->sortBy('sort_order') as $item) {
+                if ($item->cohort_id !== null && $item->cohort_id !== $application->cohort_id) {
+                    continue;
+                }
+                $items[] = [
+                    'description' => $item->name,
+                    'amount_minor' => (int) $item->amount_minor,
+                ];
+            }
         }
         if (array_sum(array_column($items, 'amount_minor')) === 0) {
             return null;
         }
 
-        return $this->issue($academy, $application, $actor, $request, AcademyInvoicePurpose::Programme, $items);
+        return $this->issue(
+            $academy,
+            $application,
+            $actor,
+            $request,
+            AcademyInvoicePurpose::Programme,
+            $items,
+            $paymentPlan,
+        );
     }
 
     /** @param list<array{description: string, amount_minor: int}> $items */
@@ -60,6 +81,7 @@ class IssueApplicationInvoice
         Request $request,
         AcademyInvoicePurpose $purpose,
         array $items,
+        ?ProgrammeCyclePaymentPlan $paymentPlan = null,
     ): AcademyInvoice {
         $existing = $application->invoices()->where('purpose', $purpose->value)->first();
         if ($existing !== null) {
@@ -74,6 +96,7 @@ class IssueApplicationInvoice
             'academy_id' => $academy->id, 'number' => $number, 'application_id' => $application->id,
             'fee_name' => $purpose === AcademyInvoicePurpose::Application ? 'Application fee' : $offering->fee_name,
             'academy_cycle_id' => $offering->academy_cycle_id, 'programme_cycle_id' => $offering->id,
+            'programme_cycle_payment_plan_id' => $paymentPlan?->id,
             'programme_id' => $offering->programme_id, 'branch_id' => $application->branch_id,
             'purpose' => $purpose, 'status' => AcademyInvoiceStatus::Issued,
             'currency' => $offering->currency, 'total_minor' => $total, 'paid_minor' => 0,
@@ -91,6 +114,15 @@ class IssueApplicationInvoice
                 'academy_id' => $academy->id, 'name' => 'Application fee', 'amount_minor' => $total,
                 'paid_minor' => 0, 'due_on' => today(), 'due_offset_days' => null, 'sequence' => 1,
             ]);
+        } elseif ($paymentPlan !== null) {
+            foreach ($paymentPlan->installments->sortBy('sequence')->values() as $installment) {
+                $invoice->installments()->create([
+                    'academy_id' => $academy->id, 'name' => $installment->name,
+                    'amount_minor' => $installment->amount_minor, 'paid_minor' => 0,
+                    'due_on' => $installment->due_on, 'due_offset_days' => $installment->due_offset_days,
+                    'sequence' => $installment->sequence,
+                ]);
+            }
         } elseif ($offering->payment_mode === ProgrammeCyclePaymentMode::Installments
             && (int) $offering->installments->sum('amount_minor') === $total) {
             foreach ($offering->installments->sortBy('sequence')->values() as $installment) {

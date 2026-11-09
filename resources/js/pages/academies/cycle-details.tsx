@@ -100,6 +100,20 @@ type CycleFee = {
 const selectClass =
     'h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm';
 
+function feeDetailsUrl(
+    cycleId: number,
+    offeringId: number,
+    item: FeeRow,
+): string {
+    const query = new URLSearchParams();
+    if (item.academy_cycle_term_id)
+        query.set('term_id', String(item.academy_cycle_term_id));
+    if (item.cohort_id) query.set('cohort_id', String(item.cohort_id));
+    const suffix = query.toString();
+
+    return `/app/finance/cycles/${cycleId}/programmes/${offeringId}${suffix ? `?${suffix}` : ''}`;
+}
+
 function CycleFeeDialog({
     cycle,
     programmes,
@@ -199,29 +213,31 @@ function CycleFeeDialog({
                             />
                             <InputError message={form.errors.amount} />
                         </div>
-                        <div className="grid gap-2">
-                            <Label>Term scope</Label>
-                            <select
-                                className={selectClass}
-                                value={form.data.academy_cycle_term_id}
-                                onChange={(event) =>
-                                    form.setData(
-                                        'academy_cycle_term_id',
-                                        event.target.value,
-                                    )
-                                }
-                            >
-                                <option value="">General cycle fee</option>
-                                {terms.map((term) => (
-                                    <option key={term.id} value={term.id}>
-                                        {term.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <InputError
-                                message={form.errors.academy_cycle_term_id}
-                            />
-                        </div>
+                        {cycle.type === 'fixed' && (
+                            <div className="grid gap-2">
+                                <Label>Term scope</Label>
+                                <select
+                                    className={selectClass}
+                                    value={form.data.academy_cycle_term_id}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'academy_cycle_term_id',
+                                            event.target.value,
+                                        )
+                                    }
+                                >
+                                    <option value="">General cycle fee</option>
+                                    {terms.map((term) => (
+                                        <option key={term.id} value={term.id}>
+                                            {term.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <InputError
+                                    message={form.errors.academy_cycle_term_id}
+                                />
+                            </div>
+                        )}
                         <div className="grid gap-2">
                             <Label>Cohort scope</Label>
                             <select
@@ -584,29 +600,34 @@ function OfferingDialog({
                                     placeholder="0.00"
                                     required
                                 />
-                                <select
-                                    aria-label={`Fee ${index + 1} term`}
-                                    className={selectClass}
-                                    value={item.academy_cycle_term_id ?? ''}
-                                    onChange={(event) =>
-                                        updateFee(
-                                            index,
-                                            'academy_cycle_term_id',
-                                            event.target.value
-                                                ? Number(event.target.value)
-                                                : null,
-                                        )
-                                    }
-                                >
-                                    <option value="">
-                                        General cycle / all terms
-                                    </option>
-                                    {terms.map((term) => (
-                                        <option key={term.id} value={term.id}>
-                                            {term.name}
+                                {cycle.type === 'fixed' && (
+                                    <select
+                                        aria-label={`Fee ${index + 1} term`}
+                                        className={selectClass}
+                                        value={item.academy_cycle_term_id ?? ''}
+                                        onChange={(event) =>
+                                            updateFee(
+                                                index,
+                                                'academy_cycle_term_id',
+                                                event.target.value
+                                                    ? Number(event.target.value)
+                                                    : null,
+                                            )
+                                        }
+                                    >
+                                        <option value="">
+                                            General cycle / all terms
                                         </option>
-                                    ))}
-                                </select>
+                                        {terms.map((term) => (
+                                            <option
+                                                key={term.id}
+                                                value={term.id}
+                                            >
+                                                {term.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
                                 <select
                                     aria-label={`Fee ${index + 1} cohort`}
                                     className={selectClass}
@@ -1236,15 +1257,32 @@ function ProgrammeFeesTable({
                                     </Badge>
                                 </td>
                                 <td className="px-4 py-3 text-right">
-                                    <OfferingDialog
-                                        cycle={cycle}
-                                        programmes={programmes}
-                                        branches={branches}
-                                        currency={currency}
-                                        terms={terms}
-                                        cohorts={cohorts}
-                                        offering={offering}
-                                    />
+                                    <div className="flex justify-end gap-2">
+                                        <Button
+                                            asChild
+                                            variant="outline"
+                                            size="sm"
+                                        >
+                                            <Link
+                                                href={feeDetailsUrl(
+                                                    cycle.id,
+                                                    offering.id,
+                                                    item,
+                                                )}
+                                            >
+                                                Details
+                                            </Link>
+                                        </Button>
+                                        <OfferingDialog
+                                            cycle={cycle}
+                                            programmes={programmes}
+                                            branches={branches}
+                                            currency={currency}
+                                            terms={terms}
+                                            cohorts={cohorts}
+                                            offering={offering}
+                                        />
+                                    </div>
                                 </td>
                             </tr>
                         )),
@@ -1336,7 +1374,7 @@ export default function CycleDetailsPage({
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <TermDialog cycle={cycle} />
+                        {cycle.type === 'fixed' && <TermDialog cycle={cycle} />}
                         <OfferingDialog
                             cycle={cycle}
                             programmes={programmes}
@@ -1355,212 +1393,241 @@ export default function CycleDetailsPage({
                     </div>
                 </div>
 
-                <div className="grid gap-5 lg:grid-cols-[15rem_minmax(0,1fr)]">
-                    <aside className="space-y-2">
-                        <p className="px-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                            Terms
-                        </p>
-                        {cycle.terms.map((term) => (
-                            <div key={term.id} className="relative">
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedTermId(term.id)}
-                                    className={`w-full rounded-lg border px-3 py-3 pr-11 text-left text-sm transition ${selectedTerm?.id === term.id ? 'border-primary bg-primary/10 text-primary' : 'bg-card hover:bg-muted/50'}`}
-                                >
-                                    <span className="block font-semibold">
-                                        {term.name}
-                                    </span>
-                                    <span className="mt-1 block text-xs text-muted-foreground">
-                                        {term.starts_on && term.ends_on
-                                            ? `${term.starts_on} – ${term.ends_on}`
-                                            : 'Dates not set'}
-                                        {term.is_default ? ' · Default' : ''}
-                                    </span>
-                                </button>
-                                <div className="absolute top-2 right-2">
-                                    <TermDialog cycle={cycle} term={term} />
-                                </div>
-                            </div>
-                        ))}
-                    </aside>
-                    <section className="min-w-0 space-y-5">
-                        {selectedTerm ? (
-                            <>
-                                <div className="flex flex-wrap items-start justify-between gap-3">
-                                    <div>
-                                        <h2 className="text-xl font-semibold">
-                                            {selectedTerm.name}
-                                        </h2>
-                                        <p className="text-sm text-muted-foreground">
-                                            Programme and other bookable fees
-                                            assigned to this term.
-                                        </p>
+                {cycle.type === 'fixed' && (
+                    <div className="grid gap-5 lg:grid-cols-[15rem_minmax(0,1fr)]">
+                        <aside className="space-y-2">
+                            <p className="px-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                Terms
+                            </p>
+                            {cycle.terms.map((term) => (
+                                <div key={term.id} className="relative">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setSelectedTermId(term.id)
+                                        }
+                                        className={`w-full rounded-lg border px-3 py-3 pr-11 text-left text-sm transition ${selectedTerm?.id === term.id ? 'border-primary bg-primary/10 text-primary' : 'bg-card hover:bg-muted/50'}`}
+                                    >
+                                        <span className="block font-semibold">
+                                            {term.name}
+                                        </span>
+                                        <span className="mt-1 block text-xs text-muted-foreground">
+                                            {term.starts_on && term.ends_on
+                                                ? `${term.starts_on} – ${term.ends_on}`
+                                                : 'Dates not set'}
+                                            {term.is_default
+                                                ? ' · Default'
+                                                : ''}
+                                        </span>
+                                    </button>
+                                    <div className="absolute top-2 right-2">
+                                        <TermDialog cycle={cycle} term={term} />
                                     </div>
                                 </div>
-                                <h3 className="font-semibold">
-                                    Programme term fees
-                                </h3>
-                                <Card className="overflow-hidden py-0">
-                                    <CardContent className="p-0">
-                                        {termOfferings.length === 0 ? (
-                                            <div className="py-12 text-center">
-                                                <Banknote className="mx-auto size-8 text-muted-foreground" />
-                                                <p className="mt-3 font-medium">
-                                                    No programme fees in this
-                                                    term
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            <div className="overflow-x-auto">
-                                                <table className="w-full min-w-[880px] text-left text-sm">
-                                                    <thead className="border-b bg-muted/50 text-xs text-muted-foreground uppercase">
-                                                        <tr>
-                                                            <th className="px-4 py-3">
-                                                                Programme
-                                                            </th>
-                                                            <th className="px-4 py-3">
-                                                                Fee
-                                                            </th>
-                                                            <th className="px-4 py-3">
-                                                                Branch
-                                                            </th>
-                                                            <th className="px-4 py-3">
-                                                                Cohort
-                                                            </th>
-                                                            <th className="px-4 py-3">
-                                                                Amount
-                                                            </th>
-                                                            <th className="px-4 py-3">
-                                                                Status
-                                                            </th>
-                                                            <th className="px-4 py-3 text-right">
-                                                                Action
-                                                            </th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {termOfferings.flatMap(
-                                                            (offering) =>
-                                                                offering.scoped_items.map(
-                                                                    (
-                                                                        item,
-                                                                        index,
-                                                                    ) => (
-                                                                        <tr
-                                                                            key={
-                                                                                item.id ??
-                                                                                `${offering.id}-${index}`
-                                                                            }
-                                                                            className="border-b last:border-0"
-                                                                        >
-                                                                            <td className="px-4 py-3">
-                                                                                <p className="font-medium">
+                            ))}
+                        </aside>
+                        <section className="min-w-0 space-y-5">
+                            {selectedTerm ? (
+                                <>
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                        <div>
+                                            <h2 className="text-xl font-semibold">
+                                                {selectedTerm.name}
+                                            </h2>
+                                            <p className="text-sm text-muted-foreground">
+                                                Programme and other bookable
+                                                fees assigned to this term.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <h3 className="font-semibold">
+                                        Programme term fees
+                                    </h3>
+                                    <Card className="overflow-hidden py-0">
+                                        <CardContent className="p-0">
+                                            {termOfferings.length === 0 ? (
+                                                <div className="py-12 text-center">
+                                                    <Banknote className="mx-auto size-8 text-muted-foreground" />
+                                                    <p className="mt-3 font-medium">
+                                                        No programme fees in
+                                                        this term
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full min-w-[880px] text-left text-sm">
+                                                        <thead className="border-b bg-muted/50 text-xs text-muted-foreground uppercase">
+                                                            <tr>
+                                                                <th className="px-4 py-3">
+                                                                    Programme
+                                                                </th>
+                                                                <th className="px-4 py-3">
+                                                                    Fee
+                                                                </th>
+                                                                <th className="px-4 py-3">
+                                                                    Branch
+                                                                </th>
+                                                                <th className="px-4 py-3">
+                                                                    Cohort
+                                                                </th>
+                                                                <th className="px-4 py-3">
+                                                                    Amount
+                                                                </th>
+                                                                <th className="px-4 py-3">
+                                                                    Status
+                                                                </th>
+                                                                <th className="px-4 py-3 text-right">
+                                                                    Action
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {termOfferings.flatMap(
+                                                                (offering) =>
+                                                                    offering.scoped_items.map(
+                                                                        (
+                                                                            item,
+                                                                            index,
+                                                                        ) => (
+                                                                            <tr
+                                                                                key={
+                                                                                    item.id ??
+                                                                                    `${offering.id}-${index}`
+                                                                                }
+                                                                                className="border-b last:border-0"
+                                                                            >
+                                                                                <td className="px-4 py-3">
+                                                                                    <p className="font-medium">
+                                                                                        {
+                                                                                            offering.programme_name
+                                                                                        }
+                                                                                    </p>
+                                                                                    <p className="text-xs text-muted-foreground">
+                                                                                        Application:{' '}
+                                                                                        {formatCurrency(
+                                                                                            offering.currency,
+                                                                                            offering.application_fee,
+                                                                                        )}
+                                                                                    </p>
+                                                                                </td>
+                                                                                <td className="px-4 py-3 font-medium">
                                                                                     {
-                                                                                        offering.programme_name
+                                                                                        item.name
                                                                                     }
-                                                                                </p>
-                                                                                <p className="text-xs text-muted-foreground">
-                                                                                    Application:{' '}
+                                                                                </td>
+                                                                                <td className="px-4 py-3">
+                                                                                    {offering.branch_name ??
+                                                                                        'All branches'}
+                                                                                </td>
+                                                                                <td className="px-4 py-3">
+                                                                                    {item.cohort_name ??
+                                                                                        'All cohorts'}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 font-semibold">
                                                                                     {formatCurrency(
                                                                                         offering.currency,
-                                                                                        offering.application_fee,
+                                                                                        item.amount,
                                                                                     )}
-                                                                                </p>
-                                                                            </td>
-                                                                            <td className="px-4 py-3 font-medium">
-                                                                                {
-                                                                                    item.name
-                                                                                }
-                                                                            </td>
-                                                                            <td className="px-4 py-3">
-                                                                                {offering.branch_name ??
-                                                                                    'All branches'}
-                                                                            </td>
-                                                                            <td className="px-4 py-3">
-                                                                                {item.cohort_name ??
-                                                                                    'All cohorts'}
-                                                                            </td>
-                                                                            <td className="px-4 py-3 font-semibold">
-                                                                                {formatCurrency(
-                                                                                    offering.currency,
-                                                                                    item.amount,
-                                                                                )}
-                                                                            </td>
-                                                                            <td className="px-4 py-3">
-                                                                                <Badge
-                                                                                    variant={
-                                                                                        offering.is_active
-                                                                                            ? 'secondary'
-                                                                                            : 'outline'
-                                                                                    }
-                                                                                >
-                                                                                    {offering.is_active
-                                                                                        ? 'Available'
-                                                                                        : 'Inactive'}
-                                                                                </Badge>
-                                                                            </td>
-                                                                            <td className="px-4 py-3 text-right">
-                                                                                <OfferingDialog
-                                                                                    cycle={
-                                                                                        cycle
-                                                                                    }
-                                                                                    programmes={
-                                                                                        programmes
-                                                                                    }
-                                                                                    branches={
-                                                                                        branches
-                                                                                    }
-                                                                                    currency={
-                                                                                        currency
-                                                                                    }
-                                                                                    terms={
-                                                                                        cycle.terms
-                                                                                    }
-                                                                                    cohorts={
-                                                                                        cohorts
-                                                                                    }
-                                                                                    offering={
-                                                                                        offering
-                                                                                    }
-                                                                                />
-                                                                            </td>
-                                                                        </tr>
+                                                                                </td>
+                                                                                <td className="px-4 py-3">
+                                                                                    <Badge
+                                                                                        variant={
+                                                                                            offering.is_active
+                                                                                                ? 'secondary'
+                                                                                                : 'outline'
+                                                                                        }
+                                                                                    >
+                                                                                        {offering.is_active
+                                                                                            ? 'Available'
+                                                                                            : 'Inactive'}
+                                                                                    </Badge>
+                                                                                </td>
+                                                                                <td className="px-4 py-3 text-right">
+                                                                                    <div className="flex justify-end gap-2">
+                                                                                        <Button
+                                                                                            asChild
+                                                                                            variant="outline"
+                                                                                            size="sm"
+                                                                                        >
+                                                                                            <Link
+                                                                                                href={feeDetailsUrl(
+                                                                                                    cycle.id,
+                                                                                                    offering.id,
+                                                                                                    item,
+                                                                                                )}
+                                                                                            >
+                                                                                                Details
+                                                                                            </Link>
+                                                                                        </Button>
+                                                                                        <OfferingDialog
+                                                                                            cycle={
+                                                                                                cycle
+                                                                                            }
+                                                                                            programmes={
+                                                                                                programmes
+                                                                                            }
+                                                                                            branches={
+                                                                                                branches
+                                                                                            }
+                                                                                            currency={
+                                                                                                currency
+                                                                                            }
+                                                                                            terms={
+                                                                                                cycle.terms
+                                                                                            }
+                                                                                            cohorts={
+                                                                                                cohorts
+                                                                                            }
+                                                                                            offering={
+                                                                                                offering
+                                                                                            }
+                                                                                        />
+                                                                                    </div>
+                                                                                </td>
+                                                                            </tr>
+                                                                        ),
                                                                     ),
-                                                                ),
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        )}
+                                                            )}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                    <h3 className="font-semibold">
+                                        Additional term fees
+                                    </h3>
+                                    <Card className="overflow-hidden py-0">
+                                        <CardContent className="p-0">
+                                            <CycleFeesTable
+                                                fees={termCycleFees}
+                                            />
+                                        </CardContent>
+                                    </Card>
+                                </>
+                            ) : (
+                                <Card>
+                                    <CardContent className="py-12 text-center">
+                                        Create a term to organise this cycle’s
+                                        fees.
                                     </CardContent>
                                 </Card>
-                                <h3 className="font-semibold">
-                                    Additional term fees
-                                </h3>
-                                <Card className="overflow-hidden py-0">
-                                    <CardContent className="p-0">
-                                        <CycleFeesTable fees={termCycleFees} />
-                                    </CardContent>
-                                </Card>
-                            </>
-                        ) : (
-                            <Card>
-                                <CardContent className="py-12 text-center">
-                                    Create a term to organise this cycle’s fees.
-                                </CardContent>
-                            </Card>
-                        )}
-                    </section>
-                </div>
+                            )}
+                        </section>
+                    </div>
+                )}
 
                 <div className="mt-8 mb-4">
                     <div>
                         <h2 className="text-lg font-semibold">
-                            General cycle fees
+                            {cycle.type === 'rolling'
+                                ? 'Cycle fees'
+                                : 'General cycle fees'}
                         </h2>
                         <p className="text-sm text-muted-foreground">
-                            Fees outside the term structure, such as annual
-                            registration or insurance.
+                            {cycle.type === 'rolling'
+                                ? 'Programme and additional fees for this rolling cycle.'
+                                : 'Fees outside the term structure, such as annual registration or insurance.'}
                         </p>
                     </div>
                 </div>

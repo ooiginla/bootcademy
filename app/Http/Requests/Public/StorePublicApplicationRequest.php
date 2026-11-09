@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Public;
 
 use App\Academies\ApplicationIntakeAvailability;
+use App\Academies\PublicProgrammePaymentPlans;
 use App\Enums\CustomFieldType;
 use App\Models\Academy;
 use App\Models\AcademyCustomField;
@@ -31,6 +32,7 @@ class StorePublicApplicationRequest extends FormRequest
             'email' => mb_strtolower(trim((string) $this->input('email'))),
             'country' => trim((string) $this->input('country')) ?: null,
             'application_intake_id' => $this->input('application_intake_id') ?: null,
+            'programme_cycle_payment_plan_id' => $this->input('programme_cycle_payment_plan_id') ?: null,
             'preferred_branch_id' => $this->input('preferred_branch_id') ?: null,
             'custom_fields' => is_array($this->input('custom_fields')) ? $this->input('custom_fields') : [],
         ]);
@@ -63,6 +65,9 @@ class StorePublicApplicationRequest extends FormRequest
             'guardian_relationship' => $collectGuardian ? ['nullable', 'string', 'max:80'] : ['prohibited'],
             'guardian_signature' => $collectGuardian ? ['nullable', File::image()->types(['jpg', 'jpeg', 'png', 'webp'])->max(2 * 1024)] : ['prohibited'],
             'application_intake_id' => ['required', 'integer', Rule::exists('application_intakes', 'id')->where($forAcademy)],
+            'programme_cycle_payment_plan_id' => [
+                'nullable', 'integer', Rule::exists('programme_cycle_payment_plans', 'id')->where($forAcademy),
+            ],
             'preferred_branch_id' => [
                 $academy->branches()->where('is_active', true)->exists() ? 'required' : 'nullable',
                 'integer', Rule::exists('branches', 'id')->where(fn ($query) => $query
@@ -99,6 +104,15 @@ class StorePublicApplicationRequest extends FormRequest
                 $validator->errors()->add('application_intake_id', 'This application option is no longer accepting applications.');
             } elseif ($intake->branch_id !== null && $intake->branch_id !== $this->integer('preferred_branch_id')) {
                 $validator->errors()->add('preferred_branch_id', 'The selected location is not available for this cohort.');
+            } else {
+                $plans = app(PublicProgrammePaymentPlans::class)
+                    ->forOffering($intake->programmeCycle, $intake->cohort_id);
+                $selectedPlanId = $this->integer('programme_cycle_payment_plan_id');
+                if ($plans->isNotEmpty() && $selectedPlanId === 0) {
+                    $validator->errors()->add('programme_cycle_payment_plan_id', 'Select a payment plan.');
+                } elseif ($selectedPlanId !== 0 && ! $plans->contains('id', $selectedPlanId)) {
+                    $validator->errors()->add('programme_cycle_payment_plan_id', 'This payment plan is not available for the selected programme.');
+                }
             }
         });
     }

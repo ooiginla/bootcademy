@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Academies;
 
 use App\Academies\AcademyContext;
-use App\Academies\Actions\SaveProgramme;
 use App\Academies\Actions\BulkReenrollProgrammeMembers;
+use App\Academies\Actions\SaveProgramme;
+use App\Enums\AcademyCycleType;
 use App\Enums\CohortMembershipStatus;
 use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\Controller;
@@ -135,7 +136,8 @@ class ProgrammeController extends Controller
             'selected_branch_id' => $selectedBranchId,
             'selected_status' => $selectedStatus,
             'reenrollment_options' => $canManage ? [
-                'cycles' => $academy->cycles()->with(['terms' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])
+                'cycles' => $academy->cycles()->where('type', AcademyCycleType::Fixed->value)
+                    ->with(['terms' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])
                     ->orderByRaw("status = 'active' DESC")->orderByDesc('starts_on')->get()->map(fn ($cycle): array => [
                         'id' => $cycle->id,
                         'name' => $cycle->name,
@@ -147,6 +149,7 @@ class ProgrammeController extends Controller
                         ])->values(),
                     ])->values(),
                 'offerings' => $academy->programmeCycles()->where('is_active', true)
+                    ->whereHas('cycle', fn ($query) => $query->where('type', AcademyCycleType::Fixed->value))
                     ->with(['programme:id,name', 'branch:id,name', 'cohorts' => fn ($query) => $query->whereIn('status', ['open', 'ongoing'])->orderBy('name')])
                     ->get()->map(fn ($offering): array => [
                         'id' => $offering->id,

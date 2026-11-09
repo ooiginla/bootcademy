@@ -43,18 +43,22 @@ class SaveProgrammeCycle
                 'is_active' => $data['is_active'],
             ]);
             $offering->save();
-            $defaultTerm = $cycle->terms()->where('is_default', true)->first()
-                ?? $cycle->terms()->create([
-                    'academy_id' => $academy->id, 'name' => 'Default term',
-                    'starts_on' => $cycle->starts_on, 'ends_on' => $cycle->ends_on,
-                    'sort_order' => 1, 'is_default' => true, 'is_active' => true,
-                ]);
+            $defaultTerm = null;
+            if ($cycle->supportsTerms()) {
+                $defaultTerm = $cycle->terms()->where('is_default', true)->first()
+                    ?? $cycle->terms()->create([
+                        'academy_id' => $academy->id, 'name' => 'Default term',
+                        'starts_on' => $cycle->starts_on, 'ends_on' => $cycle->ends_on,
+                        'sort_order' => 1, 'is_default' => true, 'is_active' => true,
+                    ]);
+            }
             $offering->feeItems()->delete();
             foreach (array_values($data['fee_items']) as $index => $item) {
                 $offering->feeItems()->create([
                     'academy_id' => $academy->id, 'name' => trim((string) $item['name']),
-                    'academy_cycle_term_id' => array_key_exists('academy_cycle_term_id', $item)
-                        ? $item['academy_cycle_term_id'] : $defaultTerm->id,
+                    'academy_cycle_term_id' => $cycle->supportsTerms()
+                        ? (array_key_exists('academy_cycle_term_id', $item) ? $item['academy_cycle_term_id'] : $defaultTerm->id)
+                        : null,
                     'cohort_id' => $item['cohort_id'] ?? null,
                     'amount_minor' => Money::toMinor((string) $item['amount']), 'sort_order' => $index,
                 ]);

@@ -36,15 +36,17 @@ class SaveAcademyCycleTermRequest extends FormRequest
         return $context->canManageFinance();
     }
 
+    /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
         /** @var AcademyCycle $cycle */
         $cycle = $this->route('cycle');
         $term = $this->route('term');
+        $termId = $term instanceof AcademyCycleTerm ? $term->id : null;
 
         return [
             'name' => ['required', 'string', 'max:120', Rule::unique('academy_cycle_terms', 'name')
-                ->where('academy_id', app(AcademyContext::class)->id())->where('academy_cycle_id', $cycle->id)->ignore($term?->id)],
+                ->where('academy_id', app(AcademyContext::class)->id())->where('academy_cycle_id', $cycle->id)->ignore($termId)],
             'starts_on' => ['nullable', 'date', 'required_with:ends_on'],
             'ends_on' => ['nullable', 'date', 'required_with:starts_on', 'after_or_equal:starts_on'],
             'sort_order' => ['required', 'integer', 'between:1,1000'],
@@ -58,11 +60,16 @@ class SaveAcademyCycleTermRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             /** @var AcademyCycle $cycle */
             $cycle = $this->route('cycle');
+            if (! $cycle->supportsTerms()) {
+                $validator->errors()->add('name', 'Rolling cycles do not use terms.');
+
+                return;
+            }
             if ($cycle->type->value !== 'fixed' || ! $this->input('starts_on') || ! $this->input('ends_on')) {
                 return;
             }
             if ($this->date('starts_on')->lt($cycle->starts_on) || $this->date('ends_on')->gt($cycle->ends_on)) {
-                $validator->errors()->add('starts_on', 'Term dates must fall within the billing cycle dates.');
+                $validator->errors()->add('starts_on', 'Term dates must fall within the cycle dates.');
             }
         });
     }

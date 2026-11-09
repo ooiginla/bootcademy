@@ -27,6 +27,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['academy_id', 'name', 'type', 'starts_on', 'ends_on', 'duration_months', 'duration_value', 'duration_unit', 'status'])]
 class AcademyCycle extends Model
 {
+    public function supportsTerms(): bool
+    {
+        return $this->type === AcademyCycleType::Fixed;
+    }
+
     public function rollingEndDate(CarbonInterface $activation): Carbon
     {
         $value = (int) $this->duration_value;
@@ -70,11 +75,13 @@ class AcademyCycle extends Model
         return $this->hasMany(Enrollment::class);
     }
 
+    /** @return HasMany<AcademyCycleFee, $this> */
     public function fees(): HasMany
     {
         return $this->hasMany(AcademyCycleFee::class);
     }
 
+    /** @return HasMany<AcademyCycleTerm, $this> */
     public function terms(): HasMany
     {
         return $this->hasMany(AcademyCycleTerm::class);

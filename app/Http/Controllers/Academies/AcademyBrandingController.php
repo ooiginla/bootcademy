@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Academies;
 
 use App\Academies\AcademyContext;
 use App\Academies\Actions\UpdateAcademyBankDetails;
+use App\Academies\Actions\UpdateAcademyProfile;
 use App\Academies\Actions\UpdateAcademyTerminology;
 use App\Academies\Actions\UpdateAcademyTheme;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Academies\UpdateAcademyBankDetailsRequest;
 use App\Http\Requests\Academies\UpdateAcademyLogoRequest;
+use App\Http\Requests\Academies\UpdateAcademyProfileRequest;
 use App\Http\Requests\Academies\UpdateAcademyTerminologyRequest;
 use App\Http\Requests\Academies\UpdateAcademyThemeRequest;
 use App\Platform\AuditLogger;
@@ -103,6 +105,23 @@ class AcademyBrandingController extends Controller
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Academy theme updated.']);
+
+        return back();
+    }
+
+    public function updateProfile(
+        UpdateAcademyProfileRequest $request,
+        AcademyContext $context,
+        UpdateAcademyProfile $updateProfile,
+    ): RedirectResponse {
+        $updateProfile->handle(
+            $context->academy(),
+            $request->user(),
+            $request->string('name')->toString(),
+            $request,
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Academy profile updated.']);
 
         return back();
     }

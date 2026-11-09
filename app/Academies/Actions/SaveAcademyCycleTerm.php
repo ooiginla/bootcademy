@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Platform\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SaveAcademyCycleTerm
 {
@@ -19,6 +20,11 @@ class SaveAcademyCycleTerm
     {
         return DB::transaction(function () use ($academy, $cycle, $actor, $data, $request, $term): AcademyCycleTerm {
             abort_unless($cycle->academy_id === $academy->id, 404);
+            if (! $cycle->supportsTerms()) {
+                throw ValidationException::withMessages([
+                    'name' => 'Rolling cycles do not use terms.',
+                ]);
+            }
             $term ??= new AcademyCycleTerm(['academy_id' => $academy->id, 'academy_cycle_id' => $cycle->id]);
             abort_unless($term->academy_id === $academy->id && $term->academy_cycle_id === $cycle->id, 404);
             $wasExisting = $term->exists;

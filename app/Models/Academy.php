@@ -153,11 +153,13 @@ class Academy extends Model
         return $this->hasMany(ProgrammeCycle::class);
     }
 
+    /** @return HasMany<Cohort, $this> */
     public function cohorts(): HasMany
     {
         return $this->hasMany(Cohort::class);
     }
 
+    /** @return HasMany<ApplicationIntake, $this> */
     public function applicationIntakes(): HasMany
     {
         return $this->hasMany(ApplicationIntake::class);

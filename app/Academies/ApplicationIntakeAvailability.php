@@ -5,10 +5,12 @@ namespace App\Academies;
 use App\Enums\AcademyCycleStatus;
 use App\Enums\CohortStatus;
 use App\Models\Academy;
+use App\Models\ApplicationIntake;
 use Illuminate\Database\Eloquent\Builder;
 
 class ApplicationIntakeAvailability
 {
+    /** @return Builder<ApplicationIntake> */
     public function query(Academy $academy): Builder
     {
         $today = now($academy->timezone)->toDateString();

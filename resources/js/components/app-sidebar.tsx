@@ -13,7 +13,7 @@ import {
     CalendarRange,
     CalendarDays,
     MapPin,
-    Palette,
+    Settings2,
     ReceiptText,
     Share2,
     HandHeart,
@@ -79,7 +79,7 @@ export function AppSidebar() {
               ...(academy.can_manage_finance
                   ? [
                         {
-                            title: 'Billing cycles',
+                            title: 'Academy cycles',
                             href: '/app/finance/cycles',
                             icon: CalendarRange,
                         },
@@ -150,9 +150,9 @@ export function AppSidebar() {
               ...(academy.can_manage
                   ? [
                         {
-                            title: 'Academy branding',
+                            title: 'Settings',
                             href: '/app/settings/academy',
-                            icon: Palette,
+                            icon: Settings2,
                         },
                         {
                             title: 'Public website',

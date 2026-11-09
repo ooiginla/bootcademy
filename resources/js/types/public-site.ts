@@ -76,6 +76,22 @@ export type PublicOffering = {
         due_on: string | null;
         due_offset_days: number | null;
     }>;
+    payment_plans: PublicPaymentPlan[];
+};
+
+export type PublicPaymentPlan = {
+    id: number;
+    name: string;
+    description: string | null;
+    total: string;
+    is_default: boolean;
+    items: Array<{ name: string; amount: string }>;
+    installments: Array<{
+        name: string;
+        amount: string;
+        due_on: string | null;
+        due_offset_days: number | null;
+    }>;
 };
 
 export type PublicApplicationIntake = Omit<

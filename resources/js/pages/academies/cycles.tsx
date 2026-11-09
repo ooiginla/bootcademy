@@ -59,7 +59,7 @@ function CycleDialog({ cycle }: { cycle?: AcademyCycle }) {
             <DialogContent className="sm:max-w-xl">
                 <DialogHeader>
                     <DialogTitle>
-                        {editing ? 'Edit' : 'Create'} billing cycle
+                        {editing ? 'Edit' : 'Create'} academy cycle
                     </DialogTitle>
                     <DialogDescription>
                         Fixed cycles share an end date. Rolling cycles calculate
@@ -236,7 +236,7 @@ function CycleDialog({ cycle }: { cycle?: AcademyCycle }) {
 export default function Cycles({ cycles }: { cycles: AcademyCycle[] }) {
     return (
         <>
-            <Head title="Billing cycles" />
+            <Head title="Academy cycles" />
             <main className="mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8">
                 <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
@@ -244,7 +244,7 @@ export default function Cycles({ cycles }: { cycles: AcademyCycle[] }) {
                             Academy finance
                         </p>
                         <h1 className="mt-1 text-2xl font-semibold">
-                            Billing and academic cycles
+                            Academy cycles
                         </h1>
                         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
                             Preserve programme membership, fees and balances by
@@ -260,7 +260,7 @@ export default function Cycles({ cycles }: { cycles: AcademyCycle[] }) {
                             <div className="py-14 text-center">
                                 <CalendarRange className="mx-auto size-9 text-muted-foreground" />
                                 <h2 className="mt-4 font-semibold">
-                                    No billing cycles yet
+                                    No academy cycles yet
                                 </h2>
                                 <p className="mt-2 text-sm text-muted-foreground">
                                     Create a fixed academic period or a rolling
@@ -316,7 +316,9 @@ export default function Cycles({ cycles }: { cycles: AcademyCycle[] }) {
                                                     }
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    {cycle.terms_count}
+                                                    {cycle.type === 'rolling'
+                                                        ? 'Not used'
+                                                        : cycle.terms_count}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     {cycle.enrollments_count}
