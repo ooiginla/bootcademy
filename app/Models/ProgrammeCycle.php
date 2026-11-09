@@ -74,6 +74,16 @@ class ProgrammeCycle extends Model
         return $this->hasMany(Enrollment::class);
     }
 
+    public function cohorts(): HasMany
+    {
+        return $this->hasMany(Cohort::class);
+    }
+
+    public function applicationIntakes(): HasMany
+    {
+        return $this->hasMany(ApplicationIntake::class);
+    }
+
     public function totalFeeMinor(): int
     {
         return (int) $this->feeItems()->sum('amount_minor');

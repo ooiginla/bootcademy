@@ -26,12 +26,12 @@ class RecordVerifiedAcademyPayment
 
         return DB::transaction(function () use ($academy, $invoice, $actor, $data, $request): AcademyPayment {
             $invoice = AcademyInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-            if (in_array($invoice->status, [AcademyInvoiceStatus::Void, AcademyInvoiceStatus::Paid, AcademyInvoiceStatus::WrittenOff], true)) {
+            if (in_array($invoice->status, [AcademyInvoiceStatus::Void, AcademyInvoiceStatus::Paid, AcademyInvoiceStatus::WrittenOff, AcademyInvoiceStatus::Settled], true)) {
                 throw ValidationException::withMessages(['amount' => 'This invoice cannot receive another payment.']);
             }
             $amountMinor = Money::toMinor((string) $data['amount']);
-            if ($amountMinor > $invoice->balanceMinor()) {
-                throw ValidationException::withMessages(['amount' => 'The payment cannot exceed the outstanding invoice balance.']);
+            if ($amountMinor > $invoice->personalBalanceMinor()) {
+                throw ValidationException::withMessages(['amount' => 'The payment cannot exceed the payer portion of the outstanding invoice balance.']);
             }
             if (($data['external_reference'] ?? null) !== null
                 && $academy->payments()->where('external_reference', $data['external_reference'])->exists()) {
@@ -53,7 +53,9 @@ class RecordVerifiedAcademyPayment
                 if ($remaining === 0) {
                     break;
                 }
-                $available = $installment->amount_minor - $installment->paid_minor - $installment->written_off_minor;
+                $studentPaid = $installment->paid_minor - $installment->sponsor_paid_minor;
+                $available = $installment->amount_minor - $studentPaid - $installment->written_off_minor
+                    - $installment->scholarship_concession_minor - $installment->sponsor_responsibility_minor;
                 $allocated = min($remaining, $available);
                 if ($allocated === 0) {
                     continue;
@@ -70,7 +72,9 @@ class RecordVerifiedAcademyPayment
             }
             $invoice->paid_minor += $amountMinor;
             $invoice->status = $invoice->balanceMinor() === 0
-                ? ($invoice->written_off_minor > 0 ? AcademyInvoiceStatus::WrittenOff : AcademyInvoiceStatus::Paid)
+                ? (($invoice->scholarship_concession_minor + $invoice->sponsor_responsibility_minor) > 0
+                    ? AcademyInvoiceStatus::Settled
+                    : ($invoice->written_off_minor > 0 ? AcademyInvoiceStatus::WrittenOff : AcademyInvoiceStatus::Paid))
                 : AcademyInvoiceStatus::PartiallyPaid;
             $invoice->save();
             $this->audit->record('academy.payment.recorded', $actor, $academy, $payment, [

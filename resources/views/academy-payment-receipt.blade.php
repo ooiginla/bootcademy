@@ -16,9 +16,10 @@
         <div style="text-align:right"><div class="label">Receipt reference</div><div class="value">{{ $payment->reference }}</div></div>
     </div>
     @php($person = $payment->player ?? $payment->application)
+    @php($payerName = $payment->sponsor?->name ?? collect([$person?->first_name, $person?->middle_name, $person?->last_name])->filter()->implode(' '))
     @php($symbol = match($payment->currency) { 'NGN' => '₦', 'USD' => '$', 'GBP' => '£', 'EUR' => '€', default => $payment->currency.' ' })
     <div class="grid">
-        <div><div class="label">Received from</div><div class="value">{{ collect([$person?->first_name, $person?->middle_name, $person?->last_name])->filter()->implode(' ') ?: 'Unknown payer' }}</div></div>
+        <div><div class="label">Received from</div><div class="value">{{ $payerName ?: 'Unknown payer' }}</div></div>
         <div><div class="label">Date received</div><div class="value">{{ $payment->received_on->format('j M Y') }}</div></div>
         <div><div class="label">Payment method</div><div class="value">{{ str($payment->method->value)->replace('_', ' ')->title() }}</div></div>
         <div><div class="label">External reference</div><div class="value">{{ $payment->external_reference ?? '—' }}</div></div>

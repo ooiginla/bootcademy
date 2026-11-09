@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['academy_id', 'academy_cycle_id', 'academy_invoice_write_off_id', 'expense_category_id', 'expense_vendor_id', 'branch_id', 'category', 'description', 'vendor', 'reference', 'currency', 'amount_minor', 'incurred_on', 'created_by_user_id'])]
+#[Fillable(['academy_id', 'academy_cycle_id', 'academy_invoice_write_off_id', 'referral_reward_id', 'expense_category_id', 'expense_vendor_id', 'branch_id', 'category', 'description', 'vendor', 'reference', 'currency', 'amount_minor', 'incurred_on', 'created_by_user_id'])]
 class AcademyExpense extends Model
 {
     public function academy(): BelongsTo
@@ -18,6 +18,11 @@ class AcademyExpense extends Model
     public function writeOff(): BelongsTo
     {
         return $this->belongsTo(AcademyInvoiceWriteOff::class, 'academy_invoice_write_off_id');
+    }
+
+    public function referralReward(): BelongsTo
+    {
+        return $this->belongsTo(ReferralReward::class);
     }
 
     public function categoryDefinition(): BelongsTo

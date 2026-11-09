@@ -44,6 +44,9 @@ class AcademyWebsiteDefaults
             'programmes' => self::section('Our programmes', 'Displays active programmes already configured in Bootcademy.', [
                 'intro' => self::textarea('Introduction', 'Explore structured pathways created for different goals, stages and interests.'),
             ]),
+            'store' => self::section('Store', 'Sell uniforms, books, equipment and other academy merchandise from the public website.', [
+                'intro' => self::textarea('Introduction', 'Shop official academy merchandise and learning materials.'),
+            ], false),
             'locations' => self::section('Our locations', 'Displays active academy branches and their contact information.', [
                 'intro' => self::textarea('Introduction', 'Find the learning location that works best for you.'),
             ]),

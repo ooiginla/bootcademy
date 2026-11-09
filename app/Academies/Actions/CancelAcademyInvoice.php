@@ -20,7 +20,9 @@ class CancelAcademyInvoice
         DB::transaction(function () use ($academy, $invoice, $actor, $reason, $request): void {
             $invoice = AcademyInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             abort_unless($invoice->academy_id === $academy->id, 404);
-            if ($invoice->paid_minor !== 0 || $invoice->written_off_minor !== 0 || $invoice->status !== AcademyInvoiceStatus::Issued) {
+            if ($invoice->paid_minor !== 0 || $invoice->written_off_minor !== 0
+                || $invoice->scholarship_concession_minor !== 0 || $invoice->sponsor_responsibility_minor !== 0
+                || $invoice->status !== AcademyInvoiceStatus::Issued) {
                 throw ValidationException::withMessages(['reason' => 'Only an unpaid, unadjusted issued invoice can be cancelled.']);
             }
             $invoice->update([

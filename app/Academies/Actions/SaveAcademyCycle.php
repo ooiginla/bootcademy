@@ -40,6 +40,17 @@ class SaveAcademyCycle
             }
             $cycle->fill(Arr::only($data, ['name', 'type', 'starts_on', 'ends_on', 'duration_months', 'duration_value', 'duration_unit', 'status']));
             $cycle->save();
+            if (! $wasExisting) {
+                $cycle->terms()->create([
+                    'academy_id' => $academy->id,
+                    'name' => 'Default term',
+                    'starts_on' => $cycle->starts_on,
+                    'ends_on' => $cycle->ends_on,
+                    'sort_order' => 1,
+                    'is_default' => true,
+                    'is_active' => true,
+                ]);
+            }
             $this->audit->record(
                 $wasExisting ? 'academy.cycle.updated' : 'academy.cycle.created',
                 $actor, $academy, $cycle,

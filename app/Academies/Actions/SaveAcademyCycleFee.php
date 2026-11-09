@@ -26,6 +26,10 @@ class SaveAcademyCycleFee
             abort_unless($cycle->academy_id === $academy->id && $fee->academy_id === $academy->id, 404);
             $fee->fill([
                 'name' => trim((string) $data['name']), 'category' => trim((string) $data['category']),
+                'academy_cycle_term_id' => $data['academy_cycle_term_id'] ?? null,
+                'cohort_id' => $data['cohort_id'] ?? null,
+                'term_scope_id' => (int) ($data['academy_cycle_term_id'] ?? 0),
+                'cohort_scope_id' => (int) ($data['cohort_id'] ?? 0),
                 'currency' => $academy->currency, 'amount_minor' => Money::toMinor((string) $data['amount']),
                 'is_compulsory' => $data['is_compulsory'], 'applies_to_all_programmes' => $data['applies_to_all_programmes'],
                 'is_active' => $data['is_active'], 'created_by_user_id' => $fee->created_by_user_id ?? $actor->id,
@@ -38,6 +42,9 @@ class SaveAcademyCycleFee
                     ->where('status', 'active');
                 if (! $fee->applies_to_all_programmes) {
                     $enrollments->whereIn('programme_id', $fee->programmes()->select('programmes.id'));
+                }
+                if ($fee->cohort_id !== null) {
+                    $enrollments->whereHas('cohortMemberships', fn ($query) => $query->where('cohort_id', $fee->cohort_id)->where('status', 'active'));
                 }
                 $enrollments->with('player')->get()->unique('player_id')->each(
                     fn ($enrollment) => $this->issueInvoice->handle($academy, $enrollment->player, $fee, $actor, $request),

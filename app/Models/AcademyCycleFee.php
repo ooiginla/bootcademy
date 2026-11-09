@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['academy_id', 'academy_cycle_id', 'name', 'category', 'currency', 'amount_minor', 'is_compulsory', 'applies_to_all_programmes', 'is_active', 'created_by_user_id'])]
+#[Fillable(['academy_id', 'academy_cycle_id', 'academy_cycle_term_id', 'cohort_id', 'term_scope_id', 'cohort_scope_id', 'name', 'category', 'currency', 'amount_minor', 'is_compulsory', 'applies_to_all_programmes', 'is_active', 'created_by_user_id'])]
 class AcademyCycleFee extends Model
 {
     public function academy(): BelongsTo
@@ -19,6 +19,16 @@ class AcademyCycleFee extends Model
     public function cycle(): BelongsTo
     {
         return $this->belongsTo(AcademyCycle::class, 'academy_cycle_id');
+    }
+
+    public function term(): BelongsTo
+    {
+        return $this->belongsTo(AcademyCycleTerm::class, 'academy_cycle_term_id');
+    }
+
+    public function cohort(): BelongsTo
+    {
+        return $this->belongsTo(Cohort::class);
     }
 
     public function programmes(): BelongsToMany

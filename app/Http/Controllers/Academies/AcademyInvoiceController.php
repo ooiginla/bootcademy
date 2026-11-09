@@ -43,7 +43,7 @@ class AcademyInvoiceController extends Controller
         $summary = (clone $query)->toBase()->selectRaw(
             "COALESCE(SUM(CASE WHEN status <> 'void' THEN total_minor ELSE 0 END), 0) AS billed_minor,
              COALESCE(SUM(CASE WHEN status <> 'void' THEN paid_minor ELSE 0 END), 0) AS paid_minor,
-             COALESCE(SUM(CASE WHEN status <> 'void' THEN total_minor - paid_minor - written_off_minor ELSE 0 END), 0) AS owed_minor,
+             COALESCE(SUM(CASE WHEN status <> 'void' THEN total_minor - paid_minor - written_off_minor - scholarship_concession_minor ELSE 0 END), 0) AS owed_minor,
              COALESCE(SUM(CASE WHEN status <> 'void' THEN written_off_minor ELSE 0 END), 0) AS written_off_minor",
         )->first();
 
@@ -85,6 +85,10 @@ class AcademyInvoiceController extends Controller
             'paid' => Money::fromMinor($invoice->paid_minor),
             'owed' => Money::fromMinor($invoice->status === AcademyInvoiceStatus::Void ? 0 : $invoice->balanceMinor()),
             'written_off' => Money::fromMinor($invoice->written_off_minor),
+            'scholarship_concession' => Money::fromMinor($invoice->scholarship_concession_minor),
+            'sponsor_responsibility' => Money::fromMinor($invoice->sponsor_responsibility_minor),
+            'sponsor_paid' => Money::fromMinor($invoice->sponsor_paid_minor),
+            'personal_owed' => Money::fromMinor($invoice->personalBalanceMinor()),
             'payer_name' => $person ? collect([$person->first_name, $person->middle_name, $person->last_name])->filter()->implode(' ') : 'Unknown payer',
             'player_id' => $invoice->player_id, 'application_id' => $invoice->application_id,
             'application_reference' => $invoice->application?->reference,

@@ -9,6 +9,7 @@ import {
     ApplicationDialog,
     type AcademyApplication,
     type BankDetails,
+    type Cohort,
     type Invoice,
     type ProgrammeCycleOption,
     InvoiceAmountBadges,
@@ -40,6 +41,7 @@ export default function ApplicationDetailsPage({
     branches,
     active_cycles,
     programme_cycles,
+    cohorts = [],
     countries,
     custom_fields,
     bank_details,
@@ -49,6 +51,7 @@ export default function ApplicationDetailsPage({
     branches: Option[];
     active_cycles: Option[];
     programme_cycles: ProgrammeCycleOption[];
+    cohorts?: Cohort[];
     countries: string[];
     custom_fields: CustomField[];
     bank_details: BankDetails;
@@ -97,6 +100,7 @@ export default function ApplicationDetailsPage({
                                 branches={branches}
                                 activeCycles={active_cycles}
                                 programmeCycles={programme_cycles}
+                                cohorts={cohorts}
                                 countries={countries}
                                 customFields={custom_fields}
                             />

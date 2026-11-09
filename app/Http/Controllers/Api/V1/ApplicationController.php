@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Academies\Actions\SaveApplication;
+use App\Academies\ApplicationIntakeAvailability;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreApplicationRequest;
 use App\Models\Academy;
@@ -16,10 +17,16 @@ use Illuminate\Support\Arr;
 
 class ApplicationController extends Controller
 {
-    public function store(StoreApplicationRequest $request, SaveApplication $save): JsonResponse
+    public function store(StoreApplicationRequest $request, SaveApplication $save, ApplicationIntakeAvailability $availability): JsonResponse
     {
         $academy = $this->academy($request);
         $data = $request->validated();
+        $intake = $availability->query($academy)->with('programmeCycle')->whereKey($data['application_intake_id'])->firstOrFail();
+        $data['programme_cycle_id'] = $intake->programme_cycle_id;
+        $data['programme_id'] = $intake->programmeCycle->programme_id;
+        $data['cohort_id'] = $intake->cohort_id;
+        $data['branch_id'] = $intake->branch_id ?? $data['preferred_branch_id'] ?? $intake->programmeCycle->branch_id;
+        unset($data['preferred_branch_id']);
         $externalReference = (string) $data['external_reference'];
         $submissionHash = $this->submissionHash($data);
         $existing = $academy->applications()->where('external_reference', $externalReference)->first();
@@ -38,7 +45,7 @@ class ApplicationController extends Controller
         $data = Arr::except($data, ['consent_accepted']);
         $data['source'] = 'api';
         $data['submission_hash'] = $submissionHash;
-        $data['guardian_consent_at'] = now();
+        $data['guardian_consent_at'] = $academy->collect_guardian_information ? now() : null;
 
         try {
             $application = $save->handle($academy, null, $data, $request);
@@ -70,23 +77,35 @@ class ApplicationController extends Controller
         return response()->json(['data' => [
             'academy' => [
                 'name' => $academy->name,
-                'terminology' => ['singular' => $academy->member_label_singular, 'plural' => $academy->member_label_plural],
+                'terminology' => [
+                    'singular' => $academy->member_label_singular, 'plural' => $academy->member_label_plural,
+                    'guardian_singular' => $academy->guardian_label_singular,
+                    'guardian_plural' => $academy->guardian_label_plural,
+                ],
+                'collect_guardian_information' => $academy->collect_guardian_information,
                 'currency' => $academy->currency,
             ],
-            'programmes' => $academy->programmes()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
-            'programme_cycles' => $academy->programmeCycles()
-                ->where('is_active', true)->whereHas('cycle', fn ($query) => $query->where('status', 'active'))
-                ->with(['cycle:id,name,type,starts_on,ends_on,duration_value,duration_unit', 'programme:id,name', 'branch:id,name', 'feeItems'])
-                ->get()->map(fn ($offering): array => [
-                    'id' => $offering->id, 'programme_id' => $offering->programme_id,
-                    'branch_id' => $offering->branch_id, 'branch_name' => $offering->branch?->name,
-                    'programme_name' => $offering->programme->name, 'cycle_name' => $offering->cycle->name,
-                    'cycle_type' => $offering->cycle->type->value, 'currency' => $offering->currency,
-                    'cycle_duration' => $offering->cycle->duration_value,
-                    'cycle_duration_unit' => $offering->cycle->duration_unit?->value,
-                    'application_fee_minor' => $offering->application_fee_minor,
-                    'programme_fee_minor' => (int) $offering->feeItems->sum('amount_minor'),
-                ])->values(),
+            'application_intakes' => app(ApplicationIntakeAvailability::class)->query($academy)
+                ->with(['programmeCycle.cycle:id,name,type,starts_on,ends_on,duration_value,duration_unit', 'programmeCycle.programme:id,name', 'programmeCycle.branch:id,name', 'programmeCycle.feeItems', 'cohort:id,name', 'branch:id,name'])
+                ->get()->map(function ($intake): array {
+                    $offering = $intake->programmeCycle;
+
+                    return [
+                        'id' => $intake->id, 'programme_cycle_id' => $offering->id,
+                        'programme_id' => $offering->programme_id, 'programme_name' => $offering->programme->name,
+                        'cycle_id' => $offering->academy_cycle_id, 'cycle_name' => $offering->cycle->name,
+                        'cycle_type' => $offering->cycle->type->value,
+                        'cohort_id' => $intake->cohort_id, 'cohort_name' => $intake->cohort?->name,
+                        'branch_id' => $intake->branch_id,
+                        'branch_name' => $intake->branch?->name ?? $offering->branch?->name,
+                        'currency' => $offering->currency,
+                        'application_fee_minor' => $offering->application_fee_minor,
+                        'programme_fee_minor' => (int) $offering->feeItems
+                            ->filter(fn ($item): bool => $item->cohort_id === null || $item->cohort_id === $intake->cohort_id)
+                            ->sum('amount_minor'),
+                        'opens_on' => $intake->opens_on?->toDateString(), 'closes_on' => $intake->closes_on?->toDateString(),
+                    ];
+                })->values(),
             'branches' => $academy->branches()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'custom_fields' => $academy->customFields()->where('entity_type', 'player')->where('is_active', true)
                 ->orderBy('sort_order')->get()->map(fn (AcademyCustomField $field): array => [
@@ -176,6 +195,7 @@ class ApplicationController extends Controller
         return response()->json(['data' => [
             'id' => $application->id, 'reference' => $application->reference,
             'external_reference' => $application->external_reference, 'status' => $application->status->value,
+            'application_intake_id' => $application->application_intake_id, 'cohort_id' => $application->cohort_id,
             'existing' => $existing, 'submitted_at' => $application->created_at?->toIso8601String(),
         ]], $status);
     }

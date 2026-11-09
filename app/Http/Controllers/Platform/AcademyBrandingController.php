@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Platform;
 
 use App\Academies\Actions\UpdateAcademyTheme;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Platform\UpdateAcademyPaystackFeesRequest;
 use App\Http\Requests\Platform\UpdateAcademyThemeRequest;
 use App\Models\Academy;
+use App\Platform\AuditLogger;
 use App\Support\AccessibleColor;
+use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -46,6 +49,12 @@ class AcademyBrandingController extends Controller
                 'id' => $academy->id,
                 'name' => $academy->name,
                 'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color),
+                'paystack_fees' => [
+                    'percentage' => number_format($academy->paystack_fee_basis_points / 100, 2, '.', ''),
+                    'fixed_fee' => Money::fromMinor($academy->paystack_fee_fixed_minor),
+                    'cap' => $academy->paystack_fee_cap_minor === null ? '' : Money::fromMinor($academy->paystack_fee_cap_minor),
+                    'waiver_threshold' => $academy->paystack_fee_waiver_threshold_minor === null ? '' : Money::fromMinor($academy->paystack_fee_waiver_threshold_minor),
+                ],
             ],
         ]);
     }
@@ -64,6 +73,31 @@ class AcademyBrandingController extends Controller
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Academy theme updated.']);
+
+        return back();
+    }
+
+    public function updatePaystackFees(
+        UpdateAcademyPaystackFeesRequest $request,
+        Academy $academy,
+        AuditLogger $audit,
+    ): RedirectResponse {
+        $data = $request->validated();
+        $before = $academy->only([
+            'paystack_fee_basis_points', 'paystack_fee_fixed_minor', 'paystack_fee_cap_minor',
+            'paystack_fee_waiver_threshold_minor',
+        ]);
+        $academy->update([
+            'paystack_fee_basis_points' => (int) round((float) $data['percentage'] * 100),
+            'paystack_fee_fixed_minor' => Money::toMinor((string) $data['fixed_fee']),
+            'paystack_fee_cap_minor' => ($data['cap'] ?? null) === null ? null : Money::toMinor((string) $data['cap']),
+            'paystack_fee_waiver_threshold_minor' => ($data['waiver_threshold'] ?? null) === null ? null : Money::toMinor((string) $data['waiver_threshold']),
+        ]);
+        $audit->record('platform.academy.paystack-fees.updated', $request->user(), $academy, $academy, [
+            'before' => $before,
+            'after' => $academy->only(array_keys($before)),
+        ], $request);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Paystack fee settings updated.']);
 
         return back();
     }

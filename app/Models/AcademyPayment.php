@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -23,11 +24,17 @@ use Illuminate\Support\Carbon;
  * @property Carbon $received_on
  */
 #[Fillable([
-    'academy_id', 'reference', 'application_id', 'player_id', 'method', 'status', 'currency',
-    'amount_minor', 'reversed_minor', 'received_on', 'external_reference', 'notes', 'recorded_by_user_id',
+    'academy_id', 'reference', 'application_id', 'player_id', 'sponsor_id', 'method', 'status', 'currency',
+    'amount_minor', 'gross_amount_minor', 'customer_fee_minor', 'provider_fee_minor', 'unallocated_minor',
+    'provider', 'reversed_minor', 'received_on', 'external_reference', 'notes', 'recorded_by_user_id',
 ])]
 class AcademyPayment extends Model
 {
+    public function academy(): BelongsTo
+    {
+        return $this->belongsTo(Academy::class);
+    }
+
     /** @return BelongsTo<Application, $this> */
     public function application(): BelongsTo
     {
@@ -38,6 +45,16 @@ class AcademyPayment extends Model
     public function player(): BelongsTo
     {
         return $this->belongsTo(Player::class);
+    }
+
+    public function sponsor(): BelongsTo
+    {
+        return $this->belongsTo(Sponsor::class);
+    }
+
+    public function sponsorContribution(): HasOne
+    {
+        return $this->hasOne(SponsorContribution::class);
     }
 
     /** @return HasMany<AcademyPaymentAllocation, $this> */
@@ -55,7 +72,9 @@ class AcademyPayment extends Model
     {
         return [
             'method' => AcademyPaymentMethod::class, 'status' => AcademyPaymentStatus::class,
-            'amount_minor' => 'integer', 'reversed_minor' => 'integer', 'received_on' => 'date',
+            'amount_minor' => 'integer', 'gross_amount_minor' => 'integer', 'customer_fee_minor' => 'integer',
+            'provider_fee_minor' => 'integer', 'unallocated_minor' => 'integer',
+            'reversed_minor' => 'integer', 'received_on' => 'date',
         ];
     }
 }

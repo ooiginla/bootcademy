@@ -27,7 +27,10 @@ export type ActiveAcademy = {
         plural: string;
         staff_singular: string;
         staff_plural: string;
+        guardian_singular: string;
+        guardian_plural: string;
     };
+    collect_guardian_information: boolean;
     currency: string;
     timezone: string;
     logo_url: string | null;

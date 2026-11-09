@@ -26,15 +26,17 @@ class TrainingSessionController extends Controller
         $academy = $context->academy();
         $branchId = $request->integer('branch_id') ?: null;
         $programmeId = $request->integer('programme_id') ?: null;
+        $cohortId = $request->integer('cohort_id') ?: null;
         $coachId = $request->integer('coach_id') ?: null;
         $month = preg_match('/^\d{4}-\d{2}$/', (string) $request->query('month')) ? (string) $request->query('month') : now($academy->timezone)->format('Y-m');
         $monthStart = Carbon::createFromFormat('!Y-m', $month, $academy->timezone)->startOfMonth();
         $calendarStart = $monthStart->copy()->startOfWeek(Carbon::MONDAY);
         $calendarEnd = $monthStart->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
 
-        $query = $academy->trainingSessions()->getQuery()->with(['branches:id,name', 'programme:id,name', 'coaches.user:id,name'])
+        $query = $academy->trainingSessions()->getQuery()->with(['branches:id,name', 'programme:id,name', 'cohort:id,name', 'coaches.user:id,name'])
             ->when($branchId, fn (Builder $query) => $query->where(fn (Builder $scope) => $scope->where('all_branches', true)->orWhereHas('branches', fn (Builder $branches) => $branches->whereKey($branchId))))
             ->when($programmeId, fn (Builder $query) => $query->where('programme_id', $programmeId))
+            ->when($cohortId, fn (Builder $query) => $query->where('cohort_id', $cohortId))
             ->when($coachId, fn (Builder $query) => $query->whereHas('coaches', fn (Builder $coaches) => $coaches->whereKey($coachId)));
         $this->scopeVisibility($query, $membership, $context);
 
@@ -43,8 +45,15 @@ class TrainingSessionController extends Controller
             'calendar_sessions' => (clone $query)->whereBetween('starts_at', [$calendarStart->copy()->utc(), $calendarEnd->copy()->endOfDay()->utc()])->orderBy('starts_at')->get()->map(fn (TrainingSession $session): array => $this->data($session, $academy->timezone)),
             'branches' => $academy->branches()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'programmes' => $academy->programmes()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'cohorts' => $academy->cohorts()->whereNotIn('status', ['completed', 'cancelled'])
+                ->with('programmeCycle.programme:id,name')->orderBy('starts_on')->get()
+                ->map(fn ($cohort): array => [
+                    'id' => $cohort->id, 'name' => $cohort->name,
+                    'programme_id' => $cohort->programmeCycle->programme_id,
+                    'programme_name' => $cohort->programmeCycle->programme->name,
+                ])->values(),
             'coaches' => $academy->memberships()->where('role', AcademyRole::Coach->value)->where('status', MembershipStatus::Active->value)->with('user:id,name')->get()->map(fn (AcademyMembership $item): array => ['id' => $item->id, 'name' => $item->user->name]),
-            'filters' => ['branch_id' => $branchId, 'programme_id' => $programmeId, 'coach_id' => $coachId, 'month' => $month],
+            'filters' => ['branch_id' => $branchId, 'programme_id' => $programmeId, 'cohort_id' => $cohortId, 'coach_id' => $coachId, 'month' => $month],
             'active_tab' => $request->query('tab') === 'calendar' ? 'calendar' : 'list',
             'calendar' => ['start' => $calendarStart->toDateString(), 'end' => $calendarEnd->toDateString(), 'month' => $month],
             'can_manage' => $context->canManageAcademy(),
@@ -88,6 +97,7 @@ class TrainingSessionController extends Controller
             'id' => $session->id, 'title' => $session->title, 'all_branches' => $session->all_branches,
             'branch_ids' => $session->branches->pluck('id')->values(), 'branch_names' => $session->branches->pluck('name')->values(),
             'programme_id' => $session->programme_id, 'programme_name' => $session->programme->name,
+            'cohort_id' => $session->cohort_id, 'cohort_name' => $session->cohort?->name,
             'coach_membership_ids' => $session->coaches->pluck('id')->values(),
             'coach_names' => $session->coaches->map(fn (AcademyMembership $coach): string => $coach->user->name)->values(),
             'starts_at' => $session->starts_at->setTimezone($timezone)->format('Y-m-d\TH:i'),

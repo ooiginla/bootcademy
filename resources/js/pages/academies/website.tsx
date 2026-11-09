@@ -6,6 +6,7 @@ import {
     Globe2,
     LayoutTemplate,
     Save,
+    ShoppingBag,
 } from 'lucide-react';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
@@ -43,10 +44,19 @@ export default function AcademyWebsite({
     website,
     definitions,
     tenant_domain,
+    store_module,
 }: {
     website: Website;
     definitions: Record<string, SectionDefinition>;
     tenant_domain: string;
+    store_module?: {
+        enabled: boolean;
+        product_count: number;
+        active_product_count: number;
+        order_count: number;
+        manage_url: string;
+        preview_url: string;
+    };
 }) {
     const enabledCount = Object.values(website.sections).filter(
         (section) => section.enabled,
@@ -201,6 +211,101 @@ export default function AcademyWebsite({
                                 </CardContent>
                             </Card>
 
+                            {store_module && (
+                                <Card className="overflow-hidden border-primary/25">
+                                    <CardContent className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[1fr_auto] lg:items-center">
+                                        <div className="flex items-start gap-4">
+                                            <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                                                <ShoppingBag className="size-6" />
+                                            </div>
+                                            <div>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <h2 className="text-lg font-semibold">
+                                                        Online Store module
+                                                    </h2>
+                                                    <Badge
+                                                        variant={
+                                                            store_module.enabled
+                                                                ? 'default'
+                                                                : 'outline'
+                                                        }
+                                                    >
+                                                        {store_module.enabled
+                                                            ? 'Visible on website'
+                                                            : 'Hidden from website'}
+                                                    </Badge>
+                                                </div>
+                                                <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                                                    Your built-in academy
+                                                    storefront includes the
+                                                    public Store menu, product
+                                                    catalogue, cart and
+                                                    checkout. Enable the Store
+                                                    section below, save, then
+                                                    preview it here.
+                                                </p>
+                                                <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
+                                                    <span>
+                                                        <strong className="text-foreground">
+                                                            {
+                                                                store_module.active_product_count
+                                                            }
+                                                        </strong>{' '}
+                                                        active products
+                                                    </span>
+                                                    <span>
+                                                        <strong className="text-foreground">
+                                                            {
+                                                                store_module.product_count
+                                                            }
+                                                        </strong>{' '}
+                                                        total products
+                                                    </span>
+                                                    <span>
+                                                        <strong className="text-foreground">
+                                                            {
+                                                                store_module.order_count
+                                                            }
+                                                        </strong>{' '}
+                                                        orders
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 lg:justify-end">
+                                            <Button asChild variant="outline">
+                                                <a
+                                                    href={
+                                                        store_module.manage_url
+                                                    }
+                                                >
+                                                    Manage products
+                                                </a>
+                                            </Button>
+                                            <Button asChild variant="outline">
+                                                <a href="#section-store">
+                                                    Configure Store
+                                                </a>
+                                            </Button>
+                                            {store_module.enabled && (
+                                                <Button asChild>
+                                                    <a
+                                                        href={
+                                                            store_module.preview_url
+                                                        }
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                    >
+                                                        Preview Store{' '}
+                                                        <ArrowUpRight className="size-4" />
+                                                    </a>
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
                                     <h2 className="text-lg font-semibold">
@@ -226,8 +331,12 @@ export default function AcademyWebsite({
                                         return (
                                             <details
                                                 key={sectionKey}
+                                                id={`section-${sectionKey}`}
                                                 className="group rounded-xl border bg-card shadow-xs"
-                                                open={index === 0}
+                                                open={
+                                                    sectionKey === 'store' ||
+                                                    index === 0
+                                                }
                                             >
                                                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 sm:p-5">
                                                     <div>

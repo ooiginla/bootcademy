@@ -63,7 +63,10 @@ class HandleInertiaRequests extends Middleware
                         'plural' => $academy->member_label_plural,
                         'staff_singular' => $academy->staff_label_singular,
                         'staff_plural' => $academy->staff_label_plural,
+                        'guardian_singular' => $academy->guardian_label_singular,
+                        'guardian_plural' => $academy->guardian_label_plural,
                     ],
+                    'collect_guardian_information' => $academy->collect_guardian_information,
                     'currency' => $academy->currency,
                     'timezone' => $academy->timezone,
                     'logo_url' => $academy->logo_path

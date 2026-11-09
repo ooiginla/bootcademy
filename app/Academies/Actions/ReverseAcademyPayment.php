@@ -10,6 +10,9 @@ use App\Models\AcademyInvoiceInstallment;
 use App\Models\AcademyPayment;
 use App\Models\AcademyPaymentAdjustment;
 use App\Models\AcademyPaymentAllocation;
+use App\Models\ScholarshipInvoiceAllocation;
+use App\Models\SponsorCommitment;
+use App\Models\SponsorContribution;
 use App\Models\User;
 use App\Platform\AuditLogger;
 use App\Support\Money;
@@ -58,11 +61,21 @@ class ReverseAcademyPayment
                     $installment = AcademyInvoiceInstallment::query()->where('academy_id', $academy->id)
                         ->whereKey($allocation->academy_invoice_installment_id)->lockForUpdate()->firstOrFail();
                     $installment->paid_minor -= $reversed;
+                    if ($allocation->scholarship_invoice_allocation_id !== null) {
+                        $installment->sponsor_paid_minor -= $reversed;
+                    }
                     $installment->save();
                 }
                 $invoice = AcademyInvoice::query()->where('academy_id', $academy->id)
                     ->whereKey($allocation->academy_invoice_id)->lockForUpdate()->firstOrFail();
                 $invoice->paid_minor -= $reversed;
+                if ($allocation->scholarship_invoice_allocation_id !== null) {
+                    $invoice->sponsor_paid_minor -= $reversed;
+                    $scholarshipAllocation = ScholarshipInvoiceAllocation::query()->where('academy_id', $academy->id)
+                        ->whereKey($allocation->scholarship_invoice_allocation_id)->lockForUpdate()->firstOrFail();
+                    $scholarshipAllocation->funded_minor -= $reversed;
+                    $scholarshipAllocation->save();
+                }
                 $invoice->save();
                 $invoiceIds[] = $allocation->academy_invoice_id;
                 $remaining -= $reversed;
@@ -77,6 +90,7 @@ class ReverseAcademyPayment
                 $invoice = AcademyInvoice::query()->where('academy_id', $academy->id)->whereKey($invoiceId)->lockForUpdate()->firstOrFail();
                 $invoice->status = match (true) {
                     $invoice->balanceMinor() === 0 && $invoice->written_off_minor > 0 => AcademyInvoiceStatus::WrittenOff,
+                    $invoice->balanceMinor() === 0 && ($invoice->scholarship_concession_minor + $invoice->sponsor_responsibility_minor) > 0 => AcademyInvoiceStatus::Settled,
                     $invoice->balanceMinor() === 0 => AcademyInvoiceStatus::Paid,
                     $invoice->paid_minor > 0 => AcademyInvoiceStatus::PartiallyPaid,
                     $invoice->written_off_minor > 0 => AcademyInvoiceStatus::PartiallyWrittenOff,
@@ -89,6 +103,16 @@ class ReverseAcademyPayment
                 $payment->status = AcademyPaymentStatus::Reversed;
             }
             $payment->save();
+            if ($payment->sponsor_id !== null) {
+                $contribution = SponsorContribution::query()->where('academy_id', $academy->id)
+                    ->where('academy_payment_id', $payment->id)->lockForUpdate()->firstOrFail();
+                $commitment = SponsorCommitment::query()->where('academy_id', $academy->id)
+                    ->whereKey($contribution->sponsor_commitment_id)->lockForUpdate()->firstOrFail();
+                $contribution->reversed_minor += $amount;
+                $contribution->save();
+                $commitment->received_minor -= $amount;
+                $commitment->save();
+            }
             $this->audit->record('academy.payment.reversed', $actor, $academy, $payment, [
                 'adjustment_id' => $adjustment->id, 'amount_minor' => $amount, 'reason' => $data['reason'],
             ], $request);

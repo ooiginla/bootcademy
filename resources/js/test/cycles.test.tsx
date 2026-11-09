@@ -30,6 +30,7 @@ describe('Academy billing cycles', () => {
                         status: 'active',
                         programme_cycles_count: 2,
                         enrollments_count: 24,
+                        terms_count: 3,
                     },
                 ]}
             />,

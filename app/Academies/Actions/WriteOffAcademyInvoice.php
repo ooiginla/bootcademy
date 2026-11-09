@@ -24,16 +24,18 @@ class WriteOffAcademyInvoice
         return DB::transaction(function () use ($academy, $invoice, $actor, $data, $request): AcademyInvoiceWriteOff {
             $invoice = AcademyInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             abort_unless($invoice->academy_id === $academy->id, 404);
-            if (in_array($invoice->status, [AcademyInvoiceStatus::Void, AcademyInvoiceStatus::Paid, AcademyInvoiceStatus::WrittenOff], true)) {
+            if (in_array($invoice->status, [AcademyInvoiceStatus::Void, AcademyInvoiceStatus::Paid, AcademyInvoiceStatus::WrittenOff, AcademyInvoiceStatus::Settled], true)) {
                 throw ValidationException::withMessages(['amount' => 'This invoice cannot be written off.']);
             }
             $amount = Money::toMinor((string) $data['amount']);
-            if ($amount > $invoice->balanceMinor()) {
+            if ($amount > $invoice->personalBalanceMinor()) {
                 throw ValidationException::withMessages(['amount' => 'The write-off cannot exceed the outstanding balance.']);
             }
             $remaining = $amount;
             foreach ($invoice->installments()->orderBy('sequence')->lockForUpdate()->get() as $installment) {
-                $available = $installment->amount_minor - $installment->paid_minor - $installment->written_off_minor;
+                $studentPaid = $installment->paid_minor - $installment->sponsor_paid_minor;
+                $available = $installment->amount_minor - $studentPaid - $installment->written_off_minor
+                    - $installment->scholarship_concession_minor - $installment->sponsor_responsibility_minor;
                 $allocated = min($remaining, $available);
                 if ($allocated > 0) {
                     $installment->increment('written_off_minor', $allocated);

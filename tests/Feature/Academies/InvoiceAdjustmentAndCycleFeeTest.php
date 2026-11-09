@@ -6,8 +6,11 @@ use App\Enums\AcademyRole;
 use App\Models\Academy;
 use App\Models\AcademyCycle;
 use App\Models\AcademyCycleFee;
+use App\Models\AcademyCycleTerm;
 use App\Models\AcademyInvoice;
 use App\Models\AcademyMembership;
+use App\Models\Cohort;
+use App\Models\CohortMembership;
 use App\Models\Enrollment;
 use App\Models\Player;
 use App\Models\Programme;
@@ -87,6 +90,46 @@ class InvoiceAdjustmentAndCycleFeeTest extends TestCase
             'total_minor' => 500000,
             'status' => 'issued',
         ]);
+    }
+
+    public function test_term_and_cohort_scoped_cycle_fee_only_invoices_matching_members(): void
+    {
+        [$owner, $academy] = $this->member();
+        [$cycle, $programme, $offering, $matchingPlayer] = $this->enrolledPlayer($academy);
+        $matchingEnrollment = $matchingPlayer->enrollments()->sole();
+        $otherPlayer = Player::factory()->for($academy)->create();
+        Enrollment::factory()->for($otherPlayer)->create([
+            'academy_id' => $academy->id, 'academy_cycle_id' => $cycle->id,
+            'programme_cycle_id' => $offering->id, 'programme_id' => $programme->id,
+            'status' => 'active', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31',
+        ]);
+        $term = AcademyCycleTerm::query()->create([
+            'academy_id' => $academy->id, 'academy_cycle_id' => $cycle->id,
+            'name' => 'Term 1', 'starts_on' => '2026-01-01', 'ends_on' => '2026-04-30',
+            'sort_order' => 1, 'is_default' => true, 'is_active' => true,
+        ]);
+        $cohort = Cohort::query()->create([
+            'academy_id' => $academy->id, 'programme_cycle_id' => $offering->id,
+            'name' => 'Primary 1A', 'starts_on' => '2026-01-01', 'status' => 'open',
+        ]);
+        CohortMembership::query()->create([
+            'academy_id' => $academy->id, 'cohort_id' => $cohort->id,
+            'enrollment_id' => $matchingEnrollment->id, 'player_id' => $matchingPlayer->id,
+            'joined_on' => '2026-01-01', 'status' => 'active',
+        ]);
+
+        $this->asAcademy($owner, $academy)->post(route('academy.cycles.fees.store', $cycle), [
+            'name' => 'Term excursion', 'category' => 'excursion', 'amount' => '10000.00',
+            'is_compulsory' => true, 'applies_to_all_programmes' => false, 'is_active' => true,
+            'programme_ids' => [$programme->id], 'academy_cycle_term_id' => $term->id,
+            'cohort_id' => $cohort->id,
+        ])->assertRedirect();
+
+        $fee = AcademyCycleFee::query()->where('name', 'Term excursion')->sole();
+        $this->assertSame($term->id, $fee->academy_cycle_term_id);
+        $this->assertSame($cohort->id, $fee->cohort_id);
+        $this->assertDatabaseHas('academy_invoices', ['academy_cycle_fee_id' => $fee->id, 'player_id' => $matchingPlayer->id]);
+        $this->assertDatabaseMissing('academy_invoices', ['academy_cycle_fee_id' => $fee->id, 'player_id' => $otherPlayer->id]);
     }
 
     public function test_unpaid_issued_invoice_can_be_cancelled_but_adjusted_invoice_cannot(): void

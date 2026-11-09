@@ -49,7 +49,7 @@ type Expense = {
     cycle_name: string | null;
     currency: string;
     amount: string;
-    source: 'manual' | 'write_off';
+    source: 'manual' | 'write_off' | 'referral_reward';
     attachments: Attachment[];
 };
 type Paginator = {
@@ -517,6 +517,7 @@ export default function Expenses({
         total: string;
         manual: string;
         write_offs: string;
+        referral_rewards: string;
         currency: string;
     };
     categories: Category[];
@@ -607,7 +608,7 @@ export default function Expenses({
                             </div>
                         )}
 
-                        <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                             {[
                                 [
                                     'Total expenses',
@@ -625,6 +626,11 @@ export default function Expenses({
                                     'bg-red-50',
                                 ],
                                 [
+                                    'Referral rewards',
+                                    summary.referral_rewards,
+                                    'bg-amber-50',
+                                ],
+                                [
                                     'Records',
                                     String(summary.count),
                                     'bg-emerald-50',
@@ -636,7 +642,7 @@ export default function Expenses({
                                             {label}
                                         </p>
                                         <p className="mt-1 text-xl font-semibold">
-                                            {index < 3
+                                            {index < 4
                                                 ? formatCurrency(
                                                       summary.currency,
                                                       value,
@@ -847,7 +853,10 @@ export default function Expenses({
                                                                     {expense.source ===
                                                                     'write_off'
                                                                         ? 'Write-off'
-                                                                        : 'Manual'}
+                                                                        : expense.source ===
+                                                                            'referral_reward'
+                                                                          ? 'Referral reward'
+                                                                          : 'Manual'}
                                                                 </Badge>
                                                             </td>
                                                             <td className="px-4 py-3">

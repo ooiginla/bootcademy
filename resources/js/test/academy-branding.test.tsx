@@ -39,6 +39,9 @@ describe('Academy settings', () => {
                         plural: 'Students',
                         staff_singular: 'Instructor',
                         staff_plural: 'Instructors',
+                        guardian_singular: 'Next of Kin',
+                        guardian_plural: 'Next of Kin',
+                        collect_guardian_information: false,
                     },
                     bank_details: {
                         bank_name: 'Access Bank',
@@ -65,5 +68,13 @@ describe('Academy settings', () => {
         expect(
             screen.getByLabelText('Coach/instructor plural label'),
         ).toHaveValue('Instructors');
+        expect(
+            screen.getByLabelText('Guardian/contact singular label'),
+        ).toHaveValue('Next of Kin');
+        expect(
+            screen.getByText(
+                'Collect guardian/contact information on applications',
+            ),
+        ).toBeInTheDocument();
     });
 });

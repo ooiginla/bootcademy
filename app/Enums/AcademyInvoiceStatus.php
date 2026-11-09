@@ -9,5 +9,6 @@ enum AcademyInvoiceStatus: string
     case PartiallyWrittenOff = 'partially_written_off';
     case Paid = 'paid';
     case WrittenOff = 'written_off';
+    case Settled = 'settled';
     case Void = 'void';
 }

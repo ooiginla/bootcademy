@@ -37,6 +37,9 @@ class IssueApplicationInvoice
         }
         $items = [];
         foreach ($offering->feeItems->sortBy('sort_order') as $item) {
+            if ($item->cohort_id !== null && $item->cohort_id !== $application->cohort_id) {
+                continue;
+            }
             $items[] = [
                 'description' => $item->name,
                 'amount_minor' => (int) $item->amount_minor,
@@ -88,7 +91,8 @@ class IssueApplicationInvoice
                 'academy_id' => $academy->id, 'name' => 'Application fee', 'amount_minor' => $total,
                 'paid_minor' => 0, 'due_on' => today(), 'due_offset_days' => null, 'sequence' => 1,
             ]);
-        } elseif ($offering->payment_mode === ProgrammeCyclePaymentMode::Installments) {
+        } elseif ($offering->payment_mode === ProgrammeCyclePaymentMode::Installments
+            && (int) $offering->installments->sum('amount_minor') === $total) {
             foreach ($offering->installments->sortBy('sequence')->values() as $installment) {
                 $invoice->installments()->create([
                     'academy_id' => $academy->id, 'name' => $installment->name,

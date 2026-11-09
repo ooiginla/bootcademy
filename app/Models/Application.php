@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property string $first_name
  * @property string|null $middle_name
  * @property string $last_name
+ * @property string|null $email
  * @property Carbon|null $date_of_birth
  * @property string|null $gender
  * @property string|null $phone
@@ -49,14 +50,14 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $enrolled_at
  */
 #[Fillable([
-    'academy_id', 'reference', 'source', 'external_reference', 'submission_hash',
-    'internal_identifier', 'first_name', 'middle_name', 'last_name', 'date_of_birth',
+    'academy_id', 'reference', 'source', 'external_reference', 'submission_hash', 'public_access_token_hash',
+    'internal_identifier', 'first_name', 'middle_name', 'last_name', 'email', 'date_of_birth',
     'gender', 'phone', 'whatsapp_number', 'home_address', 'city', 'state_region', 'country',
     'guardian_first_name', 'guardian_last_name', 'guardian_email', 'guardian_phone',
     'guardian_whatsapp_number', 'guardian_relationship', 'guardian_signature_path',
     'guardian_consent_at', 'privacy_policy_version',
     'programme_id', 'branch_id', 'custom_fields', 'status',
-    'programme_cycle_id',
+    'programme_cycle_id', 'cohort_id', 'application_intake_id',
     'review_notes', 'reviewed_by_user_id', 'reviewed_at', 'converted_player_id', 'enrolled_at',
 ])]
 class Application extends Model
@@ -79,6 +80,16 @@ class Application extends Model
         return $this->belongsTo(ProgrammeCycle::class);
     }
 
+    public function cohort(): BelongsTo
+    {
+        return $this->belongsTo(Cohort::class);
+    }
+
+    public function applicationIntake(): BelongsTo
+    {
+        return $this->belongsTo(ApplicationIntake::class);
+    }
+
     /** @return HasMany<AcademyInvoice, $this> */
     public function invoices(): HasMany
     {
@@ -89,6 +100,11 @@ class Application extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(AcademyPayment::class);
+    }
+
+    public function onlinePaymentIntents(): HasMany
+    {
+        return $this->hasMany(OnlinePaymentIntent::class);
     }
 
     /** @return BelongsTo<Branch, $this> */

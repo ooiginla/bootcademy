@@ -4,12 +4,16 @@ namespace Tests\Feature\Academies;
 
 use App\Enums\AcademyRole;
 use App\Models\Academy;
+use App\Models\AcademyCycle;
+use App\Models\AcademyCycleTerm;
 use App\Models\AcademyMembership;
 use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Enrollment;
 use App\Models\Player;
 use App\Models\Programme;
+use App\Models\ProgrammeCycle;
+use App\Models\ProgrammeCycleFeeItem;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -319,6 +323,130 @@ class ProgrammeManagementTest extends TestCase
                 ->where('members.total', 21)
                 ->where('members.last_page', 2)
             );
+    }
+
+    public function test_programme_members_can_be_filtered_by_active_or_completed_status(): void
+    {
+        [$owner, $academy] = $this->member(AcademyRole::OwnerAdmin);
+        $branch = Branch::factory()->for($academy)->create();
+        $programme = Programme::factory()->for($academy)->create();
+        $active = $this->enroll($academy, $programme, Player::factory()->for($academy)->create(['first_name' => 'Active']), $branch);
+        $completed = $this->enroll($academy, $programme, Player::factory()->for($academy)->create(['first_name' => 'Completed']), $branch);
+        $completed->update(['status' => 'completed', 'ends_on' => '2026-10-30']);
+
+        $this->asAcademy($owner, $academy)
+            ->get(route('academy.programmes.show', ['programme' => $programme, 'tab' => 'members', 'status' => 'completed']))
+            ->assertOk()->assertInertia(fn (Assert $page) => $page
+                ->where('selected_status', 'completed')
+                ->has('members.data', 1)
+                ->where('members.data.0.id', $completed->id));
+        $this->asAcademy($owner, $academy)
+            ->get(route('academy.programmes.show', ['programme' => $programme, 'tab' => 'members', 'status' => 'active']))
+            ->assertOk()->assertInertia(fn (Assert $page) => $page
+                ->has('members.data', 1)
+                ->where('members.data.0.id', $active->id));
+    }
+
+    public function test_owner_can_complete_selected_programme_enrollments_without_deleting_history(): void
+    {
+        [$owner, $academy] = $this->member(AcademyRole::OwnerAdmin);
+        $branch = Branch::factory()->for($academy)->create();
+        $programme = Programme::factory()->for($academy)->create();
+        $enrollment = $this->enroll($academy, $programme, Player::factory()->for($academy)->create(), $branch);
+
+        $this->asAcademy($owner, $academy)
+            ->patch(route('academy.programmes.enrollments.complete', $programme), ['enrollment_ids' => [$enrollment->id]])
+            ->assertRedirect()->assertInertiaFlash('toast.message', '1 enrollment(s) marked as completed.');
+
+        $this->assertDatabaseHas('enrollments', [
+            'id' => $enrollment->id, 'academy_id' => $academy->id, 'status' => 'completed',
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'academy_id' => $academy->id, 'auditable_id' => $enrollment->id, 'action' => 'academy.enrollment.completed',
+        ]);
+    }
+
+    public function test_bulk_reenrollment_preserves_history_registers_term_and_issues_invoice_once(): void
+    {
+        [$owner, $academy] = $this->member(AcademyRole::OwnerAdmin);
+        $branch = Branch::factory()->for($academy)->create();
+        $oldProgramme = Programme::factory()->for($academy)->create(['name' => 'Primary 1']);
+        $newProgramme = Programme::factory()->for($academy)->create(['name' => 'Primary 2']);
+        $player = Player::factory()->for($academy)->create();
+        $oldEnrollment = $this->enroll($academy, $oldProgramme, $player, $branch);
+        $cycle = AcademyCycle::query()->create([
+            'academy_id' => $academy->id, 'name' => '2027 Academic Year', 'type' => 'fixed',
+            'starts_on' => '2027-01-01', 'ends_on' => '2027-12-31', 'status' => 'active',
+        ]);
+        $term = AcademyCycleTerm::query()->create([
+            'academy_id' => $academy->id, 'academy_cycle_id' => $cycle->id, 'name' => 'First term',
+            'starts_on' => '2027-01-01', 'ends_on' => '2027-04-15', 'sort_order' => 1,
+            'is_default' => true, 'is_active' => true,
+        ]);
+        $offering = ProgrammeCycle::query()->create([
+            'academy_id' => $academy->id, 'academy_cycle_id' => $cycle->id,
+            'programme_id' => $newProgramme->id, 'branch_id' => $branch->id, 'branch_scope_id' => $branch->id,
+            'fee_name' => 'Primary 2 tuition', 'currency' => 'NGN', 'application_fee_minor' => 0,
+            'payment_mode' => 'one_off', 'enrollment_payment_rule' => 'full_payment', 'is_active' => true,
+        ]);
+        ProgrammeCycleFeeItem::query()->create([
+            'academy_id' => $academy->id, 'programme_cycle_id' => $offering->id,
+            'academy_cycle_term_id' => null, 'name' => 'Annual registration', 'amount_minor' => 500000, 'sort_order' => 1,
+        ]);
+        ProgrammeCycleFeeItem::query()->create([
+            'academy_id' => $academy->id, 'programme_cycle_id' => $offering->id,
+            'academy_cycle_term_id' => $term->id, 'name' => 'First term tuition', 'amount_minor' => 2000000, 'sort_order' => 2,
+        ]);
+        $payload = [
+            'enrollment_ids' => [$oldEnrollment->id], 'academy_cycle_id' => $cycle->id,
+            'programme_id' => $newProgramme->id, 'academy_cycle_term_id' => $term->id,
+            'branch_id' => $branch->id, 'cohort_id' => null,
+        ];
+
+        $this->asAcademy($owner, $academy)->post(route('academy.programmes.enrollments.reenroll', $oldProgramme), $payload)
+            ->assertRedirect()->assertInertiaFlash('toast.message', '1 enrollment(s) activated for the selected term. Applicable invoices were issued without duplicates.');
+        $this->assertDatabaseHas('enrollments', ['id' => $oldEnrollment->id, 'status' => 'completed']);
+        $newEnrollment = Enrollment::query()->where('player_id', $player->id)->where('programme_id', $newProgramme->id)->sole();
+        $this->assertSame('active', $newEnrollment->status->value);
+        $this->assertDatabaseHas('enrollment_term_registrations', [
+            'academy_id' => $academy->id, 'enrollment_id' => $newEnrollment->id, 'academy_cycle_term_id' => $term->id,
+        ]);
+        $this->assertDatabaseHas('academy_invoices', [
+            'academy_id' => $academy->id, 'player_id' => $player->id,
+            'programme_cycle_id' => $offering->id, 'total_minor' => 2500000,
+        ]);
+
+        $this->asAcademy($owner, $academy)->post(route('academy.programmes.enrollments.reenroll', $oldProgramme), $payload)->assertRedirect();
+        $this->assertDatabaseCount('enrollment_term_registrations', 1);
+        $this->assertDatabaseCount('academy_invoices', 1);
+    }
+
+    public function test_bulk_enrollment_endpoints_reject_cross_tenant_enrollment_ids(): void
+    {
+        [$owner, $academy] = $this->member(AcademyRole::OwnerAdmin);
+        $programme = Programme::factory()->for($academy)->create();
+        $foreignEnrollment = Enrollment::factory()->create();
+
+        $this->asAcademy($owner, $academy)
+            ->patch(route('academy.programmes.enrollments.complete', $programme), ['enrollment_ids' => [$foreignEnrollment->id]])
+            ->assertSessionHasErrors('enrollment_ids.0');
+        $this->assertSame('active', $foreignEnrollment->fresh()->status->value);
+    }
+
+    public function test_non_admin_cannot_complete_or_reenroll_programme_members(): void
+    {
+        [$coach, $academy] = $this->member(AcademyRole::Coach);
+        $programme = Programme::factory()->for($academy)->create();
+        $branch = Branch::factory()->for($academy)->create();
+        $enrollment = $this->enroll($academy, $programme, Player::factory()->for($academy)->create(), $branch);
+
+        $this->asAcademy($coach, $academy)
+            ->patch(route('academy.programmes.enrollments.complete', $programme), ['enrollment_ids' => [$enrollment->id]])
+            ->assertForbidden();
+        $this->asAcademy($coach, $academy)
+            ->post(route('academy.programmes.enrollments.reenroll', $programme), ['enrollment_ids' => [$enrollment->id]])
+            ->assertForbidden();
+        $this->assertSame('active', $enrollment->fresh()->status->value);
     }
 
     /** @param array<int, int> $branchIds */

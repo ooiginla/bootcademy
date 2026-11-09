@@ -16,15 +16,21 @@ use App\Http\Controllers\Academies\AcademyWebsiteController;
 use App\Http\Controllers\Academies\AcceptAcademyInvitationController;
 use App\Http\Controllers\Academies\ActivateAcademyController;
 use App\Http\Controllers\Academies\ApplicationController;
+use App\Http\Controllers\Academies\ApplicationIntakeController;
 use App\Http\Controllers\Academies\AttendanceController;
 use App\Http\Controllers\Academies\BranchController;
 use App\Http\Controllers\Academies\CoachController;
+use App\Http\Controllers\Academies\CohortController;
+use App\Http\Controllers\Academies\CommunicationController;
 use App\Http\Controllers\Academies\CustomFieldController;
 use App\Http\Controllers\Academies\DashboardController;
 use App\Http\Controllers\Academies\GuardianSignatureController;
 use App\Http\Controllers\Academies\PlayerController;
 use App\Http\Controllers\Academies\PlayerImportController;
 use App\Http\Controllers\Academies\ProgrammeController;
+use App\Http\Controllers\Academies\ReferralController;
+use App\Http\Controllers\Academies\ScholarshipController;
+use App\Http\Controllers\Academies\StoreController;
 use App\Http\Controllers\Academies\SubscriptionController;
 use App\Http\Controllers\Academies\TrainingSessionController;
 use App\Http\Controllers\Platform\AcademyBrandingController as PlatformAcademyBrandingController;
@@ -32,14 +38,33 @@ use App\Http\Controllers\Platform\AcademySubscriptionController as PlatformAcade
 use App\Http\Controllers\Platform\PlanController;
 use App\Http\Controllers\Platform\SupportAccessController;
 use App\Http\Controllers\PublicAcademyWebsiteController;
+use App\Http\Controllers\PublicApplicationController;
+use App\Http\Controllers\PublicStoreController;
 use App\Http\Controllers\RequiredPasswordController;
 use App\Http\Middleware\EnsureEmailIsVerifiedWhenRequired;
 use App\Http\Middleware\EnsurePlatformSuperAdmin;
 use App\Http\Middleware\EnsureTemporaryPasswordChanged;
 use App\Http\Middleware\ResolveActiveAcademy;
+use App\Models\Plan;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
-Route::inertia('/', 'welcome')->name('home');
+Route::get('/', function () {
+    return Inertia::render('welcome', [
+        'plans' => Plan::query()->where('is_active', true)->orderBy('sort_order')->get()->map(fn (Plan $plan): array => [
+            'code' => $plan->code,
+            'name' => $plan->name,
+            'currency' => $plan->currency,
+            'monthly_price' => number_format($plan->monthly_price_minor / 100, 2, '.', ''),
+            'annual_price' => number_format($plan->annual_price_minor / 100, 2, '.', ''),
+            'active_player_limit' => $plan->active_player_limit,
+        ])->values(),
+        'seo' => [
+            'canonical_url' => rtrim((string) config('app.url'), '/').'/',
+            'image_url' => rtrim((string) config('app.url'), '/').'/images/bootcademy-academy-owner.jpg',
+        ],
+    ]);
+})->name('home');
 
 Route::prefix('sites/{subdomain}')->group(function (): void {
     Route::get('/', [PublicAcademyWebsiteController::class, 'home'])->name('public.academy.home');
@@ -48,6 +73,17 @@ Route::prefix('sites/{subdomain}')->group(function (): void {
     Route::get('programmes/{programme}', [PublicAcademyWebsiteController::class, 'programme'])->whereNumber('programme')->name('public.academy.programme');
     Route::get('programmes/{programme}/image', [PublicAcademyWebsiteController::class, 'programmeImage'])->whereNumber('programme')->name('public.academy.programme-image');
     Route::get('apply', [PublicAcademyWebsiteController::class, 'application'])->name('public.academy.application');
+    Route::post('apply', [PublicApplicationController::class, 'store'])->middleware('throttle:10,1')->name('public.academy.application.store');
+    Route::get('applications/{reference}/fees', [PublicApplicationController::class, 'fees'])->name('public.academy.application-fees');
+    Route::get('applications/{reference}/complete', [PublicApplicationController::class, 'complete'])->name('public.academy.application-complete');
+    Route::post('applications/{reference}/payments', [PublicApplicationController::class, 'initialize'])->middleware('throttle:10,1')->name('public.academy.payment-initialize');
+    Route::post('applications/{reference}/payments/{intent}/verify', [PublicApplicationController::class, 'verify'])->middleware('throttle:30,1')->name('public.academy.payment-verify');
+    Route::get('store', [PublicStoreController::class, 'index'])->name('public.academy.store');
+    Route::post('store/orders', [PublicStoreController::class, 'store'])->middleware('throttle:10,1')->name('public.academy.store-order');
+    Route::get('store/orders/{token}', [PublicStoreController::class, 'show'])->name('public.academy.store-order.show');
+    Route::post('store/orders/{token}/payments', [PublicStoreController::class, 'initializePayment'])->middleware('throttle:10,1')->name('public.academy.store-payment-initialize');
+    Route::post('store/orders/{token}/payments/{payment}/verify', [PublicStoreController::class, 'verifyPayment'])->middleware('throttle:30,1')->name('public.academy.store-payment-verify');
+    Route::get('store/products/{product}/image', [PublicStoreController::class, 'image'])->whereNumber('product')->name('public.academy.store-image');
 });
 
 if ($tenantDomain = config('branding.tenant_domain')) {
@@ -58,6 +94,17 @@ if ($tenantDomain = config('branding.tenant_domain')) {
         Route::get('programmes/{programme}', [PublicAcademyWebsiteController::class, 'programme'])->whereNumber('programme')->name('programme');
         Route::get('programmes/{programme}/image', [PublicAcademyWebsiteController::class, 'programmeImage'])->whereNumber('programme')->name('programme-image');
         Route::get('apply', [PublicAcademyWebsiteController::class, 'application'])->name('application');
+        Route::post('apply', [PublicApplicationController::class, 'store'])->middleware('throttle:10,1')->name('application.store');
+        Route::get('applications/{reference}/fees', [PublicApplicationController::class, 'fees'])->name('application-fees');
+        Route::get('applications/{reference}/complete', [PublicApplicationController::class, 'complete'])->name('application-complete');
+        Route::post('applications/{reference}/payments', [PublicApplicationController::class, 'initialize'])->middleware('throttle:10,1')->name('payment-initialize');
+        Route::post('applications/{reference}/payments/{intent}/verify', [PublicApplicationController::class, 'verify'])->middleware('throttle:30,1')->name('payment-verify');
+        Route::get('store', [PublicStoreController::class, 'index'])->name('store');
+        Route::post('store/orders', [PublicStoreController::class, 'store'])->middleware('throttle:10,1')->name('store-order');
+        Route::get('store/orders/{token}', [PublicStoreController::class, 'show'])->name('store-order.show');
+        Route::post('store/orders/{token}/payments', [PublicStoreController::class, 'initializePayment'])->middleware('throttle:10,1')->name('store-payment-initialize');
+        Route::post('store/orders/{token}/payments/{payment}/verify', [PublicStoreController::class, 'verifyPayment'])->middleware('throttle:30,1')->name('store-payment-verify');
+        Route::get('store/products/{product}/image', [PublicStoreController::class, 'image'])->whereNumber('product')->name('store-image');
     });
 }
 
@@ -104,6 +151,8 @@ Route::middleware([
         Route::get('app/programmes', [ProgrammeController::class, 'index'])->name('academy.programmes.index');
         Route::post('app/programmes', [ProgrammeController::class, 'store'])->name('academy.programmes.store');
         Route::get('app/programmes/{programme}', [ProgrammeController::class, 'show'])->name('academy.programmes.show');
+        Route::patch('app/programmes/{programme}/enrollments/complete', [ProgrammeController::class, 'completeEnrollments'])->name('academy.programmes.enrollments.complete');
+        Route::post('app/programmes/{programme}/enrollments/reenroll', [ProgrammeController::class, 'reenrollMembers'])->name('academy.programmes.enrollments.reenroll');
         Route::patch('app/programmes/{programme}', [ProgrammeController::class, 'update'])->name('academy.programmes.update');
         Route::get('app/programmes/{programme}/image', [ProgrammeController::class, 'image'])->name('academy.programmes.image');
         Route::post('app/programmes/{programme}/image', [ProgrammeController::class, 'updateImage'])->name('academy.programmes.image.update');
@@ -117,6 +166,8 @@ Route::middleware([
         Route::post('app/finance/cycles', [AcademyCycleController::class, 'store'])->name('academy.cycles.store');
         Route::get('app/finance/cycles/{cycle}', [AcademyCycleController::class, 'show'])->name('academy.cycles.show');
         Route::patch('app/finance/cycles/{cycle}', [AcademyCycleController::class, 'update'])->name('academy.cycles.update');
+        Route::post('app/finance/cycles/{cycle}/terms', [AcademyCycleController::class, 'storeTerm'])->name('academy.cycles.terms.store');
+        Route::patch('app/finance/cycles/{cycle}/terms/{term}', [AcademyCycleController::class, 'updateTerm'])->name('academy.cycles.terms.update');
         Route::post('app/finance/cycles/{cycle}/programmes', [AcademyCycleController::class, 'storeOffering'])->name('academy.cycles.offerings.store');
         Route::patch('app/finance/cycles/{cycle}/programmes/{programmeCycle}', [AcademyCycleController::class, 'updateOffering'])->name('academy.cycles.offerings.update');
         Route::get('app/players', [PlayerController::class, 'index'])->name('academy.players.index');
@@ -129,6 +180,10 @@ Route::middleware([
         Route::get('app/players/{player}', [PlayerController::class, 'show'])->name('academy.players.show');
         Route::get('app/applications', [ApplicationController::class, 'index'])->name('academy.applications.index');
         Route::post('app/applications', [ApplicationController::class, 'store'])->name('academy.applications.store');
+        Route::post('app/application-intakes', [ApplicationIntakeController::class, 'store'])->name('academy.application-intakes.store');
+        Route::patch('app/application-intakes/{applicationIntake}', [ApplicationIntakeController::class, 'update'])->name('academy.application-intakes.update');
+        Route::post('app/cohorts', [CohortController::class, 'store'])->name('academy.cohorts.store');
+        Route::patch('app/cohorts/{cohort}', [CohortController::class, 'update'])->name('academy.cohorts.update');
         Route::get('app/applications/{application}', [ApplicationController::class, 'show'])->name('academy.applications.show');
         Route::patch('app/applications/{application}', [ApplicationController::class, 'update'])->name('academy.applications.update');
         Route::patch('app/applications/{application}/review', [ApplicationController::class, 'review'])->name('academy.applications.review');
@@ -137,6 +192,42 @@ Route::middleware([
         Route::post('app/finance/payments/{payment}/reversals', [AcademyPaymentController::class, 'reverse'])->name('academy.payments.reversals.store');
         Route::get('app/finance/invoices', [AcademyInvoiceController::class, 'index'])->name('academy.invoices.index');
         Route::get('app/finance/expenses', [AcademyExpenseController::class, 'index'])->name('academy.expenses.index');
+        Route::get('app/communications', [CommunicationController::class, 'index'])->name('academy.communications.index');
+        Route::post('app/communications/announcements', [CommunicationController::class, 'storeAnnouncement'])->name('academy.communications.announcements.store');
+        Route::patch('app/communications/settings', [CommunicationController::class, 'updateSettings'])->name('academy.communications.settings.update');
+        Route::post('app/communications/invoices/{invoice}/remind', [CommunicationController::class, 'remindInvoice'])->name('academy.communications.invoices.remind');
+        Route::post('app/communications/enrollments/{enrollment}/remind', [CommunicationController::class, 'remindRenewal'])->name('academy.communications.enrollments.remind');
+        Route::get('app/referrals', [ReferralController::class, 'index'])->name('academy.referrals.index');
+        Route::post('app/referrals', [ReferralController::class, 'store'])->name('academy.referrals.store');
+        Route::patch('app/referrals/settings', [ReferralController::class, 'updateSettings'])->name('academy.referrals.settings.update');
+        Route::post('app/referrals/reconcile', [ReferralController::class, 'reconcile'])->name('academy.referrals.reconcile');
+        Route::patch('app/referrals/rewards/{reward}/approve', [ReferralController::class, 'approve'])->name('academy.referrals.rewards.approve');
+        Route::patch('app/referrals/rewards/{reward}/paid', [ReferralController::class, 'markPaid'])->name('academy.referrals.rewards.paid');
+        Route::get('app/scholarships', [ScholarshipController::class, 'index'])->name('academy.scholarships.index');
+        Route::post('app/scholarships/sponsors', [ScholarshipController::class, 'storeSponsor'])->name('academy.scholarships.sponsors.store');
+        Route::patch('app/scholarships/sponsors/{sponsor}', [ScholarshipController::class, 'updateSponsor'])->name('academy.scholarships.sponsors.update');
+        Route::post('app/scholarships/commitments', [ScholarshipController::class, 'storeCommitment'])->name('academy.scholarships.commitments.store');
+        Route::patch('app/scholarships/commitments/{commitment}', [ScholarshipController::class, 'updateCommitment'])->name('academy.scholarships.commitments.update');
+        Route::post('app/scholarships/schemes', [ScholarshipController::class, 'storeScheme'])->name('academy.scholarships.schemes.store');
+        Route::patch('app/scholarships/schemes/{scheme}', [ScholarshipController::class, 'updateScheme'])->name('academy.scholarships.schemes.update');
+        Route::post('app/scholarships/awards', [ScholarshipController::class, 'storeAward'])->name('academy.scholarships.awards.store');
+        Route::post('app/scholarships/awards/{award}/allocations', [ScholarshipController::class, 'applyAward'])->name('academy.scholarships.awards.allocations.store');
+        Route::post('app/scholarships/allocations/{allocation}/contributions', [ScholarshipController::class, 'recordContribution'])->name('academy.scholarships.contributions.store');
+        Route::get('app/store', [StoreController::class, 'index'])->name('academy.store.index');
+        Route::post('app/store/products', [StoreController::class, 'storeProduct'])->name('academy.store.products.store');
+        Route::patch('app/store/products/{product}', [StoreController::class, 'updateProduct'])->name('academy.store.products.update');
+        Route::get('app/store/products/{product}/image', [StoreController::class, 'image'])->name('academy.store.products.image');
+        Route::post('app/store/products/{product}/image', [StoreController::class, 'updateImage'])->name('academy.store.products.image.update');
+        Route::post('app/store/products/{product}/variants', [StoreController::class, 'storeVariant'])->name('academy.store.variants.store');
+        Route::post('app/store/variants/{variant}/stock', [StoreController::class, 'adjustStock'])->name('academy.store.stock.adjust');
+        Route::post('app/store/variants/{variant}/stock-transfer', [StoreController::class, 'transferStock'])->name('academy.store.stock.transfer');
+        Route::post('app/store/categories', [StoreController::class, 'storeCategory'])->name('academy.store.categories.store');
+        Route::post('app/store/tags', [StoreController::class, 'storeTag'])->name('academy.store.tags.store');
+        Route::post('app/store/orders', [StoreController::class, 'storeOrder'])->name('academy.store.orders.store');
+        Route::get('app/store/orders/{order}', [StoreController::class, 'showOrder'])->name('academy.store.orders.show');
+        Route::post('app/store/orders/{order}/payments', [StoreController::class, 'recordPayment'])->name('academy.store.orders.payments.store');
+        Route::patch('app/store/orders/{order}/fulfillment', [StoreController::class, 'updateFulfillment'])->name('academy.store.orders.fulfillment.update');
+        Route::patch('app/store/orders/{order}/cancel', [StoreController::class, 'cancelOrder'])->name('academy.store.orders.cancel');
         Route::post('app/finance/expenses', [AcademyExpenseController::class, 'store'])->name('academy.expenses.store');
         Route::post('app/finance/expense-categories', [AcademyExpenseController::class, 'storeCategory'])->name('academy.expense-categories.store');
         Route::patch('app/finance/expense-categories/{category}', [AcademyExpenseController::class, 'updateCategory'])->name('academy.expense-categories.update');
@@ -211,6 +302,8 @@ Route::middleware([
                 ->name('academies.branding.edit');
             Route::patch('academies/{academy}/branding', [PlatformAcademyBrandingController::class, 'update'])
                 ->name('academies.branding.update');
+            Route::patch('academies/{academy}/paystack-fees', [PlatformAcademyBrandingController::class, 'updatePaystackFees'])
+                ->name('academies.paystack-fees.update');
             Route::get('academies/{academy}/subscription', [PlatformAcademySubscriptionController::class, 'edit'])
                 ->name('academies.subscription.edit');
             Route::patch('academies/{academy}/subscription', [PlatformAcademySubscriptionController::class, 'update'])

@@ -6,6 +6,8 @@ import react, { reactCompilerPreset } from '@vitejs/plugin-react';
 import laravel from 'laravel-vite-plugin';
 import { defineConfig, lazyPlugins } from 'vite-plus';
 
+const phpBinary = process.env.PHP_BINARY ?? 'php';
+
 export default defineConfig({
     plugins: lazyPlugins(() => [
         laravel({
@@ -19,6 +21,7 @@ export default defineConfig({
         }),
         tailwindcss(),
         wayfinder({
+            command: `${JSON.stringify(phpBinary)} artisan wayfinder:generate`,
             formVariants: true,
         }),
     ]),

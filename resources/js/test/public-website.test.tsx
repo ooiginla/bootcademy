@@ -4,18 +4,33 @@ import { describe, expect, it, vi } from 'vitest';
 import AcademyWebsite from '@/pages/academies/website';
 import PublicSiteShell from '@/components/public-site/public-site-shell';
 import PublicApplication from '@/pages/public/application';
+import PublicApplicationFees from '@/pages/public/application-fees';
+import PublicApplicationComplete from '@/pages/public/application-complete';
 import PublicHome from '@/pages/public/home';
 import PublicProgrammeDetails from '@/pages/public/programme';
-import type { PublicAcademy, PublicSite } from '@/types/public-site';
+import type {
+    PublicAcademy,
+    PublicApplicationIntake,
+    PublicSite,
+} from '@/types/public-site';
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
     Link: ({ children, href }: { children: ReactNode; href: string }) => (
         <a href={href}>{children}</a>
     ),
-    Form: ({ children }: { children: (value: object) => ReactNode }) => (
-        <form>{children({ processing: false, errors: {} })}</form>
+    Form: ({
+        children,
+    }: {
+        children: ReactNode | ((value: object) => ReactNode);
+    }) => (
+        <form>
+            {typeof children === 'function'
+                ? children({ processing: false, errors: {} })
+                : children}
+        </form>
     ),
+    usePage: () => ({ props: { errors: {} } }),
 }));
 
 const academy: PublicAcademy = {
@@ -89,6 +104,40 @@ const site: PublicSite = {
     },
 };
 
+const applicationIntake: PublicApplicationIntake = {
+    id: 9,
+    programme_cycle_id: 9,
+    programme_id: 3,
+    programme_name: 'Software Engineering',
+    cycle_id: 2,
+    cycle_name: '2027 Cohort',
+    branch_id: null,
+    branch_name: 'All locations',
+    cohort_id: 7,
+    cohort_name: 'January cohort',
+    opens_on: null,
+    closes_on: null,
+    fee_name: 'Tuition',
+    currency: 'NGN',
+    application_fee: '5000.00',
+    total: '120000.00',
+    fee_items: [{ name: 'Tuition', amount: '120000.00' }],
+    installments: [
+        {
+            name: 'First payment',
+            amount: '60000.00',
+            due_on: null,
+            due_offset_days: 0,
+        },
+        {
+            name: 'Final payment',
+            amount: '60000.00',
+            due_on: null,
+            due_offset_days: 30,
+        },
+    ],
+};
+
 describe('Bootcademy public website', () => {
     it('lets an academy configure sections through accordions', () => {
         render(
@@ -140,6 +189,65 @@ describe('Bootcademy public website', () => {
         );
     });
 
+    it('presents the built-in online store as a visible website module', () => {
+        render(
+            <AcademyWebsite
+                website={{
+                    subdomain: 'future-academy',
+                    theme_key: 'launch',
+                    is_published: true,
+                    preview_url: '/sites/future-academy',
+                    public_url: 'https://future-academy.bootcademy.com',
+                    sections: {
+                        store: {
+                            enabled: true,
+                            title: 'Academy Store',
+                            intro: 'Shop official items.',
+                        },
+                    },
+                }}
+                definitions={{
+                    store: {
+                        label: 'Store',
+                        description: 'Public cart and checkout',
+                        enabled: false,
+                        title: 'Store',
+                        fields: {
+                            intro: {
+                                label: 'Introduction',
+                                type: 'textarea',
+                                default: '',
+                                help: '',
+                            },
+                        },
+                    },
+                }}
+                tenant_domain="bootcademy.com"
+                store_module={{
+                    enabled: true,
+                    product_count: 4,
+                    active_product_count: 3,
+                    order_count: 2,
+                    manage_url: '/app/store',
+                    preview_url: '/sites/future-academy/store',
+                }}
+            />,
+        );
+
+        expect(screen.getByText('Online Store module')).toBeVisible();
+        expect(screen.getByText('Visible on website')).toBeVisible();
+        expect(
+            screen.getByRole('link', { name: 'Manage products' }),
+        ).toHaveAttribute('href', '/app/store');
+        expect(
+            screen.getByRole('link', { name: 'Configure Store' }),
+        ).toHaveAttribute('href', '#section-store');
+        expect(
+            screen.getByRole('link', { name: /Preview Store/i }),
+        ).toHaveAttribute('href', '/sites/future-academy/store');
+        expect(screen.getByLabelText('Show this section')).toBeChecked();
+    });
+
     it('renders the branded theme with live programmes and WhatsApp contact', () => {
         render(
             <PublicHome
@@ -183,6 +291,7 @@ describe('Bootcademy public website', () => {
             sections: {
                 ...site.sections,
                 about: { enabled: true, title: 'About us' },
+                store: { enabled: true, title: 'Store' },
                 locations: { enabled: true, title: 'Locations' },
                 experience: { enabled: true, title: 'Why choose us' },
                 events: { enabled: true, title: 'Upcoming events' },
@@ -218,6 +327,9 @@ describe('Bootcademy public website', () => {
                 name: 'Learning pathways',
             }),
         ).toBeInTheDocument();
+        expect(
+            within(navigation).getByRole('link', { name: 'Store' }),
+        ).toHaveAttribute('href', '/sites/future-academy/store');
         const explore = within(navigation).getByText('Explore');
         const dropdown = explore.closest('details');
         expect(dropdown).not.toBeNull();
@@ -237,42 +349,18 @@ describe('Bootcademy public website', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('previews programme, cycle, installments and custom application fields', () => {
+    it('saves the main application before asking the applicant to choose a payment option', () => {
         render(
             <PublicApplication
-                academy={academy}
+                academy={{
+                    ...academy,
+                    guardian_singular: 'Next of Kin',
+                    guardian_plural: 'Next of Kin',
+                    collect_guardian_information: true,
+                }}
                 site={site}
                 base_url="/sites/future-academy"
-                offerings={[
-                    {
-                        id: 9,
-                        programme_id: 3,
-                        programme_name: 'Software Engineering',
-                        cycle_id: 2,
-                        cycle_name: '2027 Cohort',
-                        branch_id: null,
-                        branch_name: 'All locations',
-                        fee_name: 'Tuition',
-                        currency: 'NGN',
-                        application_fee: '5000.00',
-                        total: '120000.00',
-                        fee_items: [{ name: 'Tuition', amount: '120000.00' }],
-                        installments: [
-                            {
-                                name: 'First payment',
-                                amount: '60000.00',
-                                due_on: null,
-                                due_offset_days: 0,
-                            },
-                            {
-                                name: 'Final payment',
-                                amount: '60000.00',
-                                due_on: null,
-                                due_offset_days: 30,
-                            },
-                        ],
-                    },
-                ]}
+                intakes={[applicationIntake]}
                 custom_fields={[
                     {
                         key: 'laptop_access',
@@ -283,6 +371,10 @@ describe('Bootcademy public website', () => {
                         sensitive: false,
                     },
                 ]}
+                locations={[
+                    { id: 4, name: 'Lekki Campus' },
+                    { id: 5, name: 'Yaba Campus' },
+                ]}
                 countries={['Ghana', 'Nigeria']}
             />,
         );
@@ -290,18 +382,188 @@ describe('Bootcademy public website', () => {
         fireEvent.change(screen.getByLabelText('Programme'), {
             target: { value: '3' },
         });
-        fireEvent.change(screen.getByLabelText('Cycle and location'), {
-            target: { value: '9' },
+        fireEvent.change(screen.getByLabelText('Cycle'), {
+            target: { value: '2' },
+        });
+        fireEvent.change(screen.getByLabelText('Cohort'), {
+            target: { value: '7' },
+        });
+        fireEvent.change(screen.getByLabelText('Location'), {
+            target: { value: '4' },
         });
 
-        expect(screen.getByText('Pay in full')).toBeInTheDocument();
-        expect(screen.getByText('Pay in installments')).toBeInTheDocument();
+        expect(
+            document.querySelector('input[name="application_intake_id"]'),
+        ).toHaveValue('9');
+        expect(
+            document.querySelector('input[name="preferred_branch_id"]'),
+        ).toHaveValue('4');
+
+        expect(screen.queryByText('Pay in full')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Pay in installments'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /Preview application & fees/ }),
+        ).toBeInTheDocument();
         expect(screen.getAllByText('₦120,000.00')).toHaveLength(2);
         expect(screen.getByLabelText(/Laptop access/)).toBeRequired();
         expect(screen.getByLabelText('Country')).toHaveValue('Nigeria');
+        expect(screen.getByText('Next of Kin information')).toBeInTheDocument();
         expect(
-            screen.getByText(/No form data is transmitted/),
+            screen.getByLabelText('Next of Kin first name'),
         ).toBeInTheDocument();
+        expect(
+            screen.getByText(/saved securely before you choose how to pay/),
+        ).toBeInTheDocument();
+    });
+
+    it('omits guardian fields when the academy disables guardian collection', () => {
+        render(
+            <PublicApplication
+                academy={{
+                    ...academy,
+                    guardian_singular: 'Next of Kin',
+                    guardian_plural: 'Next of Kin',
+                    collect_guardian_information: false,
+                }}
+                site={site}
+                base_url="/sites/future-academy"
+                intakes={[applicationIntake]}
+                custom_fields={[]}
+                locations={[{ id: 4, name: 'Lekki Campus' }]}
+                countries={['Nigeria']}
+            />,
+        );
+
+        expect(
+            screen.queryByText('Next of Kin information'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByLabelText('Next of Kin first name'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByText(/academy may process it for this application/),
+        ).toBeInTheDocument();
+    });
+
+    it('shows fee combinations and processing costs only after an application is saved', () => {
+        render(
+            <PublicApplicationFees
+                academy={academy}
+                site={site}
+                base_url="/sites/future-academy"
+                application={{
+                    reference: 'APP-ABC',
+                    name: 'Amara Okafor',
+                    email: 'amara@example.com',
+                    token: 'secret-token',
+                }}
+                offering={{
+                    programme_name: 'Software Engineering',
+                    cycle_name: '2027 Cohort',
+                    branch_name: 'All locations',
+                    currency: 'NGN',
+                    fee_items: [{ name: 'Tuition', amount_minor: 12000000 }],
+                }}
+                payment_options={[
+                    {
+                        key: 'application_only',
+                        label: 'Pay application fee only',
+                        currency: 'NGN',
+                        application_amount: '5000.00',
+                        programme_amount: '0.00',
+                        base_amount: '5000.00',
+                        processing_fee: '177.67',
+                        total_charge: '5177.67',
+                    },
+                    {
+                        key: 'installment:1',
+                        label: 'Application fee + First installment',
+                        currency: 'NGN',
+                        application_amount: '5000.00',
+                        programme_amount: '60000.00',
+                        base_amount: '65000.00',
+                        processing_fee: '1091.38',
+                        total_charge: '66091.38',
+                    },
+                ]}
+                paystack_ready
+                completion_url="/sites/future-academy/applications/APP-ABC/complete?token=secret-token"
+            />,
+        );
+
+        expect(screen.getByText('Application saved')).toBeInTheDocument();
+        expect(
+            screen.getByText('Pay application fee only'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('Application fee + First installment'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Pay securely with Paystack' }),
+        ).toBeEnabled();
+        expect(
+            screen.getAllByRole('link', {
+                name: 'Skip payment and complete application',
+            }),
+        ).toHaveLength(2);
+        expect(screen.getByText(/receipt will be sent to/i)).toHaveTextContent(
+            'amara@example.com',
+        );
+    });
+
+    it('confirms the application when payment is skipped or unsuccessful', () => {
+        const { rerender } = render(
+            <PublicApplicationComplete
+                academy={academy}
+                site={site}
+                base_url="/sites/future-academy"
+                application={{
+                    reference: 'APP-ABC',
+                    name: 'Amara Okafor',
+                    email: 'amara@example.com',
+                }}
+                payment={{
+                    status: 'skipped',
+                    amount: null,
+                    currency: null,
+                    reference: null,
+                }}
+            />,
+        );
+
+        expect(
+            screen.getByText('Application successfully submitted'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Payment skipped for now')).toBeInTheDocument();
+
+        rerender(
+            <PublicApplicationComplete
+                academy={academy}
+                site={site}
+                base_url="/sites/future-academy"
+                application={{
+                    reference: 'APP-ABC',
+                    name: 'Amara Okafor',
+                    email: 'amara@example.com',
+                }}
+                payment={{
+                    status: 'failed',
+                    amount: '5177.67',
+                    currency: 'NGN',
+                    reference: 'BCM-FAILED',
+                }}
+            />,
+        );
+
+        expect(
+            screen.getByText('Payment was unsuccessful'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/application was successfully submitted/i),
+        ).toBeInTheDocument();
+        expect(screen.getByText('₦5,177.67')).toBeInTheDocument();
     });
 
     it('renders rich programme outcomes, tools, FAQs and fee information together', () => {

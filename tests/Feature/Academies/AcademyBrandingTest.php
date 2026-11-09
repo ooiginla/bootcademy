@@ -70,6 +70,9 @@ class AcademyBrandingTest extends TestCase
                 'member_label_plural' => 'Players',
                 'staff_label_singular' => 'Instructor',
                 'staff_label_plural' => 'Instructors',
+                'guardian_label_singular' => 'Next of Kin',
+                'guardian_label_plural' => 'Next of Kin',
+                'collect_guardian_information' => false,
             ])
             ->assertRedirect()
             ->assertInertiaFlash('toast.message', 'Academy terminology updated.');
@@ -80,6 +83,9 @@ class AcademyBrandingTest extends TestCase
             'member_label_plural' => 'Players',
             'staff_label_singular' => 'Instructor',
             'staff_label_plural' => 'Instructors',
+            'guardian_label_singular' => 'Next of Kin',
+            'guardian_label_plural' => 'Next of Kin',
+            'collect_guardian_information' => false,
         ]);
         $this->assertDatabaseHas(AuditLog::class, [
             'academy_id' => $academy->id,
@@ -95,6 +101,9 @@ class AcademyBrandingTest extends TestCase
                 ->where('academy.terminology.plural', 'Players')
                 ->where('academy.terminology.staff_singular', 'Instructor')
                 ->where('academy.terminology.staff_plural', 'Instructors')
+                ->where('academy.terminology.guardian_singular', 'Next of Kin')
+                ->where('academy.terminology.guardian_plural', 'Next of Kin')
+                ->where('academy.collect_guardian_information', false)
             );
 
         $this->actingAs($user)

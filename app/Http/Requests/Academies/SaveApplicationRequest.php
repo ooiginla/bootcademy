@@ -32,6 +32,7 @@ class SaveApplicationRequest extends FormRequest
                 : mb_strtoupper(trim((string) $this->input('internal_identifier'))),
             'programme_id' => $this->input('programme_id') ?: null,
             'programme_cycle_id' => $this->input('programme_cycle_id') ?: null,
+            'cohort_id' => $this->input('cohort_id') ?: null,
             'branch_id' => $this->input('branch_id') ?: null,
             'custom_fields' => is_array($this->input('custom_fields')) ? $this->input('custom_fields') : [],
         ]);
@@ -55,6 +56,7 @@ class SaveApplicationRequest extends FormRequest
         $application = $this->route('application');
         $applicationId = $application instanceof Application ? $application->id : null;
         $forAcademy = fn (Builder $query): Builder => $query->where('academy_id', $academyId);
+        $collectGuardian = app(AcademyContext::class)->academy()->collect_guardian_information;
         $rules = [
             'internal_identifier' => [
                 'nullable', 'string', 'max:64',
@@ -67,15 +69,16 @@ class SaveApplicationRequest extends FormRequest
             'whatsapp_number' => ['nullable', 'string', 'max:32'], 'home_address' => ['nullable', 'string', 'max:500'],
             'city' => ['nullable', 'string', 'max:100'], 'state_region' => ['nullable', 'string', 'max:100'],
             'country' => ['nullable', Rule::in(config('countries'))],
-            'guardian_first_name' => ['nullable', 'string', 'max:100'],
-            'guardian_last_name' => ['required_with:guardian_first_name', 'nullable', 'string', 'max:100'],
-            'guardian_email' => ['nullable', 'email:rfc', 'max:254'],
-            'guardian_phone' => ['required_with:guardian_first_name', 'nullable', 'string', 'max:32'],
-            'guardian_whatsapp_number' => ['nullable', 'string', 'max:32'],
-            'guardian_relationship' => ['nullable', 'string', 'max:80'],
-            'guardian_signature' => ['nullable', File::image()->types(['jpg', 'jpeg', 'png', 'webp'])->max(2 * 1024)],
+            'guardian_first_name' => $collectGuardian ? ['nullable', 'string', 'max:100'] : ['prohibited'],
+            'guardian_last_name' => $collectGuardian ? ['required_with:guardian_first_name', 'nullable', 'string', 'max:100'] : ['prohibited'],
+            'guardian_email' => $collectGuardian ? ['nullable', 'email:rfc', 'max:254'] : ['prohibited'],
+            'guardian_phone' => $collectGuardian ? ['required_with:guardian_first_name', 'nullable', 'string', 'max:32'] : ['prohibited'],
+            'guardian_whatsapp_number' => $collectGuardian ? ['nullable', 'string', 'max:32'] : ['prohibited'],
+            'guardian_relationship' => $collectGuardian ? ['nullable', 'string', 'max:80'] : ['prohibited'],
+            'guardian_signature' => $collectGuardian ? ['nullable', File::image()->types(['jpg', 'jpeg', 'png', 'webp'])->max(2 * 1024)] : ['prohibited'],
             'programme_id' => ['nullable', 'integer', Rule::exists('programmes', 'id')->where($forAcademy)],
             'programme_cycle_id' => ['nullable', 'integer', Rule::exists('programme_cycles', 'id')->where($forAcademy)],
+            'cohort_id' => ['required', 'integer', Rule::exists('cohorts', 'id')->where($forAcademy)],
             'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where($forAcademy)],
         ];
         $fields = AcademyCustomField::query()->where('academy_id', $academyId)->where('entity_type', 'player')->where('is_active', true)->get();
@@ -119,17 +122,25 @@ class SaveApplicationRequest extends FormRequest
                 $validator->errors()->add('branch_id', 'The branch cannot change after an invoice has been issued.');
             }
             $academy = app(AcademyContext::class)->academy();
-            $hasActiveOfferings = $academy->programmeCycles()->where('is_active', true)
-                ->whereHas('cycle', fn ($query) => $query->where('status', 'active'))->exists();
-            if ($newProgrammeCycleId === null && $hasActiveOfferings) {
-                $validator->errors()->add('programme_cycle_id', 'Select an active cycle and programme offering.');
-            }
-            if ($newProgrammeCycleId !== null) {
-                $isCurrent = (string) $newProgrammeCycleId === (string) ($currentProgrammeCycleId ?? '');
-                $isActive = $academy->programmeCycles()->whereKey($newProgrammeCycleId)->where('is_active', true)
-                    ->whereHas('cycle', fn ($query) => $query->where('status', 'active'))->exists();
-                if (! $isCurrent && ! $isActive) {
-                    $validator->errors()->add('programme_cycle_id', 'Select an offering from an active cycle.');
+            $cohort = $this->filled('cohort_id')
+                ? $academy->cohorts()->with('programmeCycle.cycle')->find($this->integer('cohort_id'))
+                : null;
+            if ($cohort !== null) {
+                $isCurrent = $application?->cohort_id === $cohort->id;
+                $isAvailable = $cohort->programmeCycle->is_active
+                    && $cohort->programmeCycle->cycle->status->value === 'active'
+                    && ! in_array($cohort->status->value, ['completed', 'cancelled'], true);
+                if (! $isCurrent && ! $isAvailable) {
+                    $validator->errors()->add('cohort_id', 'Select an available cohort from an active cycle.');
+                }
+                $cohortBranchId = $cohort->branch_id ?? $cohort->programmeCycle->branch_id;
+                if ($application !== null && $application->invoices()->exists()
+                    && ($cohort->programme_cycle_id !== $application->programme_cycle_id
+                        || $cohortBranchId !== $application->branch_id)) {
+                    $validator->errors()->add(
+                        'cohort_id',
+                        'Choose a cohort with the same programme offering and branch because this application has invoices.',
+                    );
                 }
             }
         });

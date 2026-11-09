@@ -5,9 +5,11 @@ namespace Tests\Feature\Academies;
 use App\Enums\AcademyRole;
 use App\Models\Academy;
 use App\Models\AcademyCycle;
+use App\Models\AcademyCycleTerm;
 use App\Models\AcademyMembership;
 use App\Models\Application;
 use App\Models\Branch;
+use App\Models\Cohort;
 use App\Models\Programme;
 use App\Models\ProgrammeCycle;
 use App\Models\User;
@@ -29,6 +31,11 @@ class CycleFeeManagementTest extends TestCase
         $fixed = AcademyCycle::query()->whereBelongsTo($academy)->firstOrFail();
         $this->assertSame('active', $fixed->status->value);
         $this->assertNull($fixed->duration_months);
+        $defaultTerm = $fixed->terms()->sole();
+        $this->assertTrue($defaultTerm->is_default);
+        $this->assertSame('Default term', $defaultTerm->name);
+        $this->assertSame('2026-01-01', $defaultTerm->starts_on?->toDateString());
+        $this->assertSame('2026-12-31', $defaultTerm->ends_on?->toDateString());
 
         $this->actingAs($owner)->withSession(['active_academy_id' => $academy->id])
             ->post(route('academy.cycles.store'), [
@@ -74,6 +81,62 @@ class CycleFeeManagementTest extends TestCase
         $this->assertSame('Annual tuition', $offering->fee_name);
         $this->assertSame(15000000, (int) $offering->feeItems()->sum('amount_minor'));
         $this->assertSame(15000000, (int) $offering->installments()->sum('amount_minor'));
+        $this->assertNotNull($offering->feeItems()->firstOrFail()->academy_cycle_term_id);
+    }
+
+    public function test_terms_and_cohorts_can_scope_programme_fee_items_without_cross_tenant_access(): void
+    {
+        [$owner, $academy] = $this->member(AcademyRole::OwnerAdmin);
+        $cycle = AcademyCycle::query()->create([
+            'academy_id' => $academy->id, 'name' => '2028 Academic Year', 'type' => 'fixed',
+            'starts_on' => '2028-01-01', 'ends_on' => '2028-12-31', 'status' => 'active',
+        ]);
+        $programme = Programme::factory()->for($academy)->create(['name' => 'Primary 1']);
+        $member = $this->actingAs($owner)->withSession(['active_academy_id' => $academy->id]);
+        $member->post(route('academy.cycles.offerings.store', $cycle), [
+            'programme_id' => $programme->id, 'application_fee' => '0', 'payment_mode' => 'one_off',
+            'is_active' => true, 'fee_items' => [['name' => 'Initial tuition', 'amount' => '1000.00']],
+        ])->assertRedirect();
+        $offering = ProgrammeCycle::query()->where('academy_id', $academy->id)->sole();
+        $cohort = Cohort::query()->create([
+            'academy_id' => $academy->id, 'programme_cycle_id' => $offering->id,
+            'name' => 'Primary 1A', 'starts_on' => '2028-01-01', 'status' => 'open',
+        ]);
+
+        $member->post(route('academy.cycles.terms.store', $cycle), [
+            'name' => 'Term 2', 'starts_on' => '2028-05-01', 'ends_on' => '2028-08-31',
+            'sort_order' => 2, 'is_default' => false, 'is_active' => true,
+        ])->assertRedirect()->assertInertiaFlash('toast.message', 'Term created.');
+        $term = AcademyCycleTerm::query()->where('name', 'Term 2')->sole();
+
+        $member->patch(route('academy.cycles.offerings.update', [$cycle, $offering]), [
+            'programme_id' => $programme->id, 'fee_name' => 'Tuition', 'application_fee' => '0',
+            'payment_mode' => 'one_off', 'is_active' => true,
+            'fee_items' => [
+                [
+                    'name' => 'Session registration', 'amount' => '10000.00',
+                    'academy_cycle_term_id' => null, 'cohort_id' => null,
+                ],
+                [
+                    'name' => 'Term 2 tuition', 'amount' => '50000.00',
+                    'academy_cycle_term_id' => $term->id, 'cohort_id' => $cohort->id,
+                ],
+            ],
+        ])->assertRedirect();
+        $this->assertDatabaseHas('programme_cycle_fee_items', [
+            'programme_cycle_id' => $offering->id, 'name' => 'Session registration',
+            'academy_cycle_term_id' => null, 'cohort_id' => null, 'amount_minor' => 1000000,
+        ]);
+        $this->assertDatabaseHas('programme_cycle_fee_items', [
+            'programme_cycle_id' => $offering->id, 'academy_cycle_term_id' => $term->id,
+            'cohort_id' => $cohort->id, 'amount_minor' => 5000000,
+        ]);
+
+        [$foreignOwner, $foreignAcademy] = $this->member(AcademyRole::OwnerAdmin);
+        $this->actingAs($foreignOwner)->withSession(['active_academy_id' => $foreignAcademy->id])
+            ->patch(route('academy.cycles.terms.update', [$cycle, $term]), [
+                'name' => 'Attack', 'sort_order' => 1, 'is_active' => true,
+            ])->assertNotFound();
     }
 
     public function test_programme_fees_support_one_default_and_branch_specific_overrides(): void
@@ -133,10 +196,20 @@ class CycleFeeManagementTest extends TestCase
             'branch_scope_id' => $overrideBranch->id, 'currency' => 'NGN', 'application_fee_minor' => 150000,
             'payment_mode' => 'one_off', 'enrollment_payment_rule' => 'full_payment', 'is_active' => true,
         ]);
+        $overrideCohort = Cohort::query()->create([
+            'academy_id' => $academy->id, 'programme_cycle_id' => $override->id,
+            'branch_id' => $overrideBranch->id, 'name' => 'Override branch cohort',
+            'starts_on' => '2027-01-01', 'status' => 'open',
+        ]);
+        $fallbackCohort = Cohort::query()->create([
+            'academy_id' => $academy->id, 'programme_cycle_id' => $default->id,
+            'branch_id' => $fallbackBranch->id, 'name' => 'Fallback branch cohort',
+            'starts_on' => '2027-01-01', 'status' => 'open',
+        ]);
         $member = $this->actingAs($owner)->withSession(['active_academy_id' => $academy->id]);
         $member->post(route('academy.applications.store'), [
             'first_name' => 'Ada', 'last_name' => 'Okafor', 'branch_id' => $overrideBranch->id,
-            'programme_cycle_id' => $default->id,
+            'programme_cycle_id' => $override->id, 'cohort_id' => $overrideCohort->id,
         ])->assertRedirect();
         $branchApplication = Application::query()->where('first_name', 'Ada')->firstOrFail();
         $this->assertSame($override->id, $branchApplication->programme_cycle_id);
@@ -144,7 +217,7 @@ class CycleFeeManagementTest extends TestCase
 
         $member->post(route('academy.applications.store'), [
             'first_name' => 'Tobi', 'last_name' => 'Okafor', 'branch_id' => $fallbackBranch->id,
-            'programme_cycle_id' => $default->id,
+            'programme_cycle_id' => $default->id, 'cohort_id' => $fallbackCohort->id,
         ])->assertRedirect();
         $fallbackApplication = Application::query()->where('first_name', 'Tobi')->firstOrFail();
         $this->assertSame($default->id, $fallbackApplication->programme_cycle_id);

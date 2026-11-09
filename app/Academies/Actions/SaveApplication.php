@@ -32,8 +32,15 @@ class SaveApplication
         array $data,
         Request $request,
         ?Application $application = null,
+        bool $issueProgrammeInvoice = false,
     ): Application {
         abort_if($application !== null && $application->academy_id !== $academy->id, 404);
+        if (! $academy->collect_guardian_information) {
+            $data = Arr::except($data, [
+                'guardian_first_name', 'guardian_last_name', 'guardian_email', 'guardian_phone',
+                'guardian_whatsapp_number', 'guardian_relationship', 'guardian_signature', 'guardian_consent_at',
+            ]);
+        }
         $creating = $application === null;
         $reference = $application?->reference;
         if ($creating) {
@@ -45,6 +52,22 @@ class SaveApplication
         $signature = Arr::pull($data, 'guardian_signature');
         $signaturePath = null;
         $oldSignaturePath = $application?->guardian_signature_path;
+
+        if (($data['cohort_id'] ?? null) !== null) {
+            $cohort = $academy->cohorts()->with('programmeCycle')->findOrFail($data['cohort_id']);
+            $cohortBranchId = $cohort->branch_id ?? $cohort->programmeCycle->branch_id;
+            $effectiveBranchId = $cohortBranchId ?? ($data['branch_id'] ?? null);
+            if ($application !== null && $application->invoices()->exists()
+                && ($cohort->programme_cycle_id !== $application->programme_cycle_id
+                    || $effectiveBranchId !== $application->branch_id)) {
+                throw ValidationException::withMessages([
+                    'cohort_id' => 'Choose a cohort with the same programme offering and branch because this application has invoices.',
+                ]);
+            }
+            $data['programme_cycle_id'] = $cohort->programme_cycle_id;
+            $data['programme_id'] = $cohort->programmeCycle->programme_id;
+            $data['branch_id'] = $effectiveBranchId;
+        }
 
         if (($data['programme_cycle_id'] ?? null) !== null) {
             $offeringQuery = $academy->programmeCycles()->whereKey($data['programme_cycle_id']);
@@ -58,7 +81,9 @@ class SaveApplication
                     'programme_cycle_id' => 'The selected programme fees are not available for this branch.',
                 ]);
             }
-            if ($offering->branch_id === null && $branchId !== null && ! ($application?->invoices()->exists() ?? false)) {
+            if ($offering->branch_id === null && $branchId !== null
+                && ($data['cohort_id'] ?? null) === null
+                && ! ($application?->invoices()->exists() ?? false)) {
                 $offering = $academy->programmeCycles()
                     ->where('academy_cycle_id', $offering->academy_cycle_id)
                     ->where('programme_id', $offering->programme_id)
@@ -78,7 +103,7 @@ class SaveApplication
                 $data['guardian_signature_path'] = $storedPath;
             }
 
-            $application = DB::transaction(function () use ($academy, $actor, $data, $reference, $request, $application, $creating): Application {
+            $application = DB::transaction(function () use ($academy, $actor, $data, $reference, $request, $application, $creating, $issueProgrammeInvoice): Application {
                 if ($creating) {
                     $application = Application::query()->create([
                         ...$data,
@@ -92,6 +117,9 @@ class SaveApplication
                     $application->save();
                 }
                 $this->issueInvoice->applicationFee($academy, $application, $actor, $request);
+                if ($issueProgrammeInvoice) {
+                    $this->issueInvoice->programmeFee($academy, $application, $actor, $request);
+                }
 
                 return $application;
             });

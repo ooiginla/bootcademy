@@ -35,6 +35,14 @@ class AcademyWebsiteController extends Controller
             ],
             'definitions' => AcademyWebsiteDefaults::definitions(),
             'tenant_domain' => config('branding.tenant_domain'),
+            'store_module' => [
+                'enabled' => (bool) data_get($website->resolvedSections(), 'store.enabled', false),
+                'product_count' => $academy->products()->count(),
+                'active_product_count' => $academy->products()->where('status', 'active')->count(),
+                'order_count' => $academy->storeOrders()->count(),
+                'manage_url' => route('academy.store.index'),
+                'preview_url' => route('public.academy.store', ['subdomain' => $website->subdomain]),
+            ],
         ]);
     }
 

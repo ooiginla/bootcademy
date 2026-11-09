@@ -17,7 +17,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $due_offset_days
  * @property int $sequence
  */
-#[Fillable(['academy_id', 'academy_invoice_id', 'name', 'amount_minor', 'paid_minor', 'written_off_minor', 'due_on', 'due_offset_days', 'sequence'])]
+#[Fillable(['academy_id', 'academy_invoice_id', 'name', 'amount_minor', 'paid_minor', 'written_off_minor', 'scholarship_concession_minor', 'sponsor_responsibility_minor', 'sponsor_paid_minor', 'due_on', 'due_offset_days', 'sequence'])]
 class AcademyInvoiceInstallment extends Model
 {
     /** @return BelongsTo<AcademyInvoice, $this> */
@@ -35,7 +35,8 @@ class AcademyInvoiceInstallment extends Model
     protected function casts(): array
     {
         return [
-            'amount_minor' => 'integer', 'paid_minor' => 'integer', 'written_off_minor' => 'integer', 'due_on' => 'date',
+            'amount_minor' => 'integer', 'paid_minor' => 'integer', 'written_off_minor' => 'integer',
+            'scholarship_concession_minor' => 'integer', 'sponsor_responsibility_minor' => 'integer', 'sponsor_paid_minor' => 'integer', 'due_on' => 'date',
             'due_offset_days' => 'integer', 'sequence' => 'integer',
         ];
     }

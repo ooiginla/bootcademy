@@ -12,7 +12,7 @@ describe('AcademyThemeSync', () => {
         document.getElementById('active-academy-favicon')?.remove();
     });
 
-    it('applies the active academy colours to shared workspace tokens', () => {
+    it('keeps the Bootcademy admin theme instead of applying academy website colours', () => {
         usePage.mockReturnValue({
             props: {
                 academy: {
@@ -28,19 +28,15 @@ describe('AcademyThemeSync', () => {
 
         render(<AcademyThemeSync />);
 
-        expect(
-            document.documentElement.style.getPropertyValue('--primary'),
-        ).toBe('#123456');
-        expect(
-            document.documentElement.style.getPropertyValue('--sidebar'),
-        ).toBe('#123456');
-        expect(
-            document.documentElement.style.getPropertyValue('--secondary'),
-        ).toBe('#FEDCBA');
+        expect(document.documentElement).not.toHaveStyle({
+            '--primary': '#123456',
+        });
+        expect(document.documentElement).not.toHaveStyle({
+            '--sidebar': '#123456',
+        });
     });
 
-    it('removes academy tokens when there is no active academy', () => {
-        document.documentElement.style.setProperty('--primary', '#123456');
+    it('does not introduce academy tokens when there is no active academy', () => {
         usePage.mockReturnValue({ props: { academy: null } });
 
         render(<AcademyThemeSync />);

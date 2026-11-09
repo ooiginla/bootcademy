@@ -54,6 +54,7 @@ const props = {
         total: '1250.50',
         manual: '1250.50',
         write_offs: '0.00',
+        referral_rewards: '0.00',
         currency: 'NGN',
     },
     categories: [

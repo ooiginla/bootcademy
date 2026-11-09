@@ -99,6 +99,25 @@ describe('Applications and prospects', () => {
                     },
                 ]}
                 active_cycles={[{ id: 5, name: '2026' }]}
+                cohorts={[
+                    {
+                        id: 8,
+                        programme_cycle_id: 6,
+                        programme_id: 2,
+                        programme_name: 'Under 17',
+                        cycle_name: '2026',
+                        branch_id: 3,
+                        branch_name: 'Central',
+                        name: 'January cohort',
+                        code: 'JAN-26',
+                        starts_on: '2026-01-10',
+                        ends_on: '2026-06-30',
+                        capacity: 30,
+                        delivery_mode: 'physical',
+                        status: 'open',
+                        is_available_for_applications: true,
+                    },
+                ]}
                 custom_fields={[]}
                 filters={{ search: '', status: 'all' }}
             />,
@@ -115,21 +134,18 @@ describe('Applications and prospects', () => {
         expect(document.querySelector('select[name="country"]')).toHaveValue(
             'Nigeria',
         );
-        expect(
-            document.querySelector('select[name="academy_cycle_id"]'),
-        ).toHaveValue('5');
-        const programmeSelect = document.querySelector(
-            'select[name="programme_cycle_id"]',
-        ) as HTMLSelectElement;
-        expect(
-            Array.from(programmeSelect.options).map((option) => option.value),
-        ).toEqual(['', '4']);
-        fireEvent.change(document.querySelector('select[name="branch_id"]')!, {
-            target: { value: '3' },
+        fireEvent.change(document.querySelector('select[name="cohort_id"]')!, {
+            target: { value: '8' },
         });
         expect(
-            Array.from(programmeSelect.options).map((option) => option.value),
-        ).toEqual(['', '6']);
+            document.querySelector('input[name="programme_cycle_id"]'),
+        ).toHaveValue('6');
+        expect(
+            document.querySelector('input[name="academy_cycle_id"]'),
+        ).toHaveValue('5');
+        expect(document.querySelector('input[name="branch_id"]')).toHaveValue(
+            '3',
+        );
         expect(
             Array.from(
                 document.querySelectorAll('select[name="gender"] option'),
@@ -185,5 +201,74 @@ describe('Applications and prospects', () => {
             'href',
             '/app/applications/1',
         );
+    });
+
+    it('manages application availability directly from the cohort tab', () => {
+        render(
+            <Applications
+                applications={applications}
+                programmes={[{ id: 2, name: 'Under 17' }]}
+                branches={[{ id: 3, name: 'Central' }]}
+                countries={['Nigeria']}
+                programme_cycles={[
+                    {
+                        id: 4,
+                        programme_id: 2,
+                        cycle_id: 5,
+                        cycle_name: '2026',
+                        name: 'Under 17',
+                        branch_id: 3,
+                        branch_name: 'Central',
+                    },
+                ]}
+                active_cycles={[{ id: 5, name: '2026' }]}
+                custom_fields={[]}
+                filters={{ search: '', status: 'all' }}
+                active_tab="cohorts"
+                cohorts={[
+                    {
+                        id: 8,
+                        programme_cycle_id: 4,
+                        programme_id: 2,
+                        programme_name: 'Under 17',
+                        cycle_name: '2026',
+                        branch_id: 3,
+                        branch_name: 'Central',
+                        name: 'January cohort',
+                        code: 'JAN-26',
+                        starts_on: '2026-01-10',
+                        ends_on: '2026-06-30',
+                        capacity: 30,
+                        delivery_mode: 'hybrid',
+                        status: 'open',
+                        is_receiving_applications: true,
+                        applications_open_on: '2026-01-01',
+                        applications_close_on: '2026-06-01',
+                        is_open_for_applications: true,
+                        applications_count: 4,
+                    },
+                ]}
+            />,
+        );
+
+        expect(
+            screen.getByRole('heading', { name: 'Cohorts' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('January cohort')).toBeInTheDocument();
+        expect(screen.getByText('Open now')).toBeInTheDocument();
+        expect(screen.getByText(/4 submitted/)).toBeInTheDocument();
+        expect(
+            screen.queryByRole('link', { name: 'Application settings' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Add cohort' }),
+        ).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Add cohort' }));
+        expect(
+            document.querySelector('select[name="is_receiving_applications"]'),
+        ).toHaveValue('0');
+        expect(
+            document.querySelector('input[name="applications_open_on"]'),
+        ).toBeInTheDocument();
     });
 });

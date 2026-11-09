@@ -6,10 +6,14 @@ use App\Enums\AcademyRole;
 use App\Models\Academy;
 use App\Models\AcademyApiKey;
 use App\Models\AcademyCustomField;
+use App\Models\AcademyCycle;
 use App\Models\AcademyMembership;
 use App\Models\Application;
+use App\Models\ApplicationIntake;
 use App\Models\Branch;
+use App\Models\Cohort;
 use App\Models\Programme;
+use App\Models\ProgrammeCycle;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -57,6 +61,7 @@ class ApplicationApiTest extends TestCase
         [$key, $secret] = $this->apiKey($academy, $owner);
         $programme = Programme::factory()->for($academy)->create();
         $branch = Branch::factory()->for($academy)->create();
+        $intake = $this->intake($academy, $programme, $branch);
         AcademyCustomField::query()->create([
             'academy_id' => $academy->id, 'entity_type' => 'player', 'key' => 'boot_size',
             'label' => 'Boot size', 'type' => 'number', 'options' => null,
@@ -68,7 +73,7 @@ class ApplicationApiTest extends TestCase
             'last_name' => 'Okafor', 'date_of_birth' => '2014-05-02', 'gender' => 'Female',
             'country' => 'Nigeria', 'guardian_first_name' => 'Ada', 'guardian_last_name' => 'Okafor',
             'guardian_email' => 'ada@example.test', 'guardian_phone' => '08012345678',
-            'guardian_relationship' => 'Mother', 'programme_id' => $programme->id, 'branch_id' => $branch->id,
+            'guardian_relationship' => 'Mother', 'application_intake_id' => $intake->id,
             'custom_fields' => ['boot_size' => 40],
         ];
 
@@ -100,18 +105,23 @@ class ApplicationApiTest extends TestCase
         [, $secret] = $this->apiKey($academy, $owner);
         $programme = Programme::factory()->for($academy)->create(['name' => 'Academy Programme']);
         $foreignProgramme = Programme::factory()->create();
+        $intake = $this->intake($academy, $programme);
+        $foreignIntake = $this->intake($foreignProgramme->academy, $foreignProgramme);
 
         $this->getJson(route('api.v1.configuration'))->assertUnauthorized();
         $this->withToken($secret)->getJson(route('api.v1.configuration'))
             ->assertOk()->assertJsonPath('data.academy.name', $academy->name)
-            ->assertJsonPath('data.programmes.0.id', $programme->id);
+            ->assertJsonPath('data.academy.terminology.guardian_singular', 'Guardian')
+            ->assertJsonPath('data.academy.collect_guardian_information', true)
+            ->assertJsonPath('data.application_intakes.0.id', $intake->id)
+            ->assertJsonPath('data.application_intakes.0.programme_id', $programme->id);
         $payload = [
             'external_reference' => 'foreign-programme', 'consent_accepted' => true,
             'privacy_policy_version' => 'v1', 'first_name' => 'Tobi', 'last_name' => 'Adeleke',
-            'programme_id' => $foreignProgramme->id,
+            'application_intake_id' => $foreignIntake->id,
         ];
         $this->withToken($secret)->postJson(route('api.v1.applications.store'), $payload)
-            ->assertUnprocessable()->assertJsonValidationErrors('programme_id');
+            ->assertUnprocessable()->assertJsonValidationErrors('application_intake_id');
 
         $this->withToken($secret)->getJson(route('api.v1.applications.show', ['external_reference' => 'missing']))
             ->assertNotFound();
@@ -121,6 +131,8 @@ class ApplicationApiTest extends TestCase
     {
         [$owner, $academy] = $this->member(AcademyRole::OwnerAdmin);
         [$key, $secret] = $this->apiKey($academy, $owner);
+        $programme = Programme::factory()->for($academy)->create();
+        $intake = $this->intake($academy, $programme);
         Application::query()->create([
             'academy_id' => $academy->id, 'reference' => 'APP-EXISTING', 'first_name' => 'Amara',
             'last_name' => 'Okafor', 'date_of_birth' => '2014-05-02', 'status' => 'submitted',
@@ -128,7 +140,7 @@ class ApplicationApiTest extends TestCase
         $payload = [
             'external_reference' => 'new-reference', 'consent_accepted' => true,
             'privacy_policy_version' => 'v1', 'first_name' => 'Amara', 'last_name' => 'Okafor',
-            'date_of_birth' => '2014-05-02',
+            'date_of_birth' => '2014-05-02', 'application_intake_id' => $intake->id,
         ];
         $this->withToken($secret)->postJson(route('api.v1.applications.store'), $payload)
             ->assertConflict()->assertJsonPath('existing_reference', 'APP-EXISTING');
@@ -151,6 +163,51 @@ class ApplicationApiTest extends TestCase
         ]);
 
         return [$key, $secret];
+    }
+
+    private function intake(Academy $academy, Programme $programme, ?Branch $branch = null): ApplicationIntake
+    {
+        $cycle = AcademyCycle::query()->create([
+            'academy_id' => $academy->id,
+            'name' => 'Active intake cycle '.$programme->id,
+            'type' => 'fixed',
+            'starts_on' => '2026-01-01',
+            'ends_on' => '2027-12-31',
+            'status' => 'active',
+        ]);
+        $offering = ProgrammeCycle::query()->create([
+            'academy_id' => $academy->id,
+            'academy_cycle_id' => $cycle->id,
+            'programme_id' => $programme->id,
+            'branch_id' => $branch?->id,
+            'branch_scope_id' => $branch?->id ?? 0,
+            'fee_name' => 'Programme fee',
+            'currency' => 'NGN',
+            'application_fee_minor' => 0,
+            'payment_mode' => 'one_off',
+            'enrollment_payment_rule' => 'full_payment',
+            'is_active' => true,
+        ]);
+
+        $cohort = Cohort::query()->create([
+            'academy_id' => $academy->id,
+            'programme_cycle_id' => $offering->id,
+            'branch_id' => $branch?->id,
+            'name' => 'Default cohort',
+            'starts_on' => '2026-01-01',
+            'ends_on' => '2027-12-31',
+            'status' => 'open',
+        ]);
+
+        return ApplicationIntake::query()->create([
+            'academy_id' => $academy->id,
+            'programme_cycle_id' => $offering->id,
+            'cohort_id' => $cohort->id,
+            'cohort_scope_id' => $cohort->id,
+            'branch_id' => $branch?->id,
+            'branch_scope_id' => $branch?->id ?? 0,
+            'is_enabled' => true,
+        ]);
     }
 
     /** @return array{User, Academy} */

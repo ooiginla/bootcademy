@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Academies\ApplicationIntakeAvailability;
 use App\Enums\CustomFieldType;
 use App\Models\Academy;
 use App\Models\AcademyCustomField;
@@ -30,9 +31,8 @@ class StoreApplicationRequest extends FormRequest
             'internal_identifier' => $this->input('internal_identifier') === null
                 ? null
                 : mb_strtoupper((string) $this->input('internal_identifier')),
-            'programme_id' => $this->input('programme_id') ?: null,
-            'programme_cycle_id' => $this->input('programme_cycle_id') ?: null,
-            'branch_id' => $this->input('branch_id') ?: null,
+            'application_intake_id' => $this->input('application_intake_id') ?: null,
+            'preferred_branch_id' => $this->input('preferred_branch_id') ?: null,
             'privacy_policy_version' => trim((string) $this->input('privacy_policy_version')),
             'custom_fields' => is_array($this->input('custom_fields')) ? $this->input('custom_fields') : [],
         ]);
@@ -47,6 +47,7 @@ class StoreApplicationRequest extends FormRequest
     public function rules(): array
     {
         $academy = $this->academy();
+        $collectGuardian = $academy->collect_guardian_information;
         $forAcademy = fn ($query) => $query->where('academy_id', $academy->id);
         $rules = [
             'external_reference' => ['required', 'string', 'max:120'],
@@ -59,16 +60,16 @@ class StoreApplicationRequest extends FormRequest
             'whatsapp_number' => ['nullable', 'string', 'max:32'], 'home_address' => ['nullable', 'string', 'max:500'],
             'city' => ['nullable', 'string', 'max:100'], 'state_region' => ['nullable', 'string', 'max:100'],
             'country' => ['nullable', Rule::in(config('countries'))],
-            'guardian_first_name' => ['nullable', 'string', 'max:100'],
-            'guardian_last_name' => ['required_with:guardian_first_name', 'nullable', 'string', 'max:100'],
-            'guardian_email' => ['nullable', 'email:rfc', 'max:254'],
-            'guardian_phone' => ['required_with:guardian_first_name', 'nullable', 'string', 'max:32'],
-            'guardian_whatsapp_number' => ['nullable', 'string', 'max:32'],
-            'guardian_relationship' => ['nullable', 'string', 'max:80'],
-            'guardian_signature' => ['nullable', File::image()->types(['jpg', 'jpeg', 'png', 'webp'])->max(2 * 1024)],
-            'programme_id' => ['nullable', 'integer', Rule::exists('programmes', 'id')->where($forAcademy)],
-            'programme_cycle_id' => ['nullable', 'integer', Rule::exists('programme_cycles', 'id')->where($forAcademy)],
-            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where($forAcademy)],
+            'guardian_first_name' => $collectGuardian ? ['nullable', 'string', 'max:100'] : ['prohibited'],
+            'guardian_last_name' => $collectGuardian ? ['required_with:guardian_first_name', 'nullable', 'string', 'max:100'] : ['prohibited'],
+            'guardian_email' => $collectGuardian ? ['nullable', 'email:rfc', 'max:254'] : ['prohibited'],
+            'guardian_phone' => $collectGuardian ? ['required_with:guardian_first_name', 'nullable', 'string', 'max:32'] : ['prohibited'],
+            'guardian_whatsapp_number' => $collectGuardian ? ['nullable', 'string', 'max:32'] : ['prohibited'],
+            'guardian_relationship' => $collectGuardian ? ['nullable', 'string', 'max:80'] : ['prohibited'],
+            'guardian_signature' => $collectGuardian ? ['nullable', File::image()->types(['jpg', 'jpeg', 'png', 'webp'])->max(2 * 1024)] : ['prohibited'],
+            'application_intake_id' => ['required', 'integer', Rule::exists('application_intakes', 'id')->where($forAcademy)],
+            'preferred_branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where(fn ($query) => $query
+                ->where('academy_id', $academy->id)->where('is_active', true))],
         ];
         $fields = $this->fields();
         $rules['custom_fields'] = ['array'];
@@ -92,6 +93,11 @@ class StoreApplicationRequest extends FormRequest
             $allowed = $this->fields()->pluck('key')->all();
             foreach (array_diff(array_keys($this->input('custom_fields', [])), $allowed) as $key) {
                 $validator->errors()->add("custom_fields.{$key}", 'This custom field is not available for this academy.');
+            }
+            $open = app(ApplicationIntakeAvailability::class)->query($this->academy())
+                ->whereKey($this->input('application_intake_id'))->exists();
+            if (! $open) {
+                $validator->errors()->add('application_intake_id', 'This application option is no longer accepting applications.');
             }
         });
     }

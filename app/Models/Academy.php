@@ -21,11 +21,18 @@ use Illuminate\Support\Carbon;
  * @property string $member_label_plural
  * @property string $staff_label_singular
  * @property string $staff_label_plural
+ * @property bool $collect_guardian_information
+ * @property string $guardian_label_singular
+ * @property string $guardian_label_plural
  * @property string $timezone
  * @property string $currency
  * @property string|null $bank_name
  * @property string|null $bank_account_name
  * @property string|null $bank_account_number
+ * @property int $paystack_fee_basis_points
+ * @property int $paystack_fee_fixed_minor
+ * @property int|null $paystack_fee_cap_minor
+ * @property int|null $paystack_fee_waiver_threshold_minor
  * @property string|null $logo_path
  * @property string|null $primary_color
  * @property string|null $secondary_color
@@ -42,11 +49,18 @@ use Illuminate\Support\Carbon;
     'member_label_plural',
     'staff_label_singular',
     'staff_label_plural',
+    'collect_guardian_information',
+    'guardian_label_singular',
+    'guardian_label_plural',
     'timezone',
     'currency',
     'bank_name',
     'bank_account_name',
     'bank_account_number',
+    'paystack_fee_basis_points',
+    'paystack_fee_fixed_minor',
+    'paystack_fee_cap_minor',
+    'paystack_fee_waiver_threshold_minor',
     'logo_path',
     'primary_color',
     'secondary_color',
@@ -128,10 +142,25 @@ class Academy extends Model
         return $this->hasMany(AcademyCycle::class);
     }
 
+    public function cycleTerms(): HasMany
+    {
+        return $this->hasMany(AcademyCycleTerm::class);
+    }
+
     /** @return HasMany<ProgrammeCycle, $this> */
     public function programmeCycles(): HasMany
     {
         return $this->hasMany(ProgrammeCycle::class);
+    }
+
+    public function cohorts(): HasMany
+    {
+        return $this->hasMany(Cohort::class);
+    }
+
+    public function applicationIntakes(): HasMany
+    {
+        return $this->hasMany(ApplicationIntake::class);
     }
 
     /** @return HasMany<AcademyInvoice, $this> */
@@ -144,6 +173,51 @@ class Academy extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(AcademyPayment::class);
+    }
+
+    public function sponsors(): HasMany
+    {
+        return $this->hasMany(Sponsor::class);
+    }
+
+    public function sponsorCommitments(): HasMany
+    {
+        return $this->hasMany(SponsorCommitment::class);
+    }
+
+    public function scholarshipSchemes(): HasMany
+    {
+        return $this->hasMany(ScholarshipScheme::class);
+    }
+
+    public function scholarshipAwards(): HasMany
+    {
+        return $this->hasMany(ScholarshipAward::class);
+    }
+
+    public function onlinePaymentIntents(): HasMany
+    {
+        return $this->hasMany(OnlinePaymentIntent::class);
+    }
+
+    public function announcements(): HasMany
+    {
+        return $this->hasMany(Announcement::class);
+    }
+
+    public function notificationDeliveries(): HasMany
+    {
+        return $this->hasMany(NotificationDelivery::class);
+    }
+
+    public function referrals(): HasMany
+    {
+        return $this->hasMany(Referral::class);
+    }
+
+    public function referralRewards(): HasMany
+    {
+        return $this->hasMany(ReferralReward::class);
     }
 
     public function cycleFees(): HasMany
@@ -164,6 +238,26 @@ class Academy extends Model
     public function expenseVendors(): HasMany
     {
         return $this->hasMany(ExpenseVendor::class);
+    }
+
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class);
+    }
+
+    public function productCategories(): HasMany
+    {
+        return $this->hasMany(ProductCategory::class);
+    }
+
+    public function productTags(): HasMany
+    {
+        return $this->hasMany(ProductTag::class);
+    }
+
+    public function storeOrders(): HasMany
+    {
+        return $this->hasMany(StoreOrder::class);
     }
 
     /** @return HasMany<AcademyApiKey, $this> */
@@ -188,5 +282,16 @@ class Academy extends Model
     public function website(): HasOne
     {
         return $this->hasOne(AcademyWebsite::class);
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'collect_guardian_information' => 'boolean',
+            'paystack_fee_basis_points' => 'integer',
+            'paystack_fee_fixed_minor' => 'integer',
+            'paystack_fee_cap_minor' => 'integer',
+            'paystack_fee_waiver_threshold_minor' => 'integer',
+        ];
     }
 }

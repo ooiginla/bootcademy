@@ -26,6 +26,9 @@ type Props = {
             plural: string;
             staff_singular: string;
             staff_plural: string;
+            guardian_singular: string;
+            guardian_plural: string;
+            collect_guardian_information: boolean;
         };
         bank_details: {
             bank_name: string | null;
@@ -65,6 +68,10 @@ export default function AcademyBranding({ branding }: Props) {
         member_label_plural: branding.terminology.plural,
         staff_label_singular: branding.terminology.staff_singular,
         staff_label_plural: branding.terminology.staff_plural,
+        guardian_label_singular: branding.terminology.guardian_singular,
+        guardian_label_plural: branding.terminology.guardian_plural,
+        collect_guardian_information:
+            branding.terminology.collect_guardian_information,
     });
     const bankForm = useForm({
         bank_name: branding.bank_details.bank_name ?? '',
@@ -461,7 +468,86 @@ export default function AcademyBranding({ branding }: Props) {
                                             }
                                         />
                                     </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="guardian_label_singular">
+                                            Guardian/contact singular label
+                                        </Label>
+                                        <Input
+                                            id="guardian_label_singular"
+                                            value={
+                                                terminologyForm.data
+                                                    .guardian_label_singular
+                                            }
+                                            onChange={(event) =>
+                                                terminologyForm.setData(
+                                                    'guardian_label_singular',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            maxLength={50}
+                                            placeholder="Guardian"
+                                        />
+                                        <InputError
+                                            message={
+                                                terminologyForm.errors
+                                                    .guardian_label_singular
+                                            }
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="guardian_label_plural">
+                                            Guardian/contact plural label
+                                        </Label>
+                                        <Input
+                                            id="guardian_label_plural"
+                                            value={
+                                                terminologyForm.data
+                                                    .guardian_label_plural
+                                            }
+                                            onChange={(event) =>
+                                                terminologyForm.setData(
+                                                    'guardian_label_plural',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            maxLength={50}
+                                            placeholder="Guardians"
+                                        />
+                                        <InputError
+                                            message={
+                                                terminologyForm.errors
+                                                    .guardian_label_plural
+                                            }
+                                        />
+                                    </div>
                                 </div>
+                                <label className="flex items-start gap-3 rounded-xl border bg-muted/30 p-4">
+                                    <input
+                                        type="checkbox"
+                                        checked={
+                                            terminologyForm.data
+                                                .collect_guardian_information
+                                        }
+                                        onChange={(event) =>
+                                            terminologyForm.setData(
+                                                'collect_guardian_information',
+                                                event.target.checked,
+                                            )
+                                        }
+                                        className="mt-1 size-4"
+                                    />
+                                    <span>
+                                        <span className="block text-sm font-medium">
+                                            Collect guardian/contact information
+                                            on applications
+                                        </span>
+                                        <span className="mt-1 block text-sm text-muted-foreground">
+                                            Turn this off for adult programmes
+                                            or academies that do not require a
+                                            next of kin during application.
+                                        </span>
+                                    </span>
+                                </label>
                                 <div className="rounded-xl border bg-muted/40 p-4 text-sm">
                                     <p className="font-medium">Preview</p>
                                     <p className="mt-1 text-muted-foreground">
@@ -484,6 +570,10 @@ export default function AcademyBranding({ branding }: Props) {
                                             .staff_label_plural ||
                                             'Coaches'}{' '}
                                         directory
+                                        {' · '}
+                                        {terminologyForm.data
+                                            .guardian_label_plural ||
+                                            'Guardians'}
                                     </p>
                                 </div>
                                 <Button

@@ -4,7 +4,12 @@ namespace App\Http\Controllers\Academies;
 
 use App\Academies\AcademyContext;
 use App\Academies\Actions\SaveProgramme;
+use App\Academies\Actions\BulkReenrollProgrammeMembers;
+use App\Enums\CohortMembershipStatus;
+use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Academies\BulkCompleteProgrammeEnrollmentsRequest;
+use App\Http\Requests\Academies\BulkReenrollProgrammeMembersRequest;
 use App\Http\Requests\Academies\SaveProgrammeRequest;
 use App\Http\Requests\Academies\UpdateProgrammeImageRequest;
 use App\Models\Branch;
@@ -81,6 +86,11 @@ class ProgrammeController extends Controller
             abort_unless(in_array($selectedBranchId, $allowedBranchIds, true), 403);
         }
 
+        $selectedStatus = $request->query('status', EnrollmentStatus::Active->value);
+        abort_unless(is_string($selectedStatus) && in_array($selectedStatus, [
+            'all', EnrollmentStatus::Active->value, EnrollmentStatus::Completed->value,
+        ], true), 404);
+
         $memberQuery = Enrollment::query()
             ->where('academy_id', $academy->id)
             ->where('programme_id', $programme->id)
@@ -90,6 +100,9 @@ class ProgrammeController extends Controller
             $memberQuery->where('branch_id', $selectedBranchId);
         } elseif (! $canManage) {
             $memberQuery->whereIn('branch_id', $allowedBranchIds);
+        }
+        if ($selectedStatus !== 'all') {
+            $memberQuery->where('status', $selectedStatus);
         }
 
         $programme->load('branches:id,name,is_active');
@@ -120,9 +133,86 @@ class ProgrammeController extends Controller
                 ]),
             'branch_options' => $branches,
             'selected_branch_id' => $selectedBranchId,
+            'selected_status' => $selectedStatus,
+            'reenrollment_options' => $canManage ? [
+                'cycles' => $academy->cycles()->with(['terms' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])
+                    ->orderByRaw("status = 'active' DESC")->orderByDesc('starts_on')->get()->map(fn ($cycle): array => [
+                        'id' => $cycle->id,
+                        'name' => $cycle->name,
+                        'is_active' => $cycle->status->value === 'active',
+                        'terms' => $cycle->terms->map(fn ($term): array => [
+                            'id' => $term->id, 'name' => $term->name,
+                            'starts_on' => $term->starts_on?->toDateString(),
+                            'ends_on' => $term->ends_on?->toDateString(),
+                        ])->values(),
+                    ])->values(),
+                'offerings' => $academy->programmeCycles()->where('is_active', true)
+                    ->with(['programme:id,name', 'branch:id,name', 'cohorts' => fn ($query) => $query->whereIn('status', ['open', 'ongoing'])->orderBy('name')])
+                    ->get()->map(fn ($offering): array => [
+                        'id' => $offering->id,
+                        'academy_cycle_id' => $offering->academy_cycle_id,
+                        'programme_id' => $offering->programme_id,
+                        'programme_name' => $offering->programme->name,
+                        'branch_id' => $offering->branch_id,
+                        'branch_name' => $offering->branch?->name,
+                        'cohorts' => $offering->cohorts->map(fn ($cohort): array => [
+                            'id' => $cohort->id, 'name' => $cohort->name, 'branch_id' => $cohort->branch_id,
+                        ])->values(),
+                    ])->values(),
+            ] : null,
             'active_tab' => $activeTab,
             'can_manage' => $canManage,
         ]);
+    }
+
+    public function completeEnrollments(
+        BulkCompleteProgrammeEnrollmentsRequest $request,
+        Programme $programme,
+        AcademyContext $context,
+        AuditLogger $audit,
+    ): RedirectResponse {
+        abort_unless($programme->academy_id === $context->id(), 404);
+        $ids = $request->validated('enrollment_ids');
+        $completed = DB::transaction(function () use ($ids, $programme, $context, $request, $audit): int {
+            $enrollments = Enrollment::query()->where('academy_id', $context->id())
+                ->where('programme_id', $programme->id)->whereIn('id', $ids)->lockForUpdate()->get();
+            if ($enrollments->count() !== count(array_unique($ids))) {
+                abort(404);
+            }
+            $count = 0;
+            foreach ($enrollments as $enrollment) {
+                if ($enrollment->status !== EnrollmentStatus::Active) {
+                    continue;
+                }
+                $completedOn = $enrollment->starts_on->isAfter(today()) ? $enrollment->starts_on : today();
+                $enrollment->update(['status' => EnrollmentStatus::Completed, 'ends_on' => $completedOn]);
+                $enrollment->cohortMemberships()->where('status', CohortMembershipStatus::Active->value)
+                    ->update(['status' => CohortMembershipStatus::Completed->value, 'left_on' => $completedOn]);
+                $audit->record('academy.enrollment.completed', $request->user(), $context->academy(), $enrollment, request: $request);
+                $count++;
+            }
+
+            return $count;
+        });
+        Inertia::flash('toast', ['type' => 'success', 'message' => "{$completed} enrollment(s) marked as completed."]);
+
+        return back();
+    }
+
+    public function reenrollMembers(
+        BulkReenrollProgrammeMembersRequest $request,
+        Programme $programme,
+        AcademyContext $context,
+        BulkReenrollProgrammeMembers $action,
+    ): RedirectResponse {
+        abort_unless($programme->academy_id === $context->id(), 404);
+        $count = $action->handle($context->academy(), $programme, $request->user(), $request->validated(), $request);
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => "{$count} enrollment(s) activated for the selected term. Applicable invoices were issued without duplicates.",
+        ]);
+
+        return back();
     }
 
     public function update(

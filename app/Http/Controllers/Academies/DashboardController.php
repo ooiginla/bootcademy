@@ -55,11 +55,11 @@ class DashboardController extends Controller
         $invoiceQuery = $academy->invoices()->where('status', '<>', 'void')->whereBetween('issued_at', [$fromUtc, $toUtc])
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId));
         $billed = (int) (clone $invoiceQuery)->sum('total_minor');
-        $outstanding = (int) (clone $invoiceQuery)->selectRaw('COALESCE(SUM(total_minor-paid_minor-written_off_minor),0) total')->value('total');
+        $outstanding = (int) (clone $invoiceQuery)->selectRaw('COALESCE(SUM(total_minor-paid_minor-written_off_minor-scholarship_concession_minor),0) total')->value('total');
         $aging = ['not_due' => 0, 'days_1_30' => 0, 'days_31_60' => 0, 'days_61_plus' => 0];
         $asOf = Carbon::parse($to, $academy->timezone)->startOfDay();
-        foreach ((clone $invoiceQuery)->whereRaw('total_minor > paid_minor + written_off_minor')->get(['total_minor', 'paid_minor', 'written_off_minor', 'due_on']) as $invoice) {
-            $balance = $invoice->total_minor - $invoice->paid_minor - $invoice->written_off_minor;
+        foreach ((clone $invoiceQuery)->whereRaw('total_minor > paid_minor + written_off_minor + scholarship_concession_minor')->get(['total_minor', 'paid_minor', 'written_off_minor', 'scholarship_concession_minor', 'due_on']) as $invoice) {
+            $balance = $invoice->total_minor - $invoice->paid_minor - $invoice->written_off_minor - $invoice->scholarship_concession_minor;
             if ($invoice->due_on === null || $invoice->due_on->greaterThanOrEqualTo($asOf)) {
                 $aging['not_due'] += $balance;
 

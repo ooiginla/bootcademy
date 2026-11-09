@@ -10,7 +10,8 @@
 - Owner/admin academy management policy and cross-academy denial tests.
 - Private per-academy logo upload and authorized logo delivery.
 - Audited Owner/Admin colour controls for their own academy, plus a separate Platform Super Admin boundary for platform-wide theme administration.
-- Academy theme tokens, logo, name and role in the responsive dashboard shell.
+- A standard Bootcademy theme for the responsive dashboard shell, with active academy identity, name, role and logo retained.
+- Academy theme tokens applied only to that academy's public website.
 - Active academy logos replace the browser favicon, with the platform icon retained as fallback.
 - Explicit CLI grant/revoke command for Platform Super Admin access.
 - Configurable plan catalog, one current academy subscription, append-only subscription state events and centralized feature/limit entitlement checks.
@@ -21,7 +22,7 @@
 
 The active academy ID stored in the session is only a preference. Every request resolves it through the authenticated user's active memberships and falls back to an authorized academy when the session is stale or tampered with. Route model IDs are never accepted as proof of membership.
 
-Logo files are stored on the private `local` disk under generated academy-scoped paths. Only the active academy logo route serves a file, with private caching and MIME-sniffing protection. Theme and logo changes create audit records.
+Logo files are stored on the private `local` disk under generated academy-scoped paths. Only the active academy logo route serves a file, with private caching and MIME-sniffing protection. Theme and logo changes create audit records. Saved tenant colours style public academy pages; they are not injected into the authenticated Bootcademy administration interface.
 
 Terminology is presentation-only. The database schema, model names, route identifiers and versioned API payload keys continue to use `player` consistently. Labels are tenant-scoped, length-limited and reject markup; normal React output escaping remains in place.
 

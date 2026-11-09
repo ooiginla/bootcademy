@@ -31,6 +31,7 @@ export type AcademyCycle = {
     status: 'draft' | 'active' | 'closed';
     programme_cycles_count: number;
     enrollments_count: number;
+    terms_count: number;
 };
 
 const selectClass =
@@ -268,7 +269,7 @@ export default function Cycles({ cycles }: { cycles: AcademyCycle[] }) {
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
-                                <table className="w-full min-w-[840px] text-left text-sm">
+                                <table className="w-full min-w-[920px] text-left text-sm">
                                     <thead className="border-b bg-muted/50 text-xs text-muted-foreground uppercase">
                                         <tr>
                                             <th className="px-4 py-3">Cycle</th>
@@ -278,6 +279,7 @@ export default function Cycles({ cycles }: { cycles: AcademyCycle[] }) {
                                             <th className="px-4 py-3">
                                                 Programmes
                                             </th>
+                                            <th className="px-4 py-3">Terms</th>
                                             <th className="px-4 py-3">
                                                 Enrollments
                                             </th>
@@ -312,6 +314,9 @@ export default function Cycles({ cycles }: { cycles: AcademyCycle[] }) {
                                                     {
                                                         cycle.programme_cycles_count
                                                     }
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    {cycle.terms_count}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     {cycle.enrollments_count}

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Academies\ApplicationIntakeAvailability;
 use App\Enums\AcademyCycleStatus;
 use App\Models\AcademyCustomField;
 use App\Models\AcademyWebsite;
@@ -63,19 +64,30 @@ class PublicAcademyWebsiteController extends Controller
         ]);
     }
 
-    public function application(Request $request, string $subdomain): Response
+    public function application(Request $request, string $subdomain, ApplicationIntakeAvailability $availability): Response
     {
         [$website, $common] = $this->common($request, $subdomain);
         $academy = $website->academy;
-        $offerings = $academy->programmeCycles()->where('is_active', true)
-            ->whereHas('cycle', fn ($query) => $query->where('status', AcademyCycleStatus::Active->value))
-            ->with(['cycle', 'programme', 'branch', 'feeItems', 'installments'])
-            ->orderBy('programme_id')->get();
+        $intakes = $availability->query($academy)
+            ->with(['programmeCycle.cycle', 'programmeCycle.programme', 'programmeCycle.branch', 'programmeCycle.feeItems', 'programmeCycle.installments', 'cohort', 'branch'])
+            ->orderBy('programme_cycle_id')->get();
 
         return Inertia::render('public/application', $common + [
-            'offerings' => $offerings->map(fn (ProgrammeCycle $offering): array => $this->offeringData($offering) + [
-                'programme_name' => $offering->programme->name,
-            ]),
+            'intakes' => $intakes->map(function ($intake): array {
+                $offering = $intake->programmeCycle;
+
+                return $this->offeringData($offering) + [
+                    'id' => $intake->id,
+                    'programme_cycle_id' => $offering->id,
+                    'programme_name' => $offering->programme->name,
+                    'cohort_id' => $intake->cohort_id,
+                    'cohort_name' => $intake->cohort?->name,
+                    'branch_id' => $intake->branch_id,
+                    'branch_name' => $intake->branch?->name ?? $offering->branch?->name ?? 'All locations',
+                    'opens_on' => $intake->opens_on?->toDateString(),
+                    'closes_on' => $intake->closes_on?->toDateString(),
+                ];
+            })->values(),
             'custom_fields' => AcademyCustomField::query()
                 ->where('academy_id', $academy->id)->where('entity_type', 'player')->where('is_active', true)
                 ->orderBy('sort_order')->orderBy('id')->get()
@@ -87,6 +99,7 @@ class PublicAcademyWebsiteController extends Controller
                     'required' => $field->is_required,
                     'sensitive' => $field->is_sensitive,
                 ]),
+            'locations' => $academy->branches()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'countries' => config('countries'),
         ]);
     }
@@ -139,6 +152,9 @@ class PublicAcademyWebsiteController extends Controller
                 'logo_url' => $academy->logo_path ? $baseUrl.'/logo' : null,
                 'member_singular' => $academy->member_label_singular,
                 'member_plural' => $academy->member_label_plural,
+                'guardian_singular' => $academy->guardian_label_singular,
+                'guardian_plural' => $academy->guardian_label_plural,
+                'collect_guardian_information' => $academy->collect_guardian_information,
                 'currency' => $academy->currency,
                 'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color),
             ],
@@ -184,7 +200,8 @@ class PublicAcademyWebsiteController extends Controller
     /** @return array<string, mixed> */
     private function offeringData(ProgrammeCycle $offering): array
     {
-        $totalMinor = (int) $offering->feeItems->sum('amount_minor');
+        $publicFeeItems = $offering->feeItems->whereNull('cohort_id');
+        $totalMinor = (int) $publicFeeItems->sum('amount_minor');
 
         return [
             'id' => $offering->id,
@@ -197,7 +214,7 @@ class PublicAcademyWebsiteController extends Controller
             'currency' => $offering->currency,
             'application_fee' => Money::fromMinor($offering->application_fee_minor),
             'total' => Money::fromMinor($totalMinor),
-            'fee_items' => $offering->feeItems->map(fn ($item): array => [
+            'fee_items' => $publicFeeItems->map(fn ($item): array => [
                 'name' => $item->name,
                 'amount' => Money::fromMinor($item->amount_minor),
             ]),

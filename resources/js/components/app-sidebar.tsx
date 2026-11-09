@@ -7,6 +7,7 @@ import {
     ChevronsUpDown,
     LayoutDashboard,
     Mail,
+    Megaphone,
     ClipboardList,
     Braces,
     CalendarRange,
@@ -14,11 +15,14 @@ import {
     MapPin,
     Palette,
     ReceiptText,
+    Share2,
+    HandHeart,
     ScrollText,
     UserRound,
     Dumbbell,
     Globe2,
     WalletCards,
+    ShoppingBag,
     UsersRound,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
@@ -94,6 +98,11 @@ export function AppSidebar() {
                             href: '/app/finance/expenses',
                             icon: WalletCards,
                         },
+                        {
+                            title: 'Scholarships',
+                            href: '/app/scholarships',
+                            icon: HandHeart,
+                        },
                     ]
                   : []),
               ...(academy.can_manage
@@ -112,6 +121,29 @@ export function AppSidebar() {
                             title: coachTerminology.plural,
                             href: '/app/coaches',
                             icon: Dumbbell,
+                        },
+                    ]
+                  : []),
+              ...(academy.can_manage || academy.can_manage_finance
+                  ? [
+                        {
+                            title: 'Communications',
+                            href: '/app/communications',
+                            icon: Megaphone,
+                        },
+                    ]
+                  : []),
+              ...(academy.can_manage || academy.can_manage_finance
+                  ? [
+                        {
+                            title: 'Referrals',
+                            href: '/app/referrals',
+                            icon: Share2,
+                        },
+                        {
+                            title: 'Store',
+                            href: '/app/store',
+                            icon: ShoppingBag,
                         },
                     ]
                   : []),

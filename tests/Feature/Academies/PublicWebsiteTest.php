@@ -10,7 +10,9 @@ use App\Models\AcademyCustomField;
 use App\Models\AcademyCycle;
 use App\Models\AcademyMembership;
 use App\Models\AcademyWebsite;
+use App\Models\ApplicationIntake;
 use App\Models\Branch;
+use App\Models\Cohort;
 use App\Models\Programme;
 use App\Models\ProgrammeCycle;
 use App\Models\User;
@@ -191,6 +193,20 @@ class PublicWebsiteTest extends TestCase
             ['academy_id' => $academy->id, 'name' => 'First payment', 'amount_minor' => 6000000, 'sequence' => 1],
             ['academy_id' => $academy->id, 'name' => 'Final payment', 'amount_minor' => 6000000, 'sequence' => 2],
         ]);
+        $cohort = Cohort::query()->create([
+            'academy_id' => $academy->id, 'programme_cycle_id' => $offering->id,
+            'branch_id' => $branch->id, 'name' => '2027 cohort',
+            'starts_on' => '2027-01-01', 'ends_on' => '2027-06-30', 'status' => 'open',
+        ]);
+        ApplicationIntake::query()->create([
+            'academy_id' => $academy->id,
+            'programme_cycle_id' => $offering->id,
+            'cohort_id' => $cohort->id,
+            'cohort_scope_id' => $cohort->id,
+            'branch_id' => $branch->id,
+            'branch_scope_id' => $branch->id,
+            'is_enabled' => true,
+        ]);
         AcademyCustomField::query()->create([
             'academy_id' => $academy->id, 'entity_type' => 'player', 'key' => 'laptop_access',
             'label' => 'Laptop access', 'type' => 'boolean', 'is_required' => true,
@@ -200,12 +216,15 @@ class PublicWebsiteTest extends TestCase
         $this->get(route('public.academy.application', ['subdomain' => $website->subdomain]))
             ->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('public/application')
-            ->has('offerings', 1)
-            ->where('offerings.0.programme_name', 'Creative Coding')
-            ->where('offerings.0.cycle_name', '2027 Cohort')
-            ->where('offerings.0.application_fee', '5000.00')
-            ->where('offerings.0.total', '120000.00')
-            ->has('offerings.0.installments', 2)
+            ->has('intakes', 1)
+            ->where('intakes.0.programme_name', 'Creative Coding')
+            ->where('intakes.0.cycle_name', '2027 Cohort')
+            ->where('intakes.0.application_fee', '5000.00')
+            ->where('intakes.0.total', '120000.00')
+            ->has('intakes.0.installments', 2)
+            ->where('academy.guardian_singular', 'Guardian')
+            ->where('academy.collect_guardian_information', true)
+            ->where('locations.0.id', $branch->id)
             ->where('custom_fields.0.key', 'laptop_access')
             ->where('custom_fields.0.required', true)
             );

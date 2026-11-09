@@ -18,6 +18,7 @@ import { parseRows, resolveSiteUrl, safeUrl } from './utils';
 const menuSections = [
     ['about', 'about'],
     ['programmes', 'programmes'],
+    ['store', 'store'],
     ['locations', 'locations'],
     ['experience', 'experience'],
     ['welcome', 'welcome'],
@@ -71,8 +72,8 @@ export default function PublicSiteShell({
             key,
             label: String(sections[key]?.title ?? key),
             href:
-                key === 'programmes'
-                    ? `${baseUrl}/programmes`
+                key === 'programmes' || key === 'store'
+                    ? `${baseUrl}/${key}`
                     : `${homeUrl === '/' ? '' : homeUrl}/#${anchor}`,
         }));
     const primaryMenuItems = enabledMenuItems.slice(0, 4);

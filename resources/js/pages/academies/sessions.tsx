@@ -36,6 +36,7 @@ import { useCoachTerminology } from '@/hooks/use-coach-terminology';
 import type { Paginator } from './players';
 
 type Option = { id: number; name: string };
+type CohortOption = Option & { programme_id: number; programme_name: string };
 type Session = {
     id: number;
     title: string;
@@ -44,6 +45,8 @@ type Session = {
     branch_names: string[];
     programme_id: number;
     programme_name: string;
+    cohort_id?: number | null;
+    cohort_name?: string | null;
     coach_membership_ids: number[];
     coach_names: string[];
     starts_at: string;
@@ -62,11 +65,13 @@ function SessionDialog({
     session,
     branches,
     programmes,
+    cohorts = [],
     coaches,
 }: {
     session?: Session;
     branches: Option[];
     programmes: Option[];
+    cohorts?: CohortOption[];
     coaches: Option[];
 }) {
     const [open, setOpen] = useState(false);
@@ -239,6 +244,28 @@ function SessionDialog({
                                         ))}
                                     </select>
                                     <InputError message={errors.programme_id} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label>Cohort (optional)</Label>
+                                    <select
+                                        name="cohort_id"
+                                        defaultValue={session?.cohort_id ?? ''}
+                                        className={fieldClass}
+                                    >
+                                        <option value="">
+                                            All programme members
+                                        </option>
+                                        {cohorts.map((cohort) => (
+                                            <option
+                                                key={cohort.id}
+                                                value={cohort.id}
+                                            >
+                                                {cohort.name} ·{' '}
+                                                {cohort.programme_name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <InputError message={errors.cohort_id} />
                                 </div>
                                 <div className="grid gap-2 sm:col-span-2">
                                     <Label>{terms.plural}</Label>
@@ -443,6 +470,7 @@ export default function Sessions({
     calendar_sessions,
     branches,
     programmes,
+    cohorts = [],
     coaches,
     filters,
     active_tab,
@@ -453,10 +481,12 @@ export default function Sessions({
     calendar_sessions: Session[];
     branches: Option[];
     programmes: Option[];
+    cohorts?: CohortOption[];
     coaches: Option[];
     filters: {
         branch_id: number | null;
         programme_id: number | null;
+        cohort_id?: number | null;
         coach_id: number | null;
         month: string;
     };
@@ -478,6 +508,7 @@ export default function Sessions({
         ...(filters.programme_id
             ? { programme_id: String(filters.programme_id) }
             : {}),
+        ...(filters.cohort_id ? { cohort_id: String(filters.cohort_id) } : {}),
         ...(filters.coach_id ? { coach_id: String(filters.coach_id) } : {}),
     });
     return (
@@ -508,6 +539,7 @@ export default function Sessions({
                             <SessionDialog
                                 branches={branches}
                                 programmes={programmes}
+                                cohorts={cohorts}
                                 coaches={coaches}
                             />
                         </div>
@@ -516,7 +548,7 @@ export default function Sessions({
                 <Form
                     action="/app/sessions"
                     method="get"
-                    className="mb-5 grid items-end gap-3 md:grid-cols-5"
+                    className="mb-5 grid items-end gap-3 md:grid-cols-6"
                 >
                     {() => (
                         <>
@@ -564,6 +596,18 @@ export default function Sessions({
                                 {coaches.map((x) => (
                                     <option key={x.id} value={x.id}>
                                         {x.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <select
+                                name="cohort_id"
+                                defaultValue={filters.cohort_id ?? ''}
+                                className={fieldClass}
+                            >
+                                <option value="">All cohorts</option>
+                                {cohorts.map((cohort) => (
+                                    <option key={cohort.id} value={cohort.id}>
+                                        {cohort.name}
                                     </option>
                                 ))}
                             </select>
@@ -653,6 +697,9 @@ export default function Sessions({
                                                               )}
                                                         <p className="text-xs text-muted-foreground">
                                                             {s.programme_name}
+                                                            {s.cohort_name
+                                                                ? ` · ${s.cohort_name}`
+                                                                : ''}
                                                         </p>
                                                     </td>
                                                     <td>
@@ -693,6 +740,9 @@ export default function Sessions({
                                                                     }
                                                                     programmes={
                                                                         programmes
+                                                                    }
+                                                                    cohorts={
+                                                                        cohorts
                                                                     }
                                                                     coaches={
                                                                         coaches

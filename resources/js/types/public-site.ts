@@ -11,6 +11,9 @@ export type PublicAcademy = {
     logo_url: string | null;
     member_singular: string;
     member_plural: string;
+    guardian_singular?: string;
+    guardian_plural?: string;
+    collect_guardian_information?: boolean;
     currency: string;
     theme: PublicTheme;
 };
@@ -73,4 +76,18 @@ export type PublicOffering = {
         due_on: string | null;
         due_offset_days: number | null;
     }>;
+};
+
+export type PublicApplicationIntake = Omit<
+    PublicOffering,
+    'id' | 'branch_id' | 'branch_name'
+> & {
+    id: number;
+    programme_cycle_id: number;
+    cohort_id: number | null;
+    cohort_name: string | null;
+    branch_id: number | null;
+    branch_name: string;
+    opens_on: string | null;
+    closes_on: string | null;
 };

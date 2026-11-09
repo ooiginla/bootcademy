@@ -42,6 +42,7 @@ class AcademyPaymentController extends Controller
                 ->withCount('adjustments')->with([
                     'application:id,reference,first_name,middle_name,last_name,converted_player_id',
                     'player:id,first_name,middle_name,last_name',
+                    'sponsor:id,name',
                     'allocations.invoice:id,number,purpose,academy_cycle_id,programme_cycle_id,programme_id',
                     'allocations.invoice.cycle:id,name', 'allocations.invoice.programmeCycle.programme:id,name',
                 ])
@@ -62,7 +63,8 @@ class AcademyPaymentController extends Controller
                         'reversed' => Money::fromMinor($payment->reversed_minor),
                         'net' => Money::fromMinor($payment->amount_minor - $payment->reversed_minor),
                         'adjustments_count' => $payment->adjustments_count,
-                        'payer_name' => $person ? collect([$person->first_name, $person->middle_name, $person->last_name])->filter()->implode(' ') : 'Unknown payer',
+                        'payer_name' => $payment->sponsor?->name ?? ($person ? collect([$person->first_name, $person->middle_name, $person->last_name])->filter()->implode(' ') : 'Unknown payer'),
+                        'payer_type' => $payment->sponsor_id !== null ? 'Sponsor' : 'Student / applicant',
                         'application_id' => $payment->application_id, 'player_id' => $payment->player_id,
                         'application_reference' => $payment->application?->reference,
                         'invoice_number' => $invoice?->number, 'payment_type' => $invoice?->purpose->value,
@@ -132,6 +134,7 @@ class AcademyPaymentController extends Controller
         $payment->load([
             'application:id,reference,first_name,middle_name,last_name',
             'player:id,first_name,middle_name,last_name',
+            'sponsor:id,name',
             'allocations.invoice:id,number,fee_name,purpose,academy_cycle_id,programme_id',
             'allocations.invoice.cycle:id,name', 'allocations.invoice.programme:id,name',
             'adjustments:id,academy_payment_id,amount_minor,reason,effective_on',

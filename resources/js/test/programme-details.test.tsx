@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import ProgrammeDetails from '@/pages/academies/programme-details';
@@ -27,6 +27,16 @@ vi.mock('@inertiajs/react', () => ({
     Form: ({ children }: { children: (value: object) => ReactNode }) => (
         <form>{children({ processing: false, errors: {} })}</form>
     ),
+    useForm: (data: object) => ({
+        data,
+        errors: {},
+        processing: false,
+        setData: vi.fn(),
+        transform: vi.fn(),
+        patch: vi.fn(),
+        post: vi.fn(),
+        reset: vi.fn(),
+    }),
 }));
 
 const branches = [
@@ -72,6 +82,8 @@ describe('Programme details', () => {
                 members={members}
                 branch_options={branches}
                 selected_branch_id={null}
+                selected_status="active"
+                reenrollment_options={null}
                 active_tab="details"
                 can_manage
             />,
@@ -92,6 +104,8 @@ describe('Programme details', () => {
                 members={members}
                 branch_options={branches}
                 selected_branch_id={1}
+                selected_status="active"
+                reenrollment_options={null}
                 active_tab="members"
                 can_manage={false}
             />,
@@ -102,10 +116,40 @@ describe('Programme details', () => {
         expect(screen.getByRole('combobox', { name: 'Branch' })).toHaveValue(
             '1',
         );
+        expect(
+            screen.getByRole('combobox', { name: 'Enrollment status' }),
+        ).toHaveValue('active');
         expect(screen.getByRole('table')).toHaveTextContent('Amara Okafor');
         expect(screen.getByRole('table')).toHaveTextContent('Central Campus');
         expect(
             screen.queryByRole('button', { name: 'Edit' }),
         ).not.toBeInTheDocument();
+    });
+
+    it('enables bulk enrollment actions after selecting a student', () => {
+        render(
+            <ProgrammeDetails
+                programme={programme}
+                members={members}
+                branch_options={branches}
+                selected_branch_id={null}
+                selected_status="active"
+                reenrollment_options={{ cycles: [], offerings: [] }}
+                active_tab="members"
+                can_manage
+            />,
+        );
+
+        const complete = screen.getByRole('button', {
+            name: 'Mark completed',
+        });
+        expect(complete).toBeDisabled();
+        fireEvent.click(
+            screen.getByRole('checkbox', { name: 'Select Amara Okafor' }),
+        );
+        expect(complete).toBeEnabled();
+        expect(
+            screen.getByRole('button', { name: /Enroll into new term/i }),
+        ).toBeEnabled();
     });
 });

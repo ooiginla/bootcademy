@@ -17,6 +17,7 @@ This is the live execution checklist. It complements `SPORTS_ACADEMY_SAAS_PRD.md
 - `[x]` **M1 — Identity and tenancy:** multi-academy membership, roles, tenant policies, academy switching, plans, subscriptions and unrestricted Super Admin support mode.
 - `[x]` **M2 — Academy operations:** branches, programmes, teams/roles, invitations, students/players, guardians, custom fields, multiple programme enrollments, applications and CSV import.
 - `[x]` **External applicant API:** tenant API keys, configuration endpoint, idempotent applicant submission, status lookup, consent capture and duplicate detection.
+- `[x]` **Cohorts and application intake:** tenant-scoped delivery cohorts, default-cohort normalization, intake date/branch controls, public/API availability gating and cohort-based enrolment/attendance.
 - `[x]` **Bootcademy public sites:** unique academy subdomains, editable Launch theme, tenant-branded public pages, programme details and a non-submitting application-form preview.
 - `[x]` **M3 finance foundation:** fixed/rolling cycles, cycle-specific programme fees, immutable invoices, installments, verified offline payments, cycle enrollment and player ledgers.
 - `[x]` **M3 attendance foundation:** tenant-scoped session rosters, mobile marking and immutable correction history.
@@ -67,18 +68,22 @@ The system will never enroll from a website-supplied `paid: true` or `accepted: 
 
 - `[ ]` Guardian portal with explicitly linked children only.
 - `[ ]` Assessments and development records.
-- `[ ]` Announcements, reminders and notifications.
-- `[ ]` Referrals and reward administration.
-- `[ ]` Online payment refinements, renewals and automated reminders.
+- `[~]` Announcements, reminders and notifications: communication centre, email delivery history, upcoming payment/renewal lists and idempotent automation are implemented; guardian in-app preferences await the guardian portal.
+- `[x]` Referrals and reward administration with tenant-configurable qualification rules, manual attribution, idempotent evaluation, and pending/approved/paid reward ledger.
+- `[~]` Online payment refinements, renewals and automated reminders: renewal/payment automation is implemented; secure guardian invoice payment links remain dependent on the guardian portal and merchant settlement decision.
 
 ### M6 — Enterprise features
 
-- `[ ]` Inventory, merchandise and orders.
-- `[ ]` Scholarships and sponsorships.
+- `[x]` Tenant-safe inventory, merchandise and orders with product variants, branch/central stock, immutable movements, transactional reservations, public cart/checkout, offline sales, payment/delivery tracking and versioned storefront APIs.
+- `[x]` Scholarships and sponsorships with sponsor commitments, scoped scholarship schemes, beneficiary awards, invoice responsibility allocation, verified sponsor contributions and separate concession/sponsor receivable reporting.
 - `[ ]` Community-impact records.
 - `[ ]` Advanced reporting and analytics.
 
 ## Recently completed
+
+- Tenant-safe scholarship and sponsorship administration with full/percentage/fixed coverage, cycle/term/programme/branch scopes, beneficiary approvals, duplicate-safe invoice application, academy concessions, sponsor receivables, verified contribution payments and reversal-aware ledgers.
+- Cycle terms with automatic default-term normalization, term/cohort fee scopes, cohort-aware compulsory invoicing and a term-tabbed cycle fee workspace.
+- Academy commerce workspace with product categories, tags, variants, server-priced orders, central/branch stock, immutable adjustment/reservation/sale movements, partial/full order payments, independent fulfilment status, offline counter sales, public academy cart/checkout and authenticated external storefront APIs.
 
 - Academy branding, theme colours, tenant logo and favicon.
 - Academy-specific Student/Player/Customer terminology.
@@ -131,8 +136,8 @@ The system will never enroll from a website-supplied `paid: true` or `accepted: 
 
 At the last completed feature, the full suite passed:
 
-- 204 backend tests and 1,636 assertions.
-- 60 frontend tests.
+- 238 backend tests and 2,043 assertions.
+- 82 frontend tests.
 - TypeScript, formatting, linting and production build.
 
 The repository-wide PHPStan check currently reports pre-existing finance/player typing errors outside the invoice-register implementation; the new invoice controller reports no static-analysis errors.

@@ -54,7 +54,7 @@ class AcademyExpenseController extends Controller
                 'cycle_name' => $expense->cycle?->name,
                 'currency' => $expense->currency,
                 'amount' => Money::fromMinor($expense->amount_minor),
-                'source' => $expense->academy_invoice_write_off_id ? 'write_off' : 'manual',
+                'source' => $expense->academy_invoice_write_off_id ? 'write_off' : ($expense->referral_reward_id ? 'referral_reward' : 'manual'),
                 'attachments' => $expense->attachments->map(fn (ExpenseAttachment $attachment): array => [
                     'id' => $attachment->id, 'name' => $attachment->original_name, 'size' => $attachment->size_bytes,
                 ]),
@@ -62,8 +62,9 @@ class AcademyExpenseController extends Controller
             'summary' => [
                 'count' => (clone $summaryQuery)->count(),
                 'total' => Money::fromMinor((int) (clone $summaryQuery)->sum('amount_minor')),
-                'manual' => Money::fromMinor((int) (clone $summaryQuery)->whereNull('academy_invoice_write_off_id')->sum('amount_minor')),
+                'manual' => Money::fromMinor((int) (clone $summaryQuery)->whereNull('academy_invoice_write_off_id')->whereNull('referral_reward_id')->sum('amount_minor')),
                 'write_offs' => Money::fromMinor((int) (clone $summaryQuery)->whereNotNull('academy_invoice_write_off_id')->sum('amount_minor')),
+                'referral_rewards' => Money::fromMinor((int) (clone $summaryQuery)->whereNotNull('referral_reward_id')->sum('amount_minor')),
                 'currency' => $academy->currency,
             ],
             'categories' => $academy->expenseCategories()->withCount('expenses')->orderBy('name')->get(['id', 'name', 'is_active']),

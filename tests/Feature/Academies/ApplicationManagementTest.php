@@ -6,12 +6,15 @@ use App\Enums\AcademyRole;
 use App\Enums\ApplicationStatus;
 use App\Models\Academy;
 use App\Models\AcademyCustomField;
+use App\Models\AcademyCycle;
 use App\Models\AcademyMembership;
 use App\Models\Application;
 use App\Models\Branch;
+use App\Models\Cohort;
 use App\Models\Guardian;
 use App\Models\Player;
 use App\Models\Programme;
+use App\Models\ProgrammeCycle;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -30,6 +33,7 @@ class ApplicationManagementTest extends TestCase
         [$owner, $academy] = $this->member(AcademyRole::OwnerAdmin);
         $programme = Programme::factory()->for($academy)->create();
         $branch = Branch::factory()->for($academy)->create();
+        $cohort = $this->cohort($academy, $programme, $branch);
 
         $this->actingAs($owner)->withSession(['active_academy_id' => $academy->id])
             ->post(route('academy.applications.store'), [
@@ -42,11 +46,14 @@ class ApplicationManagementTest extends TestCase
                 'guardian_phone' => '08012345678', 'guardian_relationship' => 'Mother',
                 'guardian_whatsapp_number' => '08087654321',
                 'guardian_signature' => UploadedFile::fake()->image('signature.png', 400, 120),
+                'cohort_id' => $cohort->id, 'programme_cycle_id' => $cohort->programme_cycle_id,
                 'programme_id' => $programme->id, 'branch_id' => $branch->id,
             ])->assertRedirect()->assertInertiaFlash('toast.message', 'Application created.');
 
         $application = Application::query()->whereBelongsTo($academy)->firstOrFail();
         $this->assertSame(ApplicationStatus::Submitted, $application->status);
+        $this->assertSame($cohort->id, $application->cohort_id);
+        $this->assertSame($cohort->programme_cycle_id, $application->programme_cycle_id);
         $this->assertStringStartsWith('APP-', $application->reference);
         $this->assertSame('LRN-001', $application->internal_identifier);
         $this->assertSame('08011112223', $application->whatsapp_number);
@@ -79,7 +86,12 @@ class ApplicationManagementTest extends TestCase
     {
         Storage::fake('local');
         [$owner, $academy] = $this->member(AcademyRole::OwnerAdmin);
+        $cohort = $this->cohort($academy);
         $application = $this->application($academy, ['guardian_signature_path' => 'existing-signature.png']);
+        $application->update([
+            'cohort_id' => $cohort->id, 'programme_cycle_id' => $cohort->programme_cycle_id,
+            'programme_id' => $cohort->programmeCycle->programme_id, 'branch_id' => $cohort->branch_id,
+        ]);
         Storage::disk('local')->put('existing-signature.png', 'signature');
         $reference = $application->reference;
 
@@ -89,6 +101,7 @@ class ApplicationManagementTest extends TestCase
                 'date_of_birth' => '2014-05-02', 'gender' => 'Female', 'country' => 'Nigeria',
                 'guardian_first_name' => 'Ada', 'guardian_last_name' => 'Okafor',
                 'guardian_phone' => '08099999999', 'guardian_relationship' => 'Mother',
+                'cohort_id' => $cohort->id,
             ])->assertRedirect()->assertInertiaFlash('toast.message', 'Application details updated.');
 
         $application->refresh();
@@ -249,6 +262,28 @@ class ApplicationManagementTest extends TestCase
                 'decision' => $decision, 'review_notes' => 'Reviewed',
                 'programme_id' => $programme?->id, 'branch_id' => $branch?->id,
             ]);
+    }
+
+    private function cohort(Academy $academy, ?Programme $programme = null, ?Branch $branch = null): Cohort
+    {
+        $programme ??= Programme::factory()->for($academy)->create();
+        $branch ??= Branch::factory()->for($academy)->create();
+        $cycle = AcademyCycle::query()->create([
+            'academy_id' => $academy->id, 'name' => 'Active cycle '.str()->random(6),
+            'type' => 'fixed', 'starts_on' => '2026-01-01', 'ends_on' => '2027-12-31', 'status' => 'active',
+        ]);
+        $offering = ProgrammeCycle::query()->create([
+            'academy_id' => $academy->id, 'academy_cycle_id' => $cycle->id,
+            'programme_id' => $programme->id, 'branch_id' => $branch->id,
+            'branch_scope_id' => $branch->id, 'currency' => 'NGN', 'application_fee_minor' => 0,
+            'payment_mode' => 'one_off', 'enrollment_payment_rule' => 'full_payment', 'is_active' => true,
+        ]);
+
+        return Cohort::query()->create([
+            'academy_id' => $academy->id, 'programme_cycle_id' => $offering->id,
+            'branch_id' => $branch->id, 'name' => 'Default cohort',
+            'starts_on' => '2026-01-01', 'ends_on' => '2027-12-31', 'status' => 'open',
+        ]);
     }
 
     /** @return array{User, Academy} */

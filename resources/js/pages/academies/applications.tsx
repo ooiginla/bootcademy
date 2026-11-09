@@ -1,5 +1,13 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { ClipboardList, Eye, Pencil, Plus } from 'lucide-react';
+import {
+    CalendarRange,
+    ClipboardList,
+    Eye,
+    Pencil,
+    Plus,
+    Settings2,
+    UsersRound,
+} from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import InputError from '@/components/input-error';
@@ -63,6 +71,8 @@ export type AcademyApplication = {
     programme_id: number | null;
     programme_cycle_id: number | null;
     programme_name: string | null;
+    cohort_id?: number | null;
+    cohort_name?: string | null;
     cycle_name: string | null;
     cycle_id?: number | null;
     branch_id: number | null;
@@ -88,6 +98,9 @@ export type Invoice = {
     total: string;
     paid: string;
     written_off?: string;
+    scholarship_concession?: string;
+    sponsor_responsibility?: string;
+    sponsor_paid?: string;
     balance: string;
     installments: Array<{
         name: string;
@@ -108,6 +121,43 @@ export type ProgrammeCycleOption = Option & {
     cycle_name: string;
     branch_id: number | null;
     branch_name: string | null;
+};
+export type Cohort = {
+    id: number;
+    programme_cycle_id: number;
+    programme_id: number;
+    programme_name: string;
+    cycle_name: string;
+    branch_id: number | null;
+    branch_name: string | null;
+    name: string;
+    code: string | null;
+    starts_on: string;
+    ends_on: string | null;
+    capacity: number | null;
+    delivery_mode: 'physical' | 'virtual' | 'hybrid';
+    status: 'draft' | 'open' | 'ongoing' | 'completed' | 'cancelled';
+    is_receiving_applications?: boolean;
+    applications_open_on?: string | null;
+    applications_close_on?: string | null;
+    is_open_for_applications?: boolean;
+    applications_count?: number;
+    is_available_for_applications?: boolean;
+};
+type ApplicationIntake = {
+    id: number;
+    programme_cycle_id: number;
+    programme_name: string;
+    cycle_name: string;
+    cohort_id: number | null;
+    cohort_name: string | null;
+    branch_id: number | null;
+    branch_name: string | null;
+    opens_on: string | null;
+    closes_on: string | null;
+    is_enabled: boolean;
+    is_open: boolean;
+    applications_count: number;
 };
 type Paginator = {
     data: AcademyApplication[];
@@ -173,6 +223,7 @@ export function ApplicationDialog({
     countries,
     programmeCycles,
     activeCycles,
+    cohorts = [],
     application,
 }: {
     programmes: Option[];
@@ -181,6 +232,7 @@ export function ApplicationDialog({
     countries: string[];
     programmeCycles: ProgrammeCycleOption[];
     activeCycles: Option[];
+    cohorts?: Cohort[];
     application?: AcademyApplication;
 }) {
     const [open, setOpen] = useState(false);
@@ -192,6 +244,9 @@ export function ApplicationDialog({
     );
     const [branchId, setBranchId] = useState(
         String(application?.branch_id ?? ''),
+    );
+    const [cohortId, setCohortId] = useState(
+        String(application?.cohort_id ?? ''),
     );
     const editing = application !== undefined;
     const cycleOfferings = programmeCycles
@@ -217,6 +272,11 @@ export function ApplicationDialog({
             );
         });
     const terminology = useAcademyTerminology();
+    const availableCohorts = cohorts.filter(
+        (cohort) =>
+            cohort.is_available_for_applications ||
+            cohort.id === application?.cohort_id,
+    );
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -423,116 +483,186 @@ export function ApplicationDialog({
                                     </div>
                                 </div>
                             </fieldset>
+                            {terminology.collectGuardianInformation && (
+                                <fieldset>
+                                    <legend className="font-medium">
+                                        {terminology.guardianSingular} contact
+                                    </legend>
+                                    <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                                        <div className="grid gap-2">
+                                            <Label>First name</Label>
+                                            <Input
+                                                name="guardian_first_name"
+                                                defaultValue={
+                                                    application?.guardian_first_name ??
+                                                    ''
+                                                }
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label>Last name</Label>
+                                            <Input
+                                                name="guardian_last_name"
+                                                defaultValue={
+                                                    application?.guardian_last_name ??
+                                                    ''
+                                                }
+                                            />
+                                            <InputError
+                                                message={
+                                                    errors.guardian_last_name
+                                                }
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label>Email</Label>
+                                            <Input
+                                                name="guardian_email"
+                                                type="email"
+                                                defaultValue={
+                                                    application?.guardian_email ??
+                                                    ''
+                                                }
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label>Phone</Label>
+                                            <Input
+                                                name="guardian_phone"
+                                                type="tel"
+                                                defaultValue={
+                                                    application?.guardian_phone ??
+                                                    ''
+                                                }
+                                            />
+                                            <InputError
+                                                message={errors.guardian_phone}
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label>Relationship</Label>
+                                            <Input
+                                                name="guardian_relationship"
+                                                defaultValue={
+                                                    application?.guardian_relationship ??
+                                                    'Parent'
+                                                }
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label>WhatsApp number</Label>
+                                            <Input
+                                                name="guardian_whatsapp_number"
+                                                type="tel"
+                                                defaultValue={
+                                                    application?.guardian_whatsapp_number ??
+                                                    ''
+                                                }
+                                            />
+                                            <InputError
+                                                message={
+                                                    errors.guardian_whatsapp_number
+                                                }
+                                            />
+                                        </div>
+                                        <div className="grid gap-2 sm:col-span-2">
+                                            <Label>Signature (optional)</Label>
+                                            <Input
+                                                name="guardian_signature"
+                                                type="file"
+                                                accept="image/jpeg,image/png,image/webp"
+                                            />
+                                            <p className="text-xs text-muted-foreground">
+                                                JPG, PNG or WebP, up to 2 MB.
+                                            </p>
+                                            <InputError
+                                                message={
+                                                    errors.guardian_signature
+                                                }
+                                            />
+                                        </div>
+                                    </div>
+                                </fieldset>
+                            )}
                             <fieldset>
                                 <legend className="font-medium">
-                                    Guardian contact
+                                    Cohort and programme preference
                                 </legend>
                                 <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                                    <div className="grid gap-2">
-                                        <Label>First name</Label>
-                                        <Input
-                                            name="guardian_first_name"
-                                            defaultValue={
-                                                application?.guardian_first_name ??
-                                                ''
-                                            }
-                                        />
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label>Last name</Label>
-                                        <Input
-                                            name="guardian_last_name"
-                                            defaultValue={
-                                                application?.guardian_last_name ??
-                                                ''
-                                            }
-                                        />
-                                        <InputError
-                                            message={errors.guardian_last_name}
-                                        />
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label>Email</Label>
-                                        <Input
-                                            name="guardian_email"
-                                            type="email"
-                                            defaultValue={
-                                                application?.guardian_email ??
-                                                ''
-                                            }
-                                        />
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label>Phone</Label>
-                                        <Input
-                                            name="guardian_phone"
-                                            type="tel"
-                                            defaultValue={
-                                                application?.guardian_phone ??
-                                                ''
-                                            }
-                                        />
-                                        <InputError
-                                            message={errors.guardian_phone}
-                                        />
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label>Relationship</Label>
-                                        <Input
-                                            name="guardian_relationship"
-                                            defaultValue={
-                                                application?.guardian_relationship ??
-                                                'Parent'
-                                            }
-                                        />
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label>WhatsApp number</Label>
-                                        <Input
-                                            name="guardian_whatsapp_number"
-                                            type="tel"
-                                            defaultValue={
-                                                application?.guardian_whatsapp_number ??
-                                                ''
-                                            }
-                                        />
-                                        <InputError
-                                            message={
-                                                errors.guardian_whatsapp_number
-                                            }
-                                        />
-                                    </div>
                                     <div className="grid gap-2 sm:col-span-2">
-                                        <Label>Signature (optional)</Label>
-                                        <Input
-                                            name="guardian_signature"
-                                            type="file"
-                                            accept="image/jpeg,image/png,image/webp"
-                                        />
+                                        <Label>Cohort</Label>
+                                        <select
+                                            name="cohort_id"
+                                            className={selectClass}
+                                            value={cohortId}
+                                            onChange={(event) => {
+                                                const value =
+                                                    event.target.value;
+                                                const cohort = cohorts.find(
+                                                    (item) =>
+                                                        String(item.id) ===
+                                                        value,
+                                                );
+                                                const offering =
+                                                    programmeCycles.find(
+                                                        (item) =>
+                                                            item.id ===
+                                                            cohort?.programme_cycle_id,
+                                                    );
+                                                setCohortId(value);
+                                                setProgrammeCycleId(
+                                                    String(
+                                                        cohort?.programme_cycle_id ??
+                                                            '',
+                                                    ),
+                                                );
+                                                setCycleId(
+                                                    String(
+                                                        offering?.cycle_id ??
+                                                            '',
+                                                    ),
+                                                );
+                                                setBranchId(
+                                                    String(
+                                                        cohort?.branch_id ??
+                                                            offering?.branch_id ??
+                                                            '',
+                                                    ),
+                                                );
+                                            }}
+                                            required
+                                        >
+                                            <option value="">
+                                                Select a cohort
+                                            </option>
+                                            {availableCohorts.map((cohort) => (
+                                                <option
+                                                    key={cohort.id}
+                                                    value={cohort.id}
+                                                >
+                                                    {cohort.name} ·{' '}
+                                                    {cohort.programme_name} ·{' '}
+                                                    {cohort.cycle_name} ·{' '}
+                                                    {cohort.branch_name ??
+                                                        'All locations'}
+                                                </option>
+                                            ))}
+                                        </select>
                                         <p className="text-xs text-muted-foreground">
-                                            JPG, PNG or WebP, up to 2 MB.
+                                            The cohort determines the programme,
+                                            cycle, branch and applicable fees.
                                         </p>
                                         <InputError
-                                            message={errors.guardian_signature}
+                                            message={errors.cohort_id}
                                         />
                                     </div>
-                                </div>
-                            </fieldset>
-                            <fieldset>
-                                <legend className="font-medium">
-                                    Cycle and programme preference
-                                </legend>
-                                <div className="mt-3 grid gap-4 sm:grid-cols-2">
                                     <div className="grid gap-2">
                                         <Label>Active cycle</Label>
                                         <select
                                             name="academy_cycle_id"
                                             className={selectClass}
                                             value={cycleId}
-                                            disabled={
-                                                editing &&
-                                                application.invoices.length > 0
-                                            }
+                                            disabled
                                             onChange={(event) => {
                                                 setCycleId(event.target.value);
                                                 setProgrammeCycleId('');
@@ -565,14 +695,11 @@ export function ApplicationDialog({
                                                     </option>
                                                 )}
                                         </select>
-                                        {editing &&
-                                            application.invoices.length > 0 && (
-                                                <input
-                                                    type="hidden"
-                                                    name="academy_cycle_id"
-                                                    value={cycleId}
-                                                />
-                                            )}
+                                        <input
+                                            type="hidden"
+                                            name="academy_cycle_id"
+                                            value={cycleId}
+                                        />
                                         <p className="text-xs text-muted-foreground">
                                             The cycle determines the available
                                             programmes and application fee.
@@ -586,11 +713,7 @@ export function ApplicationDialog({
                                                     name="programme_cycle_id"
                                                     className={selectClass}
                                                     value={programmeCycleId}
-                                                    disabled={
-                                                        editing &&
-                                                        application.invoices
-                                                            .length > 0
-                                                    }
+                                                    disabled
                                                     onChange={(event) =>
                                                         setProgrammeCycleId(
                                                             event.target.value,
@@ -624,17 +747,11 @@ export function ApplicationDialog({
                                                         )?.programme_id ?? ''
                                                     }
                                                 />
-                                                {editing &&
-                                                    application.invoices
-                                                        .length > 0 && (
-                                                        <input
-                                                            type="hidden"
-                                                            name="programme_cycle_id"
-                                                            value={
-                                                                programmeCycleId
-                                                            }
-                                                        />
-                                                    )}
+                                                <input
+                                                    type="hidden"
+                                                    name="programme_cycle_id"
+                                                    value={programmeCycleId}
+                                                />
                                             </>
                                         ) : (
                                             <>
@@ -690,10 +807,7 @@ export function ApplicationDialog({
                                             name="branch_id"
                                             className={selectClass}
                                             value={branchId}
-                                            disabled={
-                                                editing &&
-                                                application.invoices.length > 0
-                                            }
+                                            disabled
                                             onChange={(event) => {
                                                 setBranchId(event.target.value);
                                                 setProgrammeCycleId('');
@@ -711,14 +825,11 @@ export function ApplicationDialog({
                                                 </option>
                                             ))}
                                         </select>
-                                        {editing &&
-                                            application.invoices.length > 0 && (
-                                                <input
-                                                    type="hidden"
-                                                    name="branch_id"
-                                                    value={branchId}
-                                                />
-                                            )}
+                                        <input
+                                            type="hidden"
+                                            name="branch_id"
+                                            value={branchId}
+                                        />
                                         <p className="text-xs text-muted-foreground">
                                             Branch-specific fees are used when
                                             configured; otherwise the academy
@@ -792,7 +903,10 @@ export function RecordPaymentDialog({
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 {trigger ?? (
-                    <Button size="sm" disabled={invoice.status === 'paid'}>
+                    <Button
+                        size="sm"
+                        disabled={['paid', 'settled'].includes(invoice.status)}
+                    >
                         Record payment
                     </Button>
                 )}
@@ -1524,6 +1638,742 @@ export function ReviewDialog({
     );
 }
 
+function CohortDialog({
+    offerings,
+    branches,
+    cohort,
+}: {
+    offerings: ProgrammeCycleOption[];
+    branches: Option[];
+    cohort?: Cohort;
+}) {
+    const [open, setOpen] = useState(false);
+    const editing = cohort !== undefined;
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button variant={editing ? 'ghost' : 'outline'} size="sm">
+                    {editing ? (
+                        <Pencil className="size-4" />
+                    ) : (
+                        <Plus className="size-4" />
+                    )}
+                    {editing ? 'Edit' : 'Add cohort'}
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>
+                        {editing ? 'Edit cohort' : 'Add cohort'}
+                    </DialogTitle>
+                    <DialogDescription>
+                        A cohort is a delivery group inside one priced programme
+                        offering. It does not replace the cycle or alter its
+                        fees.
+                    </DialogDescription>
+                </DialogHeader>
+                <Form
+                    action={
+                        editing ? `/app/cohorts/${cohort.id}` : '/app/cohorts'
+                    }
+                    method={editing ? 'patch' : 'post'}
+                    className="grid gap-4 sm:grid-cols-2"
+                    onSuccess={() => setOpen(false)}
+                >
+                    {({ processing, errors }) => (
+                        <>
+                            <div className="grid gap-2 sm:col-span-2">
+                                <Label>Programme offering</Label>
+                                <select
+                                    name="programme_cycle_id"
+                                    defaultValue={
+                                        cohort?.programme_cycle_id ?? ''
+                                    }
+                                    className={selectClass}
+                                    required
+                                >
+                                    <option value="">Select an offering</option>
+                                    {offerings.map((offering) => (
+                                        <option
+                                            key={offering.id}
+                                            value={offering.id}
+                                        >
+                                            {offering.name} ·{' '}
+                                            {offering.cycle_name}
+                                            {offering.branch_name
+                                                ? ` · ${offering.branch_name}`
+                                                : ' · All branches'}
+                                        </option>
+                                    ))}
+                                </select>
+                                <InputError
+                                    message={errors.programme_cycle_id}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Name</Label>
+                                <Input
+                                    name="name"
+                                    defaultValue={cohort?.name ?? ''}
+                                    placeholder="e.g. January Weekend Cohort"
+                                    required
+                                />
+                                <InputError message={errors.name} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Code (optional)</Label>
+                                <Input
+                                    name="code"
+                                    defaultValue={cohort?.code ?? ''}
+                                    placeholder="JAN-WE-27"
+                                />
+                                <InputError message={errors.code} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Branch (optional)</Label>
+                                <select
+                                    name="branch_id"
+                                    defaultValue={cohort?.branch_id ?? ''}
+                                    className={selectClass}
+                                >
+                                    <option value="">Use offering scope</option>
+                                    {branches.map((branch) => (
+                                        <option
+                                            key={branch.id}
+                                            value={branch.id}
+                                        >
+                                            {branch.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <InputError message={errors.branch_id} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Capacity (optional)</Label>
+                                <Input
+                                    name="capacity"
+                                    type="number"
+                                    min="1"
+                                    max="65535"
+                                    defaultValue={cohort?.capacity ?? ''}
+                                />
+                                <InputError message={errors.capacity} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Start date</Label>
+                                <Input
+                                    name="starts_on"
+                                    type="date"
+                                    defaultValue={cohort?.starts_on ?? ''}
+                                    required
+                                />
+                                <InputError message={errors.starts_on} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>End date (optional)</Label>
+                                <Input
+                                    name="ends_on"
+                                    type="date"
+                                    defaultValue={cohort?.ends_on ?? ''}
+                                />
+                                <InputError message={errors.ends_on} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Delivery format</Label>
+                                <select
+                                    name="delivery_mode"
+                                    defaultValue={
+                                        cohort?.delivery_mode ?? 'physical'
+                                    }
+                                    className={selectClass}
+                                >
+                                    <option value="physical">Physical</option>
+                                    <option value="virtual">Virtual</option>
+                                    <option value="hybrid">Hybrid</option>
+                                </select>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Status</Label>
+                                <select
+                                    name="status"
+                                    defaultValue={cohort?.status ?? 'draft'}
+                                    className={selectClass}
+                                >
+                                    <option value="draft">Draft</option>
+                                    <option value="open">Open</option>
+                                    <option value="ongoing">Ongoing</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <div className="grid gap-4 rounded-xl border bg-muted/30 p-4 sm:col-span-2 sm:grid-cols-2">
+                                <div className="grid gap-2 sm:col-span-2">
+                                    <Label>Applications</Label>
+                                    <select
+                                        name="is_receiving_applications"
+                                        defaultValue={
+                                            cohort?.is_receiving_applications
+                                                ? '1'
+                                                : '0'
+                                        }
+                                        className={selectClass}
+                                    >
+                                        <option value="0">
+                                            Not receiving applications
+                                        </option>
+                                        <option value="1">
+                                            Receiving applications
+                                        </option>
+                                    </select>
+                                    <p className="text-xs text-muted-foreground">
+                                        When enabled, applicants can select this
+                                        cohort and the system will derive its
+                                        programme, cycle, branch and fees.
+                                    </p>
+                                    <InputError
+                                        message={
+                                            errors.is_receiving_applications
+                                        }
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label>
+                                        Application opening date (optional)
+                                    </Label>
+                                    <Input
+                                        name="applications_open_on"
+                                        type="date"
+                                        defaultValue={
+                                            cohort?.applications_open_on ?? ''
+                                        }
+                                    />
+                                    <InputError
+                                        message={errors.applications_open_on}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label>
+                                        Application closing date (optional)
+                                    </Label>
+                                    <Input
+                                        name="applications_close_on"
+                                        type="date"
+                                        defaultValue={
+                                            cohort?.applications_close_on ?? ''
+                                        }
+                                    />
+                                    <InputError
+                                        message={errors.applications_close_on}
+                                    />
+                                </div>
+                            </div>
+                            <DialogFooter className="sm:col-span-2">
+                                <DialogClose asChild>
+                                    <Button type="button" variant="outline">
+                                        Cancel
+                                    </Button>
+                                </DialogClose>
+                                <Button type="submit" disabled={processing}>
+                                    {processing && <Spinner />}
+                                    {editing ? 'Save cohort' : 'Create cohort'}
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    )}
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function IntakeDialog({
+    offerings,
+    cohorts,
+    branches,
+    intake,
+}: {
+    offerings: ProgrammeCycleOption[];
+    cohorts: Cohort[];
+    branches: Option[];
+    intake?: ApplicationIntake;
+}) {
+    const [open, setOpen] = useState(false);
+    const [offeringId, setOfferingId] = useState(
+        String(intake?.programme_cycle_id ?? ''),
+    );
+    const editing = intake !== undefined;
+    const matchingCohorts = cohorts.filter(
+        (cohort) => String(cohort.programme_cycle_id) === offeringId,
+    );
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button variant={editing ? 'ghost' : 'default'} size="sm">
+                    {editing ? (
+                        <Pencil className="size-4" />
+                    ) : (
+                        <Plus className="size-4" />
+                    )}
+                    {editing ? 'Edit' : 'Add application setting'}
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>
+                        {editing
+                            ? 'Edit application setting'
+                            : 'Receive applications'}
+                    </DialogTitle>
+                    <DialogDescription>
+                        Choose exactly which offering, cohort and branch can
+                        receive applications. Leave both dates empty to keep it
+                        open continuously.
+                    </DialogDescription>
+                </DialogHeader>
+                <Form
+                    action={
+                        editing
+                            ? `/app/application-intakes/${intake.id}`
+                            : '/app/application-intakes'
+                    }
+                    method={editing ? 'patch' : 'post'}
+                    className="grid gap-4 sm:grid-cols-2"
+                    onSuccess={() => setOpen(false)}
+                >
+                    {({ processing, errors }) => (
+                        <>
+                            <div className="grid gap-2 sm:col-span-2">
+                                <Label>Programme offering</Label>
+                                <select
+                                    name="programme_cycle_id"
+                                    value={offeringId}
+                                    onChange={(event) =>
+                                        setOfferingId(event.target.value)
+                                    }
+                                    className={selectClass}
+                                    required
+                                >
+                                    <option value="">Select an offering</option>
+                                    {offerings.map((offering) => (
+                                        <option
+                                            key={offering.id}
+                                            value={offering.id}
+                                        >
+                                            {offering.name} ·{' '}
+                                            {offering.cycle_name}
+                                            {offering.branch_name
+                                                ? ` · ${offering.branch_name}`
+                                                : ' · All branches'}
+                                        </option>
+                                    ))}
+                                </select>
+                                <InputError
+                                    message={errors.programme_cycle_id}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Cohort (optional)</Label>
+                                <select
+                                    name="cohort_id"
+                                    defaultValue={intake?.cohort_id ?? ''}
+                                    className={selectClass}
+                                    disabled={!offeringId}
+                                >
+                                    <option value="">No specific cohort</option>
+                                    {matchingCohorts.map((cohort) => (
+                                        <option
+                                            key={cohort.id}
+                                            value={cohort.id}
+                                        >
+                                            {cohort.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <InputError message={errors.cohort_id} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Branch (optional)</Label>
+                                <select
+                                    name="branch_id"
+                                    defaultValue={intake?.branch_id ?? ''}
+                                    className={selectClass}
+                                >
+                                    <option value="">
+                                        Use offering/cohort scope
+                                    </option>
+                                    {branches.map((branch) => (
+                                        <option
+                                            key={branch.id}
+                                            value={branch.id}
+                                        >
+                                            {branch.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <InputError message={errors.branch_id} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Opens on (optional)</Label>
+                                <Input
+                                    name="opens_on"
+                                    type="date"
+                                    defaultValue={intake?.opens_on ?? ''}
+                                />
+                                <InputError message={errors.opens_on} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Closes on (optional)</Label>
+                                <Input
+                                    name="closes_on"
+                                    type="date"
+                                    defaultValue={intake?.closes_on ?? ''}
+                                />
+                                <InputError message={errors.closes_on} />
+                            </div>
+                            <div className="grid gap-2 sm:col-span-2">
+                                <Label>Application status</Label>
+                                <select
+                                    name="is_enabled"
+                                    defaultValue={
+                                        intake?.is_enabled === false ? '0' : '1'
+                                    }
+                                    className={selectClass}
+                                >
+                                    <option value="1">
+                                        Receiving applications
+                                    </option>
+                                    <option value="0">Paused</option>
+                                </select>
+                            </div>
+                            <DialogFooter className="sm:col-span-2">
+                                <DialogClose asChild>
+                                    <Button type="button" variant="outline">
+                                        Cancel
+                                    </Button>
+                                </DialogClose>
+                                <Button type="submit" disabled={processing}>
+                                    {processing && <Spinner />}
+                                    {editing
+                                        ? 'Save setting'
+                                        : 'Create setting'}
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    )}
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function ApplicationSettings({
+    section,
+    receiving,
+    offerings,
+    branches,
+    cohorts,
+    intakes,
+}: {
+    section: 'settings' | 'cohorts';
+    receiving: boolean;
+    offerings: ProgrammeCycleOption[];
+    branches: Option[];
+    cohorts: Cohort[];
+    intakes: ApplicationIntake[];
+}) {
+    return (
+        <div className="space-y-6">
+            {section === 'settings' && (
+                <>
+                    <div
+                        className={`rounded-2xl border p-5 ${receiving ? 'border-[#12B8B0]/30 bg-[#12B8B0]/10' : 'border-amber-300 bg-amber-50'}`}
+                    >
+                        <div className="flex items-start gap-3">
+                            <CalendarRange
+                                className={`mt-0.5 size-5 ${receiving ? 'text-[#078A85]' : 'text-amber-700'}`}
+                            />
+                            <div>
+                                <h2 className="font-semibold">
+                                    {receiving
+                                        ? 'The academy is receiving applications'
+                                        : 'The academy is currently not receiving applications'}
+                                </h2>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    Only enabled settings inside their date
+                                    range appear on the public form and API.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <section>
+                        <div className="mb-3 flex items-end justify-between gap-3">
+                            <div>
+                                <h2 className="font-semibold">
+                                    Application settings
+                                </h2>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    Control programme, cycle, cohort, branch and
+                                    application dates.
+                                </p>
+                            </div>
+                            <IntakeDialog
+                                offerings={offerings}
+                                cohorts={cohorts}
+                                branches={branches}
+                            />
+                        </div>
+                        <Card className="overflow-hidden py-0">
+                            <CardContent className="p-0">
+                                {intakes.length === 0 ? (
+                                    <div className="py-12 text-center">
+                                        <Settings2 className="mx-auto size-9 text-muted-foreground" />
+                                        <h3 className="mt-3 font-semibold">
+                                            No application settings
+                                        </h3>
+                                        <p className="mt-1 text-sm text-muted-foreground">
+                                            Applications stay closed until an
+                                            enabled setting is created.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full min-w-[900px] text-left text-sm">
+                                            <thead className="border-b bg-muted/50">
+                                                <tr>
+                                                    <th className="p-4">
+                                                        Programme / cycle
+                                                    </th>
+                                                    <th>Cohort / branch</th>
+                                                    <th>Date range</th>
+                                                    <th>Applications</th>
+                                                    <th>Status</th>
+                                                    <th className="pr-4 text-right">
+                                                        Action
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {intakes.map((intake) => (
+                                                    <tr
+                                                        key={intake.id}
+                                                        className="border-b last:border-0"
+                                                    >
+                                                        <td className="p-4">
+                                                            <p className="font-medium">
+                                                                {
+                                                                    intake.programme_name
+                                                                }
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {
+                                                                    intake.cycle_name
+                                                                }
+                                                            </p>
+                                                        </td>
+                                                        <td>
+                                                            <p>
+                                                                {intake.cohort_name ??
+                                                                    'Any cohort'}
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {intake.branch_name ??
+                                                                    'Offering scope'}
+                                                            </p>
+                                                        </td>
+                                                        <td>
+                                                            {intake.opens_on ??
+                                                                'No start date'}{' '}
+                                                            –{' '}
+                                                            {intake.closes_on ??
+                                                                'No end date'}
+                                                        </td>
+                                                        <td>
+                                                            {
+                                                                intake.applications_count
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            <Badge
+                                                                variant={
+                                                                    intake.is_open
+                                                                        ? 'default'
+                                                                        : 'secondary'
+                                                                }
+                                                            >
+                                                                {intake.is_open
+                                                                    ? 'Open now'
+                                                                    : intake.is_enabled
+                                                                      ? 'Outside dates'
+                                                                      : 'Paused'}
+                                                            </Badge>
+                                                        </td>
+                                                        <td className="pr-4 text-right">
+                                                            <IntakeDialog
+                                                                offerings={
+                                                                    offerings
+                                                                }
+                                                                cohorts={
+                                                                    cohorts
+                                                                }
+                                                                branches={
+                                                                    branches
+                                                                }
+                                                                intake={intake}
+                                                            />
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </section>
+                </>
+            )}
+
+            {section === 'cohorts' && (
+                <section>
+                    <div className="mb-3 flex items-end justify-between gap-3">
+                        <div>
+                            <h2 className="font-semibold">Cohorts</h2>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Delivery groups within a programme offering.
+                            </p>
+                        </div>
+                        <CohortDialog
+                            offerings={offerings}
+                            branches={branches}
+                        />
+                    </div>
+                    <Card className="overflow-hidden py-0">
+                        <CardContent className="p-0">
+                            {cohorts.length === 0 ? (
+                                <div className="py-12 text-center">
+                                    <UsersRound className="mx-auto size-9 text-muted-foreground" />
+                                    <h3 className="mt-3 font-semibold">
+                                        No cohorts yet
+                                    </h3>
+                                    <p className="mt-1 text-sm text-muted-foreground">
+                                        Cohorts are optional for academies that
+                                        do not run batches.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full min-w-[900px] text-left text-sm">
+                                        <thead className="border-b bg-muted/50">
+                                            <tr>
+                                                <th className="p-4">Cohort</th>
+                                                <th>Offering</th>
+                                                <th>Branch</th>
+                                                <th>Dates</th>
+                                                <th>Capacity</th>
+                                                <th>Applications</th>
+                                                <th>Status</th>
+                                                <th className="pr-4 text-right">
+                                                    Action
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {cohorts.map((cohort) => (
+                                                <tr
+                                                    key={cohort.id}
+                                                    className="border-b last:border-0"
+                                                >
+                                                    <td className="p-4">
+                                                        <p className="font-medium">
+                                                            {cohort.name}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {cohort.code ??
+                                                                cohort.delivery_mode}
+                                                        </p>
+                                                    </td>
+                                                    <td>
+                                                        {cohort.programme_name}
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {cohort.cycle_name}
+                                                        </p>
+                                                    </td>
+                                                    <td>
+                                                        {cohort.branch_name ??
+                                                            'Offering scope'}
+                                                    </td>
+                                                    <td>
+                                                        {cohort.starts_on} –{' '}
+                                                        {cohort.ends_on ??
+                                                            'Open-ended'}
+                                                    </td>
+                                                    <td>
+                                                        {cohort.capacity ??
+                                                            'No limit'}
+                                                    </td>
+                                                    <td>
+                                                        <Badge
+                                                            variant={
+                                                                cohort.is_open_for_applications
+                                                                    ? 'default'
+                                                                    : 'secondary'
+                                                            }
+                                                        >
+                                                            {cohort.is_open_for_applications
+                                                                ? 'Open now'
+                                                                : cohort.is_receiving_applications
+                                                                  ? 'Outside dates'
+                                                                  : 'Closed'}
+                                                        </Badge>
+                                                        <p className="mt-1 text-xs text-muted-foreground">
+                                                            {cohort.applications_count ??
+                                                                0}{' '}
+                                                            submitted
+                                                            {cohort.applications_open_on ||
+                                                            cohort.applications_close_on
+                                                                ? ` · ${cohort.applications_open_on ?? 'No start'} – ${cohort.applications_close_on ?? 'No end'}`
+                                                                : ''}
+                                                        </p>
+                                                    </td>
+                                                    <td>
+                                                        <Badge
+                                                            variant={
+                                                                cohort.status ===
+                                                                'cancelled'
+                                                                    ? 'destructive'
+                                                                    : 'secondary'
+                                                            }
+                                                            className="capitalize"
+                                                        >
+                                                            {cohort.status}
+                                                        </Badge>
+                                                    </td>
+                                                    <td className="pr-4 text-right">
+                                                        <CohortDialog
+                                                            offerings={
+                                                                offerings
+                                                            }
+                                                            branches={branches}
+                                                            cohort={cohort}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </section>
+            )}
+        </div>
+    );
+}
+
 export default function Applications({
     applications,
     programmes,
@@ -1533,6 +2383,10 @@ export default function Applications({
     active_cycles,
     custom_fields,
     filters,
+    active_tab = 'applications',
+    receiving_applications = false,
+    cohorts = [],
+    application_intakes = [],
 }: {
     applications: Paginator;
     programmes: Option[];
@@ -1542,6 +2396,10 @@ export default function Applications({
     active_cycles: Option[];
     custom_fields: CustomField[];
     filters: { search: string; status: string };
+    active_tab?: 'applications' | 'cohorts';
+    receiving_applications?: boolean;
+    cohorts?: Cohort[];
+    application_intakes?: ApplicationIntake[];
 }) {
     const terminology = useAcademyTerminology();
     return (
@@ -1562,226 +2420,276 @@ export default function Applications({
                             enrolments.
                         </p>
                     </div>
-                    <ApplicationDialog
-                        programmes={programmes}
-                        branches={branches}
-                        customFields={custom_fields}
-                        countries={countries}
-                        programmeCycles={programme_cycles}
-                        activeCycles={active_cycles}
-                    />
-                </div>
-                <Form
-                    action="/app/applications"
-                    method="get"
-                    className="mb-5 flex flex-wrap items-end gap-2"
-                >
-                    {() => (
-                        <>
-                            <div className="grid min-w-64 gap-1">
-                                <Label>Search</Label>
-                                <Input
-                                    type="search"
-                                    name="search"
-                                    defaultValue={filters.search}
-                                    placeholder="Name, reference, email or phone"
-                                />
-                            </div>
-                            <div className="grid gap-1">
-                                <Label>Status</Label>
-                                <select
-                                    name="status"
-                                    defaultValue={filters.status}
-                                    className={selectClass}
-                                >
-                                    <option value="all">All statuses</option>
-                                    {Object.entries(statusLabel).map(
-                                        ([value, label]) => (
-                                            <option key={value} value={value}>
-                                                {label}
-                                            </option>
-                                        ),
-                                    )}
-                                </select>
-                            </div>
-                            <Button type="submit" variant="outline">
-                                Filter
-                            </Button>
-                        </>
+                    {active_tab === 'applications' && (
+                        <ApplicationDialog
+                            programmes={programmes}
+                            branches={branches}
+                            customFields={custom_fields}
+                            countries={countries}
+                            programmeCycles={programme_cycles}
+                            activeCycles={active_cycles}
+                            cohorts={cohorts}
+                        />
                     )}
-                </Form>
-                <Card className="overflow-hidden py-0">
-                    <CardContent className="p-0">
-                        {applications.data.length === 0 ? (
-                            <div className="flex flex-col items-center py-14 text-center">
-                                <ClipboardList className="size-9 text-muted-foreground" />
-                                <h2 className="mt-4 font-semibold">
-                                    No applications found
-                                </h2>
-                                <p className="mt-2 text-sm text-muted-foreground">
-                                    Create a prospect or change the current
-                                    filters.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full min-w-[960px] text-left text-sm">
-                                    <thead className="border-b bg-muted/50 text-xs text-muted-foreground uppercase">
-                                        <tr>
-                                            <th className="px-4 py-3">
-                                                Applicant
-                                            </th>
-                                            <th className="px-4 py-3">
-                                                Guardian
-                                            </th>
-                                            <th className="px-4 py-3">
-                                                Programme
-                                            </th>
-                                            <th className="px-4 py-3">
-                                                Submitted
-                                            </th>
-                                            <th className="px-4 py-3">
-                                                Status
-                                            </th>
-                                            <th className="px-4 py-3 text-right">
-                                                Actions
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {applications.data.map(
-                                            (application) => (
-                                                <tr
-                                                    key={application.id}
-                                                    className="border-b last:border-0"
-                                                >
-                                                    <td className="px-4 py-3">
-                                                        <p className="font-medium">
-                                                            {
-                                                                application.first_name
-                                                            }{' '}
-                                                            {
-                                                                application.middle_name
-                                                            }{' '}
-                                                            {
-                                                                application.last_name
-                                                            }
-                                                        </p>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {
-                                                                application.reference
-                                                            }
-                                                            {application.source ===
-                                                                'api' &&
-                                                                ' · API'}
-                                                        </p>
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <p>
-                                                            {application.guardian_name ||
-                                                                'Not supplied'}
-                                                        </p>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {application.guardian_phone ??
-                                                                application.guardian_email}
-                                                        </p>
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <p>
-                                                            {application.programme_name ??
-                                                                'Not selected'}
-                                                        </p>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {application.branch_name ??
-                                                                'No branch'}
-                                                        </p>
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        {application.created_at}
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <Badge
-                                                            variant={
-                                                                application.status ===
-                                                                'rejected'
-                                                                    ? 'destructive'
-                                                                    : application.status ===
-                                                                        'enrolled'
-                                                                      ? 'default'
-                                                                      : 'secondary'
-                                                            }
-                                                        >
-                                                            {
-                                                                statusLabel[
-                                                                    application
-                                                                        .status
-                                                                ]
-                                                            }
-                                                        </Badge>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right">
-                                                        <Button
-                                                            asChild
-                                                            variant="outline"
-                                                            size="sm"
-                                                        >
-                                                            <Link
-                                                                href={`/app/applications/${application.id}`}
-                                                            >
-                                                                <Eye className="size-4" />
-                                                                Details
-                                                            </Link>
-                                                        </Button>
-                                                    </td>
+                </div>
+                <div
+                    role="tablist"
+                    aria-label="Application sections"
+                    className="mb-6 flex w-fit gap-1 rounded-lg border bg-muted/40 p-1"
+                >
+                    <Button
+                        asChild
+                        size="sm"
+                        variant={
+                            active_tab === 'applications' ? 'default' : 'ghost'
+                        }
+                    >
+                        <Link href="/app/applications?tab=applications">
+                            Applications
+                        </Link>
+                    </Button>
+                    <Button
+                        asChild
+                        size="sm"
+                        variant={active_tab === 'cohorts' ? 'default' : 'ghost'}
+                    >
+                        <Link href="/app/applications?tab=cohorts">
+                            Cohorts
+                        </Link>
+                    </Button>
+                </div>
+                {active_tab !== 'applications' ? (
+                    <ApplicationSettings
+                        section="cohorts"
+                        receiving={receiving_applications}
+                        offerings={programme_cycles}
+                        branches={branches}
+                        cohorts={cohorts}
+                        intakes={application_intakes}
+                    />
+                ) : (
+                    <>
+                        <Form
+                            action="/app/applications"
+                            method="get"
+                            className="mb-5 flex flex-wrap items-end gap-2"
+                        >
+                            {() => (
+                                <>
+                                    <div className="grid min-w-64 gap-1">
+                                        <Label>Search</Label>
+                                        <Input
+                                            type="search"
+                                            name="search"
+                                            defaultValue={filters.search}
+                                            placeholder="Name, reference, email or phone"
+                                        />
+                                    </div>
+                                    <div className="grid gap-1">
+                                        <Label>Status</Label>
+                                        <select
+                                            name="status"
+                                            defaultValue={filters.status}
+                                            className={selectClass}
+                                        >
+                                            <option value="all">
+                                                All statuses
+                                            </option>
+                                            {Object.entries(statusLabel).map(
+                                                ([value, label]) => (
+                                                    <option
+                                                        key={value}
+                                                        value={value}
+                                                    >
+                                                        {label}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
+                                    </div>
+                                    <Button type="submit" variant="outline">
+                                        Filter
+                                    </Button>
+                                </>
+                            )}
+                        </Form>
+                        <Card className="overflow-hidden py-0">
+                            <CardContent className="p-0">
+                                {applications.data.length === 0 ? (
+                                    <div className="flex flex-col items-center py-14 text-center">
+                                        <ClipboardList className="size-9 text-muted-foreground" />
+                                        <h2 className="mt-4 font-semibold">
+                                            No applications found
+                                        </h2>
+                                        <p className="mt-2 text-sm text-muted-foreground">
+                                            Create a prospect or change the
+                                            current filters.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full min-w-[960px] text-left text-sm">
+                                            <thead className="border-b bg-muted/50 text-xs text-muted-foreground uppercase">
+                                                <tr>
+                                                    <th className="px-4 py-3">
+                                                        Applicant
+                                                    </th>
+                                                    <th className="px-4 py-3">
+                                                        Guardian
+                                                    </th>
+                                                    <th className="px-4 py-3">
+                                                        Programme
+                                                    </th>
+                                                    <th className="px-4 py-3">
+                                                        Submitted
+                                                    </th>
+                                                    <th className="px-4 py-3">
+                                                        Status
+                                                    </th>
+                                                    <th className="px-4 py-3 text-right">
+                                                        Actions
+                                                    </th>
                                                 </tr>
-                                            ),
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                        {applications.last_page > 1 && (
-                            <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
-                                <p>
-                                    Showing {applications.from}–
-                                    {applications.to} of {applications.total}
-                                </p>
-                                <div className="flex gap-2">
-                                    {applications.prev_page_url && (
-                                        <Button
-                                            asChild
-                                            variant="outline"
-                                            size="sm"
-                                        >
-                                            <Link
-                                                href={
-                                                    applications.prev_page_url
-                                                }
-                                            >
-                                                Previous
-                                            </Link>
-                                        </Button>
-                                    )}
-                                    {applications.next_page_url && (
-                                        <Button
-                                            asChild
-                                            variant="outline"
-                                            size="sm"
-                                        >
-                                            <Link
-                                                href={
-                                                    applications.next_page_url
-                                                }
-                                            >
-                                                Next
-                                            </Link>
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                                            </thead>
+                                            <tbody>
+                                                {applications.data.map(
+                                                    (application) => (
+                                                        <tr
+                                                            key={application.id}
+                                                            className="border-b last:border-0"
+                                                        >
+                                                            <td className="px-4 py-3">
+                                                                <p className="font-medium">
+                                                                    {
+                                                                        application.first_name
+                                                                    }{' '}
+                                                                    {
+                                                                        application.middle_name
+                                                                    }{' '}
+                                                                    {
+                                                                        application.last_name
+                                                                    }
+                                                                </p>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {
+                                                                        application.reference
+                                                                    }
+                                                                    {application.source ===
+                                                                        'api' &&
+                                                                        ' · API'}
+                                                                </p>
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <p>
+                                                                    {application.guardian_name ||
+                                                                        'Not supplied'}
+                                                                </p>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {application.guardian_phone ??
+                                                                        application.guardian_email}
+                                                                </p>
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <p>
+                                                                    {application.programme_name ??
+                                                                        'Not selected'}
+                                                                </p>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {application.branch_name ??
+                                                                        'No branch'}
+                                                                </p>
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                {
+                                                                    application.created_at
+                                                                }
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <Badge
+                                                                    variant={
+                                                                        application.status ===
+                                                                        'rejected'
+                                                                            ? 'destructive'
+                                                                            : application.status ===
+                                                                                'enrolled'
+                                                                              ? 'default'
+                                                                              : 'secondary'
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        statusLabel[
+                                                                            application
+                                                                                .status
+                                                                        ]
+                                                                    }
+                                                                </Badge>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right">
+                                                                <Button
+                                                                    asChild
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                >
+                                                                    <Link
+                                                                        href={`/app/applications/${application.id}`}
+                                                                    >
+                                                                        <Eye className="size-4" />
+                                                                        Details
+                                                                    </Link>
+                                                                </Button>
+                                                            </td>
+                                                        </tr>
+                                                    ),
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                                {applications.last_page > 1 && (
+                                    <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
+                                        <p>
+                                            Showing {applications.from}–
+                                            {applications.to} of{' '}
+                                            {applications.total}
+                                        </p>
+                                        <div className="flex gap-2">
+                                            {applications.prev_page_url && (
+                                                <Button
+                                                    asChild
+                                                    variant="outline"
+                                                    size="sm"
+                                                >
+                                                    <Link
+                                                        href={
+                                                            applications.prev_page_url
+                                                        }
+                                                    >
+                                                        Previous
+                                                    </Link>
+                                                </Button>
+                                            )}
+                                            {applications.next_page_url && (
+                                                <Button
+                                                    asChild
+                                                    variant="outline"
+                                                    size="sm"
+                                                >
+                                                    <Link
+                                                        href={
+                                                            applications.next_page_url
+                                                        }
+                                                    >
+                                                        Next
+                                                    </Link>
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </>
+                )}
             </main>
         </>
     );

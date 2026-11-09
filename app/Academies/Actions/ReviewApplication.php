@@ -5,9 +5,13 @@ namespace App\Academies\Actions;
 use App\Enums\AcademyCycleType;
 use App\Enums\AcademyInvoiceStatus;
 use App\Enums\ApplicationStatus;
+use App\Enums\CohortMembershipStatus;
+use App\Enums\CohortStatus;
 use App\Models\Academy;
 use App\Models\AcademyInvoice;
 use App\Models\Application;
+use App\Models\Cohort;
+use App\Models\CohortMembership;
 use App\Models\Player;
 use App\Models\User;
 use App\Platform\AuditLogger;
@@ -192,13 +196,34 @@ class ReviewApplication
                     $endsOn = $offering->cycle->rollingEndDate($activation);
                 }
             }
-            $this->saveEnrollment->handle($academy, $player, $actor, [
+            $enrollment = $this->saveEnrollment->handle($academy, $player, $actor, [
                 'programme_id' => $programmeId,
                 'academy_cycle_id' => $offering?->academy_cycle_id,
                 'programme_cycle_id' => $offering?->id,
                 'branch_id' => $data['branch_id'] ?? $application->branch_id,
                 'status' => 'active', 'starts_on' => $startsOn->toDateString(), 'ends_on' => $endsOn?->toDateString(),
             ], $request);
+            if ($application->cohort_id !== null) {
+                $cohort = Cohort::query()->where('academy_id', $academy->id)
+                    ->whereKey($application->cohort_id)->lockForUpdate()->firstOrFail();
+                if ($offering === null || $cohort->programme_cycle_id !== $offering->id) {
+                    throw ValidationException::withMessages(['decision' => 'The selected cohort no longer matches this programme offering.']);
+                }
+                if (in_array($cohort->status, [CohortStatus::Completed, CohortStatus::Cancelled], true)) {
+                    throw ValidationException::withMessages(['decision' => 'The selected cohort is no longer available for enrolment.']);
+                }
+                if ($cohort->capacity !== null && $cohort->memberships()->where('status', CohortMembershipStatus::Active->value)->count() >= $cohort->capacity) {
+                    throw ValidationException::withMessages(['decision' => 'The selected cohort has reached capacity.']);
+                }
+                CohortMembership::query()->create([
+                    'academy_id' => $academy->id,
+                    'cohort_id' => $cohort->id,
+                    'enrollment_id' => $enrollment->id,
+                    'player_id' => $player->id,
+                    'joined_on' => $startsOn->toDateString(),
+                    'status' => CohortMembershipStatus::Active,
+                ]);
+            }
             $application->converted_player_id = $player->id;
         } catch (Throwable $exception) {
             if ($guardianSignaturePath !== null) {

@@ -22,8 +22,8 @@ class UpdateInvoiceInstallments
 
         return DB::transaction(function () use ($academy, $invoice, $actor, $data, $request): AcademyInvoice {
             $invoice = AcademyInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-            if ($invoice->paid_minor !== 0) {
-                throw ValidationException::withMessages(['installments' => 'Installments cannot be changed after payment.']);
+            if ($invoice->paid_minor !== 0 || $invoice->scholarship_concession_minor !== 0 || $invoice->sponsor_responsibility_minor !== 0) {
+                throw ValidationException::withMessages(['installments' => 'Installments cannot be changed after payment or scholarship allocation.']);
             }
             $invoice->installments()->delete();
             foreach (array_values($data['installments']) as $index => $installment) {

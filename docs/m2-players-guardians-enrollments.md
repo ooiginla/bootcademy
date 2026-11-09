@@ -9,6 +9,8 @@ Academy Owner/Admin users can manage learner profiles, guardian contacts and pro
 - A guardian can be created inline while creating a player, or an existing guardian can be linked with a relationship such as Mother, Father, Parent or Aunt.
 - The first selected guardian is the primary and emergency contact. Authorized pickup is not implied.
 - Programme enrolment has an independent lifecycle: active, paused, withdrawn or completed.
+- Programme member lists support bulk completion and bulk re-enrollment. Completion keeps the original enrollment and financial history; it never deletes the record.
+- A term registration belongs to an enrollment. Registering the same enrollment for another term does not create a duplicate programme enrollment, while moving to a different programme or cycle creates or reactivates the target enrollment and preserves the selected source enrollment as completed history.
 - Player lifecycle is active, paused, withdrawn or graduated.
 - Only Owner/Admin can access this privacy-sensitive directory until branch-scoped roster policies are implemented.
 - Audit records contain changed field names and related record IDs, not copied child/contact values.

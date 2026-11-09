@@ -41,6 +41,9 @@ class AcademyBrandingController extends Controller
                     'plural' => $context->academy()->member_label_plural,
                     'staff_singular' => $context->academy()->staff_label_singular,
                     'staff_plural' => $context->academy()->staff_label_plural,
+                    'guardian_singular' => $context->academy()->guardian_label_singular,
+                    'guardian_plural' => $context->academy()->guardian_label_plural,
+                    'collect_guardian_information' => $context->academy()->collect_guardian_information,
                 ],
                 'bank_details' => [
                     'bank_name' => $context->academy()->bank_name,
@@ -116,6 +119,9 @@ class AcademyBrandingController extends Controller
             $request->string('member_label_plural')->toString(),
             $request->string('staff_label_singular')->toString(),
             $request->string('staff_label_plural')->toString(),
+            $request->string('guardian_label_singular')->toString(),
+            $request->string('guardian_label_plural')->toString(),
+            $request->boolean('collect_guardian_information'),
             $request,
         );
 

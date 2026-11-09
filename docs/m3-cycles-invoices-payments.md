@@ -11,6 +11,26 @@ Academies can define how programme membership and fees are tracked without rewri
 
 An academy can have one active cycle. Activating another cycle closes the previously active cycle; historical enrollments, invoices and payments remain attached to their original cycle.
 
+## Terms and fee scope
+
+A cycle may contain ordered terms. Terms are time periods and are siblings of programme offerings; they do not replace cohorts. A cohort remains a group beneath a programme offering and normally continues across every term in the cycle.
+
+```text
+Academy cycle
+├── Terms
+│   ├── Term 1
+│   ├── Term 2
+│   └── Term 3
+└── Programme offerings
+    └── Cohorts/class arms
+```
+
+Every new cycle receives a default term. The terms migration creates one default term for every existing cycle and assigns all existing programme fee items to it. Existing general cycle fees remain outside the term structure.
+
+Programme fee items may remain at the whole-cycle/session level or target a term and, optionally, one cohort belonging to that programme offering. Other cycle fees may likewise remain general or target a term and optional cohort. The cycle workspace displays unscoped programme fees as **Programme cycle fees**, unscoped custom fees as **Additional cycle fees**, and term-scoped fees inside the selected term. A cohort-scoped compulsory fee only invoices an active enrollment with active membership in that cohort. A missing term means the whole cycle; a missing cohort means all otherwise eligible cohorts. Application invoices exclude programme fee items targeting another cohort, while already-issued invoices remain immutable snapshots.
+
+Bulk re-enrollment records one idempotent term registration beneath each player's enrollment. On the first term registration for a new enrollment, unscoped whole-cycle programme fees and compulsory cycle fees are included alongside the selected term's fees. On later term registrations, only newly applicable term-scoped fees are issued. Repeating the same bulk operation returns the existing registration and cannot issue a second registration invoice. Existing application programme invoices are treated as the full historical offering snapshot and are not duplicated by term registration.
+
 ## Programme offerings and fees
 
 A programme is offered within a cycle through a programme-cycle record. The offering contains:
@@ -61,4 +81,6 @@ The Payments directory lists verified collections by payer, fee type, programme,
 
 ## Deferred online settlement decision
 
-The ledger is provider-independent and manual verified payments work now. Paystack initialization, webhook settlement and receipts remain pending the product decision between direct academy merchant accounts and platform subaccounts/split settlement. No real payment can be marked verified from a browser-provided success value.
+The ledger remains provider-independent. Manual verified payments and public Paystack payments both post into the same immutable academy ledger. Paystack initialization uses server-calculated invoice allocations, Popup V2 receives only the provider access code, and the backend independently verifies the reference, amount, currency and status. Signed webhooks and browser polling share an idempotent settlement service; a browser-provided success value can never mark a payment verified. Verified applicants receive a queued email receipt.
+
+The current implementation uses the platform Paystack merchant keys and does not invent subaccount splits or academy payouts. Per-academy customer surcharge settings are controlled by Platform Super Admin and audited. Direct-academy accounts or split settlement remain a separate product/compliance decision.

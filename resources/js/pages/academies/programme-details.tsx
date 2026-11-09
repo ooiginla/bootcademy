@@ -1,8 +1,29 @@
-import { Form, Head, Link } from '@inertiajs/react';
-import { ArrowLeft, BookOpenText, MapPin, UsersRound } from 'lucide-react';
+import { Form, Head, Link, useForm } from '@inertiajs/react';
+import {
+    ArrowLeft,
+    BookOpenText,
+    MapPin,
+    UserRoundCheck,
+    UsersRound,
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
+import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import { useAcademyTerminology } from '@/hooks/use-academy-terminology';
 import {
     ProgrammeDialog,
@@ -31,12 +52,346 @@ type Paginator = {
     prev_page_url: string | null;
     next_page_url: string | null;
 };
+type ReenrollmentOptions = {
+    cycles: Array<{
+        id: number;
+        name: string;
+        is_active: boolean;
+        terms: Array<{
+            id: number;
+            name: string;
+            starts_on: string | null;
+            ends_on: string | null;
+        }>;
+    }>;
+    offerings: Array<{
+        id: number;
+        academy_cycle_id: number;
+        programme_id: number;
+        programme_name: string;
+        branch_id: number | null;
+        branch_name: string | null;
+        cohorts: Array<{ id: number; name: string; branch_id: number | null }>;
+    }>;
+};
+
+const selectClass =
+    'h-10 w-full rounded-md border border-input bg-background px-3 text-sm';
+
+function BulkEnrollmentActions({
+    programmeId,
+    selectedIds,
+    clearSelection,
+    options,
+    branches,
+}: {
+    programmeId: number;
+    selectedIds: number[];
+    clearSelection: () => void;
+    options: ReenrollmentOptions;
+    branches: BranchOption[];
+}) {
+    const [completeOpen, setCompleteOpen] = useState(false);
+    const [reenrollOpen, setReenrollOpen] = useState(false);
+    const complete = useForm({ enrollment_ids: selectedIds });
+    const reenroll = useForm({
+        enrollment_ids: selectedIds,
+        academy_cycle_id: '',
+        programme_id: '',
+        academy_cycle_term_id: '',
+        branch_id: '',
+        cohort_id: '',
+    });
+    const cycle = options.cycles.find(
+        (item) => item.id === Number(reenroll.data.academy_cycle_id),
+    );
+    const programmes = useMemo(() => {
+        const seen = new Set<number>();
+        return options.offerings.filter((offering) => {
+            if (
+                offering.academy_cycle_id !==
+                    Number(reenroll.data.academy_cycle_id) ||
+                seen.has(offering.programme_id)
+            )
+                return false;
+            seen.add(offering.programme_id);
+            return true;
+        });
+    }, [options.offerings, reenroll.data.academy_cycle_id]);
+    const matchingOffering =
+        options.offerings.find(
+            (offering) =>
+                offering.academy_cycle_id ===
+                    Number(reenroll.data.academy_cycle_id) &&
+                offering.programme_id === Number(reenroll.data.programme_id) &&
+                offering.branch_id === Number(reenroll.data.branch_id),
+        ) ??
+        options.offerings.find(
+            (offering) =>
+                offering.academy_cycle_id ===
+                    Number(reenroll.data.academy_cycle_id) &&
+                offering.programme_id === Number(reenroll.data.programme_id) &&
+                offering.branch_id === null,
+        );
+
+    function submitComplete(event: FormEvent) {
+        event.preventDefault();
+        complete.setData('enrollment_ids', selectedIds);
+        complete.patch(`/app/programmes/${programmeId}/enrollments/complete`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setCompleteOpen(false);
+                clearSelection();
+            },
+        });
+    }
+
+    function submitReenroll(event: FormEvent) {
+        event.preventDefault();
+        reenroll.transform((data) => ({
+            ...data,
+            enrollment_ids: selectedIds,
+        }));
+        reenroll.post(`/app/programmes/${programmeId}/enrollments/reenroll`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setReenrollOpen(false);
+                clearSelection();
+                reenroll.reset();
+            },
+        });
+    }
+
+    return (
+        <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+                {selectedIds.length} selected
+            </span>
+            <Dialog open={completeOpen} onOpenChange={setCompleteOpen}>
+                <DialogTrigger asChild>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        disabled={!selectedIds.length}
+                    >
+                        Mark completed
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            Complete selected enrollments?
+                        </DialogTitle>
+                        <DialogDescription>
+                            The enrollment history and invoices remain
+                            available. Active cohort memberships will also be
+                            completed.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={submitComplete} className="space-y-4">
+                        <InputError message={complete.errors.enrollment_ids} />
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button type="button" variant="outline">
+                                    Cancel
+                                </Button>
+                            </DialogClose>
+                            <Button
+                                type="submit"
+                                disabled={complete.processing}
+                            >
+                                {complete.processing && <Spinner />}Complete{' '}
+                                {selectedIds.length}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={reenrollOpen} onOpenChange={setReenrollOpen}>
+                <DialogTrigger asChild>
+                    <Button type="button" disabled={!selectedIds.length}>
+                        <UserRoundCheck className="size-4" />
+                        Enroll into new term
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>Re-enroll selected members</DialogTitle>
+                        <DialogDescription>
+                            The prior enrollment is preserved. Applicable
+                            compulsory and programme fees are invoiced once for
+                            the selected term.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form
+                        onSubmit={submitReenroll}
+                        className="grid gap-4 sm:grid-cols-2"
+                    >
+                        <div className="grid gap-2 sm:col-span-2">
+                            <Label>Cycle</Label>
+                            <select
+                                className={selectClass}
+                                value={reenroll.data.academy_cycle_id}
+                                onChange={(e) =>
+                                    reenroll.setData({
+                                        ...reenroll.data,
+                                        academy_cycle_id: e.target.value,
+                                        programme_id: '',
+                                        academy_cycle_term_id: '',
+                                        cohort_id: '',
+                                    })
+                                }
+                                required
+                            >
+                                <option value="">Select cycle</option>
+                                {options.cycles.map((item) => (
+                                    <option key={item.id} value={item.id}>
+                                        {item.name}
+                                        {item.is_active ? ' (Active)' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            <InputError
+                                message={reenroll.errors.academy_cycle_id}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Programme</Label>
+                            <select
+                                className={selectClass}
+                                value={reenroll.data.programme_id}
+                                onChange={(e) =>
+                                    reenroll.setData({
+                                        ...reenroll.data,
+                                        programme_id: e.target.value,
+                                        cohort_id: '',
+                                    })
+                                }
+                                required
+                                disabled={!cycle}
+                            >
+                                <option value="">Select programme</option>
+                                {programmes.map((item) => (
+                                    <option
+                                        key={item.programme_id}
+                                        value={item.programme_id}
+                                    >
+                                        {item.programme_name}
+                                    </option>
+                                ))}
+                            </select>
+                            <InputError
+                                message={reenroll.errors.programme_id}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Term</Label>
+                            <select
+                                className={selectClass}
+                                value={reenroll.data.academy_cycle_term_id}
+                                onChange={(e) =>
+                                    reenroll.setData(
+                                        'academy_cycle_term_id',
+                                        e.target.value,
+                                    )
+                                }
+                                required
+                                disabled={!cycle}
+                            >
+                                <option value="">Select term</option>
+                                {cycle?.terms.map((term) => (
+                                    <option key={term.id} value={term.id}>
+                                        {term.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <InputError
+                                message={reenroll.errors.academy_cycle_term_id}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Branch</Label>
+                            <select
+                                className={selectClass}
+                                value={reenroll.data.branch_id}
+                                onChange={(e) =>
+                                    reenroll.setData({
+                                        ...reenroll.data,
+                                        branch_id: e.target.value,
+                                        cohort_id: '',
+                                    })
+                                }
+                            >
+                                <option value="">No specific branch</option>
+                                {branches.map((branch) => (
+                                    <option key={branch.id} value={branch.id}>
+                                        {branch.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <InputError message={reenroll.errors.branch_id} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Cohort (optional)</Label>
+                            <select
+                                className={selectClass}
+                                value={reenroll.data.cohort_id}
+                                onChange={(e) =>
+                                    reenroll.setData(
+                                        'cohort_id',
+                                        e.target.value,
+                                    )
+                                }
+                                disabled={!matchingOffering}
+                            >
+                                <option value="">No cohort</option>
+                                {matchingOffering?.cohorts
+                                    .filter(
+                                        (cohort) =>
+                                            cohort.branch_id === null ||
+                                            cohort.branch_id ===
+                                                Number(reenroll.data.branch_id),
+                                    )
+                                    .map((cohort) => (
+                                        <option
+                                            key={cohort.id}
+                                            value={cohort.id}
+                                        >
+                                            {cohort.name}
+                                        </option>
+                                    ))}
+                            </select>
+                            <InputError message={reenroll.errors.cohort_id} />
+                        </div>
+                        <InputError message={reenroll.errors.enrollment_ids} />
+                        <DialogFooter className="sm:col-span-2">
+                            <DialogClose asChild>
+                                <Button type="button" variant="outline">
+                                    Cancel
+                                </Button>
+                            </DialogClose>
+                            <Button
+                                type="submit"
+                                disabled={reenroll.processing}
+                            >
+                                {reenroll.processing && <Spinner />}Enroll{' '}
+                                {selectedIds.length}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
+}
 
 export default function ProgrammeDetails({
     programme,
     members,
     branch_options,
     selected_branch_id,
+    selected_status,
+    reenrollment_options,
     active_tab,
     can_manage,
 }: {
@@ -44,13 +399,16 @@ export default function ProgrammeDetails({
     members: Paginator;
     branch_options: BranchOption[];
     selected_branch_id: number | null;
+    selected_status: 'all' | 'active' | 'completed';
+    reenrollment_options: ReenrollmentOptions | null;
     active_tab: 'details' | 'members';
     can_manage: boolean;
 }) {
     const terminology = useAcademyTerminology();
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const branchValue = selected_branch_id?.toString() ?? 'all';
     const tabHref = (tab: 'details' | 'members') =>
-        `/app/programmes/${programme.id}?tab=${tab}&branch=${branchValue}`;
+        `/app/programmes/${programme.id}?tab=${tab}&branch=${branchValue}&status=${selected_status}`;
 
     return (
         <>
@@ -236,6 +594,30 @@ export default function ProgrammeDetails({
                                                 )}
                                             </select>
                                         </div>
+                                        <div className="grid gap-1">
+                                            <label
+                                                htmlFor="programme-status-filter"
+                                                className="text-sm font-medium"
+                                            >
+                                                Enrollment status
+                                            </label>
+                                            <select
+                                                id="programme-status-filter"
+                                                name="status"
+                                                defaultValue={selected_status}
+                                                className="h-9 min-w-40 rounded-md border bg-background px-3 text-sm"
+                                            >
+                                                <option value="active">
+                                                    Active
+                                                </option>
+                                                <option value="completed">
+                                                    Completed
+                                                </option>
+                                                <option value="all">
+                                                    All statuses
+                                                </option>
+                                            </select>
+                                        </div>
                                         <Button type="submit" variant="outline">
                                             Apply filter
                                         </Button>
@@ -249,6 +631,15 @@ export default function ProgrammeDetails({
                                     : terminology.pluralLower}
                             </Badge>
                         </div>
+                        {can_manage && reenrollment_options && (
+                            <BulkEnrollmentActions
+                                programmeId={programme.id}
+                                selectedIds={selectedIds}
+                                clearSelection={() => setSelectedIds([])}
+                                options={reenrollment_options}
+                                branches={branch_options}
+                            />
+                        )}
                         <Card className="overflow-hidden py-0">
                             <CardContent className="p-0">
                                 {members.data.length === 0 ? (
@@ -259,8 +650,12 @@ export default function ProgrammeDetails({
                                             {terminology.pluralLower} found
                                         </h3>
                                         <p className="mt-2 text-sm text-muted-foreground">
-                                            There are no enrolments for the
-                                            selected branch.
+                                            There are no{' '}
+                                            {selected_status === 'all'
+                                                ? ''
+                                                : selected_status}{' '}
+                                            enrollments for the selected
+                                            filters.
                                         </p>
                                     </div>
                                 ) : (
@@ -268,6 +663,62 @@ export default function ProgrammeDetails({
                                         <table className="w-full min-w-[850px] text-left text-sm">
                                             <thead className="border-b bg-muted/50 text-xs text-muted-foreground uppercase">
                                                 <tr>
+                                                    {can_manage && (
+                                                        <th className="w-12 px-4 py-3 font-medium">
+                                                            <input
+                                                                type="checkbox"
+                                                                aria-label="Select all enrollments on this page"
+                                                                checked={
+                                                                    members.data
+                                                                        .length >
+                                                                        0 &&
+                                                                    members.data.every(
+                                                                        (
+                                                                            member,
+                                                                        ) =>
+                                                                            selectedIds.includes(
+                                                                                member.id,
+                                                                            ),
+                                                                    )
+                                                                }
+                                                                onChange={(
+                                                                    event,
+                                                                ) =>
+                                                                    setSelectedIds(
+                                                                        event
+                                                                            .target
+                                                                            .checked
+                                                                            ? Array.from(
+                                                                                  new Set(
+                                                                                      [
+                                                                                          ...selectedIds,
+                                                                                          ...members.data.map(
+                                                                                              (
+                                                                                                  member,
+                                                                                              ) =>
+                                                                                                  member.id,
+                                                                                          ),
+                                                                                      ],
+                                                                                  ),
+                                                                              )
+                                                                            : selectedIds.filter(
+                                                                                  (
+                                                                                      id,
+                                                                                  ) =>
+                                                                                      !members.data.some(
+                                                                                          (
+                                                                                              member,
+                                                                                          ) =>
+                                                                                              member.id ===
+                                                                                              id,
+                                                                                      ),
+                                                                              ),
+                                                                    )
+                                                                }
+                                                                className="size-4 rounded border-input"
+                                                            />
+                                                        </th>
+                                                    )}
                                                     <th className="px-4 py-3 font-medium">
                                                         {terminology.singular}
                                                     </th>
@@ -294,6 +745,38 @@ export default function ProgrammeDetails({
                                                         key={member.id}
                                                         className="border-b last:border-0 hover:bg-muted/30"
                                                     >
+                                                        {can_manage && (
+                                                            <td className="px-4 py-3">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    aria-label={`Select ${member.player_name}`}
+                                                                    checked={selectedIds.includes(
+                                                                        member.id,
+                                                                    )}
+                                                                    onChange={(
+                                                                        event,
+                                                                    ) =>
+                                                                        setSelectedIds(
+                                                                            event
+                                                                                .target
+                                                                                .checked
+                                                                                ? [
+                                                                                      ...selectedIds,
+                                                                                      member.id,
+                                                                                  ]
+                                                                                : selectedIds.filter(
+                                                                                      (
+                                                                                          id,
+                                                                                      ) =>
+                                                                                          id !==
+                                                                                          member.id,
+                                                                                  ),
+                                                                        )
+                                                                    }
+                                                                    className="size-4 rounded border-input"
+                                                                />
+                                                            </td>
+                                                        )}
                                                         <td className="px-4 py-3">
                                                             <p className="font-medium">
                                                                 {

@@ -14,10 +14,11 @@ This plan must be executed before M1 is declared complete. Each scenario is firs
 
 - Academy admin can read and update allowed settings for their own academy.
 - Academy admin cannot read, update, upload a logo for or download a private asset from another academy, including by direct ID.
-- Academy admin cannot change theme colours unless explicitly granted the platform capability.
+- Academy Owner/Admin can change public-site theme colours for their own academy but cannot change another academy's colours.
 - Platform Super Admin can update a selected academy theme through `/platform/*`; a normal user cannot.
 - Invalid colours, inaccessible contrast and invalid logo type/size are rejected without changing existing branding.
 - Theme and logo shared with Inertia always belong to the active academy; cache keys cannot leak another academy's theme.
+- Tenant colours affect only public academy sites; the authenticated workspace retains the standard Bootcademy theme.
 
 ## Roles and scopes
 

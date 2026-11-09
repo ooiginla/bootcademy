@@ -30,6 +30,7 @@ describe('Programme cycle fees', () => {
                 currency="NGN"
                 programmes={[{ id: 1, name: 'Under 17' }]}
                 branches={[{ id: 2, name: 'Gbagada' }]}
+                cohorts={[]}
                 cycle_fees={[
                     {
                         id: 9,
@@ -39,6 +40,25 @@ describe('Programme cycle fees', () => {
                         currency: 'NGN',
                         is_compulsory: false,
                         applies_to_all_programmes: true,
+                        academy_cycle_term_id: null,
+                        term_name: null,
+                        cohort_id: null,
+                        cohort_name: null,
+                        is_active: true,
+                        programmes: [],
+                    },
+                    {
+                        id: 10,
+                        name: 'Term materials',
+                        category: 'books',
+                        amount: '10000.00',
+                        currency: 'NGN',
+                        is_compulsory: true,
+                        applies_to_all_programmes: true,
+                        academy_cycle_term_id: 5,
+                        term_name: 'Term 1',
+                        cohort_id: null,
+                        cohort_name: null,
                         is_active: true,
                         programmes: [],
                     },
@@ -55,7 +75,54 @@ describe('Programme cycle fees', () => {
                     status: 'active',
                     programme_cycles_count: 0,
                     enrollments_count: 0,
-                    offerings: [],
+                    terms_count: 1,
+                    offerings: [
+                        {
+                            id: 20,
+                            programme_id: 1,
+                            fee_name: 'Programme fee',
+                            branch_id: null,
+                            branch_name: null,
+                            programme_name: 'Under 17',
+                            currency: 'NGN',
+                            application_fee: '5000.00',
+                            fee_total: '180000.00',
+                            payment_mode: 'one_off',
+                            is_active: true,
+                            fee_items: [
+                                {
+                                    id: 21,
+                                    name: 'Session registration',
+                                    amount: '30000.00',
+                                    academy_cycle_term_id: null,
+                                    term_name: null,
+                                    cohort_id: null,
+                                    cohort_name: null,
+                                },
+                                {
+                                    id: 22,
+                                    name: 'Term tuition',
+                                    amount: '150000.00',
+                                    academy_cycle_term_id: 5,
+                                    term_name: 'Term 1',
+                                    cohort_id: null,
+                                    cohort_name: null,
+                                },
+                            ],
+                            installments: [],
+                        },
+                    ],
+                    terms: [
+                        {
+                            id: 5,
+                            name: 'Term 1',
+                            starts_on: '2027-01-01',
+                            ends_on: '2027-04-30',
+                            sort_order: 1,
+                            is_default: true,
+                            is_active: true,
+                        },
+                    ],
                 }}
             />,
         );
@@ -70,8 +137,8 @@ describe('Programme cycle fees', () => {
 
         expect(amountInputs[0]).toHaveValue('5,000');
         expect(amountInputs[1]).toHaveValue('150,000');
-        expect(screen.getByText('₦5,000.00')).toBeInTheDocument();
-        expect(screen.getByText('₦150,000.00')).toBeInTheDocument();
+        expect(screen.getAllByText('₦5,000.00').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('₦150,000.00').length).toBeGreaterThan(0);
         expect(screen.getByText('₦155,000.00')).toBeInTheDocument();
         expect(
             screen.getByText(/Full payment is always available/),
@@ -82,7 +149,12 @@ describe('Programme cycle fees', () => {
         expect(
             screen.getByRole('option', { name: 'Gbagada' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('Other bookable fees')).toBeInTheDocument();
+        expect(screen.getByText('General cycle fees')).toBeInTheDocument();
+        expect(screen.getByText('Programme cycle fees')).toBeInTheDocument();
+        expect(screen.getByText('Session registration')).toBeInTheDocument();
+        expect(screen.getByText('Programme term fees')).toBeInTheDocument();
+        expect(screen.getByText('Term tuition')).toBeInTheDocument();
+        expect(screen.getByText('Term materials')).toBeInTheDocument();
         expect(screen.getByText('Medical fee')).toBeInTheDocument();
         expect(screen.getByText('₦25,000.00')).toBeInTheDocument();
         expect(screen.getByText('Optional')).toBeInTheDocument();

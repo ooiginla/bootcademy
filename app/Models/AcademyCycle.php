@@ -75,6 +75,11 @@ class AcademyCycle extends Model
         return $this->hasMany(AcademyCycleFee::class);
     }
 
+    public function terms(): HasMany
+    {
+        return $this->hasMany(AcademyCycleTerm::class);
+    }
+
     protected function casts(): array
     {
         return [

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Academies;
 use App\Academies\AcademyContext;
 use App\Academies\Actions\ReviewApplication;
 use App\Academies\Actions\SaveApplication;
+use App\Academies\ApplicationIntakeAvailability;
 use App\Enums\ApplicationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Academies\ReviewApplicationRequest;
@@ -19,7 +20,7 @@ use Inertia\Response;
 
 class ApplicationController extends Controller
 {
-    public function index(Request $request, AcademyContext $context): Response
+    public function index(Request $request, AcademyContext $context, ApplicationIntakeAvailability $availability): Response
     {
         abort_unless($context->canManageAcademy(), 403);
         $academy = $context->academy();
@@ -30,10 +31,13 @@ class ApplicationController extends Controller
             $status = 'all';
         }
 
+        $activeTab = $request->query('tab') === 'cohorts' ? 'cohorts' : 'applications';
+        $openIntakeIds = $availability->query($academy)->pluck('id');
+
         return Inertia::render('academies/applications', [
             'applications' => $academy->applications()
                 ->with([
-                    'programme:id,name', 'branch:id,name', 'programmeCycle.cycle:id,name,type,starts_on,ends_on,duration_value,duration_unit',
+                    'programme:id,name', 'branch:id,name', 'cohort:id,name', 'programmeCycle.cycle:id,name,type,starts_on,ends_on,duration_value,duration_unit',
                     'invoices.installments', 'invoices.cycle',
                 ])
                 ->when($status !== 'all', fn ($query) => $query->where('status', $status))
@@ -69,6 +73,7 @@ class ApplicationController extends Controller
                     'programme_cycle_id' => $application->programme_cycle_id,
                     'cycle_id' => $application->programmeCycle?->academy_cycle_id,
                     'cycle_name' => $application->programmeCycle?->cycle->name,
+                    'cohort_id' => $application->cohort_id, 'cohort_name' => $application->cohort?->name,
                     'branch_id' => $application->branch_id, 'branch_name' => $application->branch?->name,
                     'custom_fields' => $application->custom_fields ?? [], 'status' => $application->status->value,
                     'review_notes' => $application->review_notes, 'created_at' => $application->created_at?->toDateString(),
@@ -111,6 +116,31 @@ class ApplicationController extends Controller
                     'is_sensitive' => $field->is_sensitive, 'is_active' => $field->is_active, 'sort_order' => $field->sort_order,
                 ]),
             'filters' => ['search' => $search, 'status' => $status],
+            'active_tab' => $activeTab,
+            'cohorts' => $academy->cohorts()
+                ->with([
+                    'programmeCycle.cycle:id,name,status', 'programmeCycle.programme:id,name', 'branch:id,name',
+                    'intakes' => fn ($query) => $query->withCount('applications')->orderByDesc('id'),
+                ])
+                ->orderByDesc('starts_on')->get()->map(fn ($cohort): array => [
+                    'id' => $cohort->id, 'programme_cycle_id' => $cohort->programme_cycle_id,
+                    'programme_id' => $cohort->programmeCycle->programme_id,
+                    'programme_name' => $cohort->programmeCycle->programme->name,
+                    'cycle_name' => $cohort->programmeCycle->cycle->name,
+                    'branch_id' => $cohort->branch_id, 'branch_name' => $cohort->branch?->name,
+                    'name' => $cohort->name, 'code' => $cohort->code,
+                    'starts_on' => $cohort->starts_on->toDateString(), 'ends_on' => $cohort->ends_on?->toDateString(),
+                    'capacity' => $cohort->capacity, 'delivery_mode' => $cohort->delivery_mode,
+                    'status' => $cohort->status->value,
+                    'is_available_for_applications' => $cohort->programmeCycle->is_active
+                        && $cohort->programmeCycle->cycle->status->value === 'active'
+                        && ! in_array($cohort->status->value, ['completed', 'cancelled'], true),
+                    'is_receiving_applications' => $cohort->intakes->first()?->is_enabled ?? false,
+                    'applications_open_on' => $cohort->intakes->first()?->opens_on?->toDateString(),
+                    'applications_close_on' => $cohort->intakes->first()?->closes_on?->toDateString(),
+                    'is_open_for_applications' => $openIntakeIds->contains($cohort->intakes->first()?->id),
+                    'applications_count' => $cohort->intakes->sum('applications_count'),
+                ])->values(),
         ]);
     }
 
@@ -128,7 +158,7 @@ class ApplicationController extends Controller
         abort_unless($application->academy_id === $context->id(), 404);
         $academy = $context->academy();
         $application->load([
-            'programme:id,name', 'branch:id,name', 'programmeCycle.cycle',
+            'programme:id,name', 'branch:id,name', 'cohort:id,name', 'programmeCycle.cycle',
             'invoices.installments', 'invoices.items', 'invoices.cycle',
             'payments.allocations.invoice',
         ]);
@@ -145,6 +175,19 @@ class ApplicationController extends Controller
                     'cycle_id' => $offering->academy_cycle_id, 'cycle_name' => $offering->cycle->name,
                     'name' => $offering->programme->name, 'branch_id' => $offering->branch_id,
                     'branch_name' => $offering->branch?->name,
+                ])->values(),
+            'cohorts' => $academy->cohorts()
+                ->with(['programmeCycle.cycle:id,name,status', 'programmeCycle.programme:id,name', 'branch:id,name'])
+                ->orderByDesc('starts_on')->get()->map(fn ($cohort): array => [
+                    'id' => $cohort->id, 'programme_cycle_id' => $cohort->programme_cycle_id,
+                    'programme_id' => $cohort->programmeCycle->programme_id,
+                    'programme_name' => $cohort->programmeCycle->programme->name,
+                    'cycle_name' => $cohort->programmeCycle->cycle->name,
+                    'branch_id' => $cohort->branch_id, 'branch_name' => $cohort->branch?->name,
+                    'name' => $cohort->name, 'status' => $cohort->status->value,
+                    'is_available_for_applications' => $cohort->programmeCycle->is_active
+                        && $cohort->programmeCycle->cycle->status->value === 'active'
+                        && ! in_array($cohort->status->value, ['completed', 'cancelled'], true),
                 ])->values(),
             'countries' => config('countries'),
             'custom_fields' => $academy->customFields()->where('entity_type', 'player')->where('is_active', true)->orderBy('sort_order')->get()
@@ -205,6 +248,7 @@ class ApplicationController extends Controller
             'programme_cycle_id' => $application->programme_cycle_id,
             'cycle_id' => $application->programmeCycle?->academy_cycle_id,
             'cycle_name' => $application->programmeCycle?->cycle->name,
+            'cohort_id' => $application->cohort_id, 'cohort_name' => $application->cohort?->name,
             'branch_id' => $application->branch_id, 'branch_name' => $application->branch?->name,
             'custom_fields' => $application->custom_fields ?? [], 'status' => $application->status->value,
             'review_notes' => $application->review_notes, 'created_at' => $application->created_at?->toDateString(),

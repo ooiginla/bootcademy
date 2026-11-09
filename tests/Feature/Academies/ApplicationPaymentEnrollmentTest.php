@@ -9,6 +9,7 @@ use App\Models\AcademyCycleFee;
 use App\Models\AcademyInvoice;
 use App\Models\AcademyMembership;
 use App\Models\Application;
+use App\Models\Cohort;
 use App\Models\Programme;
 use App\Models\ProgrammeCycle;
 use App\Models\User;
@@ -198,7 +199,7 @@ class ApplicationPaymentEnrollmentTest extends TestCase
         $this->assertSame($application->converted_player_id, $invoice->player_id);
     }
 
-    public function test_application_requires_an_offering_from_the_active_cycle_when_fees_are_configured(): void
+    public function test_application_requires_a_cohort_from_an_active_cycle(): void
     {
         [$owner, $academy] = $this->member();
         [, $offering] = $this->offering($academy, 'fixed', 'full_payment', 5000, 'one_off');
@@ -207,7 +208,7 @@ class ApplicationPaymentEnrollmentTest extends TestCase
             ->post(route('academy.applications.store'), [
                 'first_name' => 'Amara', 'last_name' => 'Okafor',
                 'programme_id' => $offering->programme_id,
-            ])->assertSessionHasErrors('programme_cycle_id');
+            ])->assertSessionHasErrors('cohort_id');
 
         $this->assertDatabaseCount('applications', 0);
     }
@@ -240,12 +241,17 @@ class ApplicationPaymentEnrollmentTest extends TestCase
             'application_fee_minor' => 0, 'payment_mode' => 'one_off',
             'enrollment_payment_rule' => 'full_payment', 'is_active' => true,
         ]);
+        $otherCohort = Cohort::query()->create([
+            'academy_id' => $academy->id, 'programme_cycle_id' => $otherOffering->id,
+            'name' => 'Other cohort', 'starts_on' => '2026-01-01', 'status' => 'open',
+        ]);
 
         $this->actingAs($owner)->withSession(['active_academy_id' => $academy->id])
             ->patch(route('academy.applications.update', $application), [
                 'first_name' => $application->first_name, 'last_name' => $application->last_name,
+                'cohort_id' => $otherCohort->id,
                 'programme_cycle_id' => $otherOffering->id, 'programme_id' => $otherProgramme->id,
-            ])->assertSessionHasErrors('programme_cycle_id');
+            ])->assertSessionHasErrors('cohort_id');
 
         $this->assertSame($offering->id, $application->fresh()->programme_cycle_id);
     }
@@ -282,16 +288,23 @@ class ApplicationPaymentEnrollmentTest extends TestCase
                 ['academy_id' => $academy->id, 'name' => 'Final', 'amount_minor' => 5000, 'due_on' => $type === 'fixed' ? '2026-11-20' : null, 'due_offset_days' => $type === 'rolling' ? 60 : null, 'sequence' => 2],
             ]);
         }
+        Cohort::query()->create([
+            'academy_id' => $academy->id, 'programme_cycle_id' => $offering->id,
+            'name' => 'Default cohort', 'starts_on' => $type === 'fixed' ? '2026-01-01' : now()->toDateString(),
+            'ends_on' => $type === 'fixed' ? '2026-12-31' : null, 'status' => 'open',
+        ]);
 
         return [$cycle, $offering];
     }
 
     private function submitApplication(User $owner, Academy $academy, ProgrammeCycle $offering): Application
     {
+        $cohort = Cohort::query()->where('programme_cycle_id', $offering->id)->firstOrFail();
         $this->actingAs($owner)->withSession(['active_academy_id' => $academy->id])
             ->post(route('academy.applications.store'), [
                 'first_name' => 'Amara', 'last_name' => 'Okafor', 'date_of_birth' => '2014-05-02',
                 'guardian_first_name' => 'Ada', 'guardian_last_name' => 'Okafor', 'guardian_phone' => '08012345678',
+                'cohort_id' => $cohort->id,
                 'programme_cycle_id' => $offering->id, 'programme_id' => $offering->programme_id,
             ])->assertRedirect();
 

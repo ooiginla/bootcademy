@@ -2,6 +2,21 @@
 
 Laravel is configured with the in-memory `array` mailer by default so local development cannot accidentally send real messages or write private invitation links into logs. That transport does not deliver to an inbox.
 
+## Resend
+
+To deliver transactional mail with Resend, install `resend/resend-php` and configure these local-only values:
+
+```text
+MAIL_MAILER=resend
+RESEND_API_KEY=re_your_key
+MAIL_FROM_ADDRESS=onboarding@resend.dev
+MAIL_FROM_NAME="Bootcademy"
+```
+
+`onboarding@resend.dev` is suitable only for Resend's restricted test delivery. To send to arbitrary applicants, verify a sending domain in Resend and replace `MAIL_FROM_ADDRESS` with an address on that domain. Run `php artisan config:clear` after changing mail configuration.
+
+Application and payment messages are queued. `composer run dev` starts the queue listener together with the web server and frontend. When running processes separately, also run `php artisan queue:work`.
+
 To deliver invitation email through an SMTP provider, set the following local-only values in `.env`:
 
 ```text

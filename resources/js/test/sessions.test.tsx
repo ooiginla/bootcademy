@@ -76,7 +76,7 @@ describe('Session scheduling', () => {
             screen
                 .getByRole('button', { name: 'Apply filters' })
                 .closest('form'),
-        ).toHaveClass('md:grid-cols-5');
+        ).toHaveClass('md:grid-cols-6');
         fireEvent.click(screen.getByRole('button', { name: 'Add session' }));
         expect(
             screen.getByRole('button', { name: 'Select branches' }),

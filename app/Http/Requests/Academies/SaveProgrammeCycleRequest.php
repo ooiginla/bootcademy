@@ -6,6 +6,7 @@ use App\Academies\AcademyContext;
 use App\Enums\AcademyCycleType;
 use App\Enums\ProgrammeCyclePaymentMode;
 use App\Models\AcademyCycle;
+use App\Models\Cohort;
 use App\Models\ProgrammeCycle;
 use App\Support\Money;
 use Illuminate\Database\Query\Builder;
@@ -63,6 +64,8 @@ class SaveProgrammeCycleRequest extends FormRequest
             'fee_items' => ['required', 'array', 'min:1', 'max:20'],
             'fee_items.*.name' => ['required', 'string', 'max:120'],
             'fee_items.*.amount' => ['required', 'regex:/^\d{1,12}(?:\.\d{1,2})?$/', 'not_in:0,0.00'],
+            'fee_items.*.academy_cycle_term_id' => ['nullable', 'integer', Rule::exists('academy_cycle_terms', 'id')->where($forAcademy)],
+            'fee_items.*.cohort_id' => ['nullable', 'integer', Rule::exists('cohorts', 'id')->where($forAcademy)],
             'installments' => ['exclude_unless:payment_mode,installments', 'required_if:payment_mode,installments', 'array', 'min:2', 'max:24'],
             'installments.*.name' => ['required_if:payment_mode,installments', 'string', 'max:120'],
             'installments.*.amount' => ['required_if:payment_mode,installments', 'regex:/^\d{1,12}(?:\.\d{1,2})?$/', 'not_in:0,0.00'],
@@ -77,6 +80,22 @@ class SaveProgrammeCycleRequest extends FormRequest
             /** @var AcademyCycle $cycle */
             $cycle = $this->route('cycle');
             $offering = $this->route('programmeCycle');
+            foreach ($this->input('fee_items', []) as $index => $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+                $termId = $item['academy_cycle_term_id'] ?? null;
+                if ($termId && ! $cycle->terms()->whereKey($termId)->exists()) {
+                    $validator->errors()->add("fee_items.{$index}.academy_cycle_term_id", 'Select a term from this billing cycle.');
+                }
+                $cohortId = $item['cohort_id'] ?? null;
+                if ($cohortId) {
+                    $cohort = Cohort::query()->whereKey($cohortId)->first();
+                    if (! $offering instanceof ProgrammeCycle || $cohort?->programme_cycle_id !== $offering->id) {
+                        $validator->errors()->add("fee_items.{$index}.cohort_id", 'The cohort must belong to this programme offering. Save the programme offering before adding a cohort-specific fee.');
+                    }
+                }
+            }
             $duplicateQuery = ProgrammeCycle::query()
                 ->where('academy_id', app(AcademyContext::class)->id())
                 ->where('academy_cycle_id', $cycle->id)

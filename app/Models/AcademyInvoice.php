@@ -35,7 +35,8 @@ use Illuminate\Support\Carbon;
 #[Fillable([
     'academy_id', 'number', 'fee_name', 'application_id', 'player_id', 'academy_cycle_id', 'programme_cycle_id',
     'programme_id', 'branch_id', 'purpose', 'status', 'currency', 'total_minor', 'paid_minor', 'written_off_minor',
-    'academy_cycle_fee_id', 'issued_at', 'due_on', 'cancellation_reason', 'cancelled_at', 'cancelled_by_user_id', 'created_by_user_id',
+    'academy_cycle_fee_id', 'enrollment_term_registration_id', 'scholarship_concession_minor', 'sponsor_responsibility_minor',
+    'sponsor_paid_minor', 'issued_at', 'due_on', 'cancellation_reason', 'cancelled_at', 'cancelled_by_user_id', 'created_by_user_id',
 ])]
 class AcademyInvoice extends Model
 {
@@ -103,9 +104,32 @@ class AcademyInvoice extends Model
         return $this->belongsTo(AcademyCycleFee::class, 'academy_cycle_fee_id');
     }
 
+    public function enrollmentTermRegistration(): BelongsTo
+    {
+        return $this->belongsTo(EnrollmentTermRegistration::class);
+    }
+
+    public function scholarshipAllocations(): HasMany
+    {
+        return $this->hasMany(ScholarshipInvoiceAllocation::class);
+    }
+
     public function balanceMinor(): int
     {
-        return $this->total_minor - $this->paid_minor - $this->written_off_minor;
+        return max(0, $this->total_minor - $this->paid_minor - $this->written_off_minor - $this->scholarship_concession_minor);
+    }
+
+    public function personalBalanceMinor(): int
+    {
+        $studentPaid = $this->paid_minor - $this->sponsor_paid_minor;
+
+        return max(0, $this->total_minor - $studentPaid - $this->written_off_minor
+            - $this->scholarship_concession_minor - $this->sponsor_responsibility_minor);
+    }
+
+    public function sponsorBalanceMinor(): int
+    {
+        return max(0, $this->sponsor_responsibility_minor - $this->sponsor_paid_minor);
     }
 
     protected function casts(): array
@@ -113,6 +137,7 @@ class AcademyInvoice extends Model
         return [
             'purpose' => AcademyInvoicePurpose::class, 'status' => AcademyInvoiceStatus::class,
             'total_minor' => 'integer', 'paid_minor' => 'integer', 'written_off_minor' => 'integer',
+            'scholarship_concession_minor' => 'integer', 'sponsor_responsibility_minor' => 'integer', 'sponsor_paid_minor' => 'integer',
             'issued_at' => 'immutable_datetime', 'due_on' => 'date', 'cancelled_at' => 'immutable_datetime',
         ];
     }

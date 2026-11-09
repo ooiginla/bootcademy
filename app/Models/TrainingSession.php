@@ -26,7 +26,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $notes
  * @property string $status
  */
-#[Fillable(['academy_id', 'branch_id', 'programme_id', 'all_branches', 'coach_membership_id', 'title', 'starts_at', 'ends_at', 'capacity', 'location', 'delivery_mode', 'meeting_link', 'notes', 'status', 'created_by_user_id'])]
+#[Fillable(['academy_id', 'branch_id', 'programme_id', 'cohort_id', 'all_branches', 'coach_membership_id', 'title', 'starts_at', 'ends_at', 'capacity', 'location', 'delivery_mode', 'meeting_link', 'notes', 'status', 'created_by_user_id'])]
 class TrainingSession extends Model
 {
     /** @return BelongsTo<Academy, $this> */
@@ -45,6 +45,11 @@ class TrainingSession extends Model
     public function programme(): BelongsTo
     {
         return $this->belongsTo(Programme::class);
+    }
+
+    public function cohort(): BelongsTo
+    {
+        return $this->belongsTo(Cohort::class);
     }
 
     /** @return BelongsTo<AcademyMembership, $this> */

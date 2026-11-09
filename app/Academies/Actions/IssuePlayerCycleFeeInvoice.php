@@ -30,6 +30,9 @@ class IssuePlayerCycleFeeInvoice
             if (! $fee->applies_to_all_programmes) {
                 $enrollments->whereIn('programme_id', $fee->programmes()->select('programmes.id'));
             }
+            if ($fee->cohort_id !== null) {
+                $enrollments->whereHas('cohortMemberships', fn ($query) => $query->where('cohort_id', $fee->cohort_id)->where('status', 'active'));
+            }
             $enrollment = $enrollments->first();
             if ($enrollment === null) {
                 throw ValidationException::withMessages(['fee_id' => 'This fee does not apply to any active programme enrollment for the player.']);
@@ -38,6 +41,7 @@ class IssuePlayerCycleFeeInvoice
             if ($existing !== null) {
                 return $existing;
             }
+            $dueOn = $fee->term()->value('ends_on') ?? $enrollment->ends_on;
             do {
                 $number = 'INV-'.now()->format('Ym').'-'.Str::upper(Str::random(8));
             } while ($academy->invoices()->where('number', $number)->exists());
@@ -49,13 +53,13 @@ class IssuePlayerCycleFeeInvoice
                 'programme_id' => $enrollment->programme_id, 'branch_id' => $enrollment->branch_id,
                 'purpose' => AcademyInvoicePurpose::Custom, 'status' => AcademyInvoiceStatus::Issued,
                 'currency' => $fee->currency, 'total_minor' => $fee->amount_minor, 'paid_minor' => 0,
-                'written_off_minor' => 0, 'issued_at' => now(), 'due_on' => $enrollment->ends_on,
+                'written_off_minor' => 0, 'issued_at' => now(), 'due_on' => $dueOn,
                 'created_by_user_id' => $actor->id,
             ]);
             $invoice->items()->create(['academy_id' => $academy->id, 'description' => $fee->name, 'amount_minor' => $fee->amount_minor, 'sort_order' => 0]);
             $invoice->installments()->create([
                 'academy_id' => $academy->id, 'name' => $fee->name, 'amount_minor' => $fee->amount_minor,
-                'paid_minor' => 0, 'written_off_minor' => 0, 'due_on' => $enrollment->ends_on,
+                'paid_minor' => 0, 'written_off_minor' => 0, 'due_on' => $dueOn,
                 'due_offset_days' => null, 'sequence' => 1,
             ]);
             $this->audit->record('academy.invoice.manual_fee_issued', $actor, $academy, $invoice, ['cycle_fee_id' => $fee->id], $request);

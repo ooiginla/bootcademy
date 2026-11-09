@@ -332,7 +332,9 @@ function WriteOffDialog({
 
 function InvoiceActions({ invoice }: { invoice: Invoice }) {
     const [menuOpen, setMenuOpen] = useState(false);
-    const open = !['paid', 'void', 'written_off'].includes(invoice.status);
+    const open = !['paid', 'settled', 'void', 'written_off'].includes(
+        invoice.status,
+    );
     if (!open) {
         return <span className="text-muted-foreground">—</span>;
     }
@@ -1017,6 +1019,49 @@ export default function PlayerDetails({
                                                                 invoice.currency,
                                                                 invoice.balance,
                                                             )}
+                                                            {(Number(
+                                                                invoice.scholarship_concession ??
+                                                                    0,
+                                                            ) > 0 ||
+                                                                Number(
+                                                                    invoice.sponsor_responsibility ??
+                                                                        0,
+                                                                ) > 0) && (
+                                                                <div className="mt-1 space-y-0.5 text-xs font-normal text-muted-foreground">
+                                                                    {Number(
+                                                                        invoice.scholarship_concession ??
+                                                                            0,
+                                                                    ) > 0 && (
+                                                                        <p>
+                                                                            Scholarship:{' '}
+                                                                            {formatCurrency(
+                                                                                invoice.currency,
+                                                                                invoice.scholarship_concession ??
+                                                                                    '0.00',
+                                                                            )}
+                                                                        </p>
+                                                                    )}
+                                                                    {Number(
+                                                                        invoice.sponsor_responsibility ??
+                                                                            0,
+                                                                    ) > 0 && (
+                                                                        <p>
+                                                                            Sponsor:{' '}
+                                                                            {formatCurrency(
+                                                                                invoice.currency,
+                                                                                invoice.sponsor_paid ??
+                                                                                    '0.00',
+                                                                            )}{' '}
+                                                                            /{' '}
+                                                                            {formatCurrency(
+                                                                                invoice.currency,
+                                                                                invoice.sponsor_responsibility ??
+                                                                                    '0.00',
+                                                                            )}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                         </td>
                                                         <td className="px-4 py-3">
                                                             <Badge
@@ -1024,8 +1069,12 @@ export default function PlayerDetails({
                                                                     invoice.status ===
                                                                     'void'
                                                                         ? 'destructive'
-                                                                        : invoice.status ===
-                                                                            'paid'
+                                                                        : [
+                                                                                'paid',
+                                                                                'settled',
+                                                                            ].includes(
+                                                                                invoice.status,
+                                                                            )
                                                                           ? 'secondary'
                                                                           : 'outline'
                                                                 }

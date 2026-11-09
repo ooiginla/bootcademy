@@ -8,6 +8,7 @@ use App\Models\TrainingSession;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class SaveTrainingSessionRequest extends FormRequest
 {
@@ -53,6 +54,7 @@ class SaveTrainingSessionRequest extends FormRequest
             'branch_ids' => ['array', 'required_unless:all_branches,true'],
             'branch_ids.*' => ['integer', 'distinct', Rule::exists('branches', 'id')->where($academy)],
             'programme_id' => ['required', 'integer', Rule::exists('programmes', 'id')->where($academy)],
+            'cohort_id' => ['nullable', 'integer', Rule::exists('cohorts', 'id')->where($academy)],
             'coach_membership_id' => ['nullable', 'integer', Rule::exists('academy_memberships', 'id')->where($coach)],
             'coach_membership_ids' => ['array'],
             'coach_membership_ids.*' => ['integer', 'distinct', Rule::exists('academy_memberships', 'id')->where($coach)],
@@ -65,5 +67,26 @@ class SaveTrainingSessionRequest extends FormRequest
             'notes' => ['nullable', 'string', 'max:5000'],
             'status' => ['required', Rule::in(['scheduled', 'completed', 'cancelled'])],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if (! $this->filled('cohort_id')) {
+                return;
+            }
+            $academy = app(AcademyContext::class)->academy();
+            $cohort = $academy->cohorts()->with('programmeCycle')->find($this->integer('cohort_id'));
+            if ($cohort === null) {
+                return;
+            }
+            if ($cohort->programmeCycle->programme_id !== $this->integer('programme_id')) {
+                $validator->errors()->add('cohort_id', 'The selected cohort does not belong to this programme.');
+            }
+            $branchIds = collect($this->input('branch_ids', []))->map(fn ($id): int => (int) $id);
+            if (! $this->boolean('all_branches') && $cohort->branch_id !== null && ! $branchIds->contains($cohort->branch_id)) {
+                $validator->errors()->add('branch_ids', 'The session must include the cohort branch.');
+            }
+        });
     }
 }

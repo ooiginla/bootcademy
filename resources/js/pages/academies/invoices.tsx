@@ -34,6 +34,10 @@ type Invoice = {
     paid: string;
     owed: string;
     written_off: string;
+    scholarship_concession?: string;
+    sponsor_responsibility?: string;
+    sponsor_paid?: string;
+    personal_owed?: string;
     payer_name: string;
     player_id: number | null;
     application_id: number | null;
@@ -518,11 +522,60 @@ export default function Invoices({
                                                         invoice.currency,
                                                         invoice.owed,
                                                     )}
+                                                    {(Number(
+                                                        invoice.sponsor_responsibility ??
+                                                            0,
+                                                    ) > 0 ||
+                                                        Number(
+                                                            invoice.scholarship_concession ??
+                                                                0,
+                                                        ) > 0) && (
+                                                        <p className="mt-1 text-xs font-normal text-muted-foreground">
+                                                            Student:{' '}
+                                                            {formatCurrency(
+                                                                invoice.currency,
+                                                                invoice.personal_owed ??
+                                                                    invoice.owed,
+                                                            )}
+                                                        </p>
+                                                    )}
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
                                                     {formatCurrency(
                                                         invoice.currency,
                                                         invoice.written_off,
+                                                    )}
+                                                    {Number(
+                                                        invoice.scholarship_concession ??
+                                                            0,
+                                                    ) > 0 && (
+                                                        <p className="mt-1 text-xs text-violet-700">
+                                                            Scholarship:{' '}
+                                                            {formatCurrency(
+                                                                invoice.currency,
+                                                                invoice.scholarship_concession ??
+                                                                    '0.00',
+                                                            )}
+                                                        </p>
+                                                    )}
+                                                    {Number(
+                                                        invoice.sponsor_responsibility ??
+                                                            0,
+                                                    ) > 0 && (
+                                                        <p className="mt-1 text-xs text-blue-700">
+                                                            Sponsor:{' '}
+                                                            {formatCurrency(
+                                                                invoice.currency,
+                                                                invoice.sponsor_paid ??
+                                                                    '0.00',
+                                                            )}{' '}
+                                                            /{' '}
+                                                            {formatCurrency(
+                                                                invoice.currency,
+                                                                invoice.sponsor_responsibility ??
+                                                                    '0.00',
+                                                            )}
+                                                        </p>
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3">
@@ -531,8 +584,12 @@ export default function Invoices({
                                                             invoice.status ===
                                                             'void'
                                                                 ? 'destructive'
-                                                                : invoice.status ===
-                                                                    'paid'
+                                                                : [
+                                                                        'paid',
+                                                                        'settled',
+                                                                    ].includes(
+                                                                        invoice.status,
+                                                                    )
                                                                   ? 'secondary'
                                                                   : 'outline'
                                                         }

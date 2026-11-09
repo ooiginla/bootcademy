@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, CheckCircle2, Palette } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, CreditCard, Palette } from 'lucide-react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,12 @@ type Props = {
         id: number;
         name: string;
         theme: AcademyTheme;
+        paystack_fees: {
+            percentage: string;
+            fixed_fee: string;
+            cap: string;
+            waiver_threshold: string;
+        };
     };
 };
 
@@ -21,12 +27,21 @@ export default function PlatformAcademyBranding({ managedAcademy }: Props) {
         primary_color: managedAcademy.theme.primary,
         secondary_color: managedAcademy.theme.secondary,
     });
+    const feeForm = useForm(managedAcademy.paystack_fees);
 
     function submit(event: FormEvent) {
         event.preventDefault();
         form.patch(`/platform/academies/${managedAcademy.id}/branding`, {
             preserveScroll: true,
         });
+    }
+
+    function submitFees(event: FormEvent) {
+        event.preventDefault();
+        feeForm.patch(
+            `/platform/academies/${managedAcademy.id}/paystack-fees`,
+            { preserveScroll: true },
+        );
     }
 
     return (
@@ -51,6 +66,82 @@ export default function PlatformAcademyBranding({ managedAcademy }: Props) {
                         readable contrast.
                     </p>
                 </div>
+
+                <Card className="mt-6">
+                    <CardHeader>
+                        <h2 className="flex items-center gap-2 font-semibold">
+                            <CreditCard className="size-5 text-primary" />{' '}
+                            Paystack customer fee
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                            Added to online checkout so the academy receives its
+                            intended fee. Defaults reflect Paystack’s current
+                            Nigerian local pricing.
+                        </p>
+                    </CardHeader>
+                    <CardContent>
+                        <form
+                            onSubmit={submitFees}
+                            className="grid gap-5 sm:grid-cols-2"
+                        >
+                            {(
+                                [
+                                    [
+                                        'percentage',
+                                        'Percentage (%)',
+                                        'e.g. 1.50',
+                                    ],
+                                    [
+                                        'fixed_fee',
+                                        'Fixed fee (₦)',
+                                        'e.g. 100.00',
+                                    ],
+                                    [
+                                        'cap',
+                                        'Maximum fee (₦)',
+                                        'Leave blank for no cap',
+                                    ],
+                                    [
+                                        'waiver_threshold',
+                                        'Fixed-fee waiver below (₦)',
+                                        'e.g. 2500.00',
+                                    ],
+                                ] as const
+                            ).map(([key, label, placeholder]) => (
+                                <div key={key} className="grid gap-2">
+                                    <Label htmlFor={`paystack-${key}`}>
+                                        {label}
+                                    </Label>
+                                    <Input
+                                        id={`paystack-${key}`}
+                                        inputMode="decimal"
+                                        value={feeForm.data[key]}
+                                        placeholder={placeholder}
+                                        onChange={(event) =>
+                                            feeForm.setData(
+                                                key,
+                                                event.target.value,
+                                            )
+                                        }
+                                    />
+                                    <InputError message={feeForm.errors[key]} />
+                                </div>
+                            ))}
+                            <div className="sm:col-span-2">
+                                <Button
+                                    type="submit"
+                                    disabled={
+                                        feeForm.processing || !feeForm.isDirty
+                                    }
+                                >
+                                    {feeForm.processing
+                                        ? 'Saving…'
+                                        : 'Save Paystack fees'}
+                                </Button>
+                            </div>
+                        </form>
+                    </CardContent>
+                </Card>
 
                 <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
                     <Card>

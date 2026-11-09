@@ -117,3 +117,15 @@ use this paystack keys for test
 
 PAYSTACK_PUBLIC_KEY=<test public key; keep in .env only>
 PAYSTACK_SECRET_KEY=<test secret key; keep in .env only>
+
+COLOUR THEME
+
+Recommended website color usage
+Website element Color
+Header / Navbar Deep Navy #071D49
+Main headings Deep Navy #071D49
+Primary CTA buttons Orange #FF6900
+Links / Secondary buttons Royal Blue #0878D1
+Success / Progress indicators Teal #12B8B0
+Page background White #FFFFFF
+Alternate sections Light Blue Gray #F3F7FB

@@ -9,6 +9,7 @@ use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Academies\SaveAttendanceRequest;
 use App\Models\AttendanceRecord;
+use App\Models\CohortMembership;
 use App\Models\Enrollment;
 use App\Models\Player;
 use App\Models\TrainingSession;
@@ -23,7 +24,7 @@ class AttendanceController extends Controller
     {
         abort_unless($trainingSession->academy_id === $context->id(), 404);
         abort_unless(AttendanceAccess::allowed($trainingSession, $context), 403);
-        $trainingSession->load(['branches:id,name', 'programme:id,name', 'coaches.user:id,name']);
+        $trainingSession->load(['branches:id,name', 'programme:id,name', 'cohort:id,name', 'coaches.user:id,name']);
         $players = $this->roster($trainingSession, $context);
         $records = $trainingSession->attendanceRecords()->withCount('changes')->get()->keyBy('player_id');
 
@@ -31,6 +32,7 @@ class AttendanceController extends Controller
             'session' => [
                 'id' => $trainingSession->id, 'title' => $trainingSession->title,
                 'programme' => $trainingSession->programme->name,
+                'cohort' => $trainingSession->cohort?->name,
                 'branches' => $trainingSession->all_branches ? ['All branches'] : $trainingSession->branches->pluck('name')->values(),
                 'coaches' => $trainingSession->coaches->map(fn ($coach): string => $coach->user->name)->values(),
                 'starts_at' => $trainingSession->starts_at->setTimezone($context->academy()->timezone)->format('D, j M Y · g:i A'),
@@ -77,6 +79,18 @@ class AttendanceController extends Controller
         abort_unless($session->academy_id === $context->id(), 404);
         $sessionDate = $session->starts_at->setTimezone($context->academy()->timezone)->toDateString();
         $branchIds = $session->branches()->pluck('branches.id');
+
+        if ($session->cohort_id !== null) {
+            return CohortMembership::query()
+                ->where('academy_id', $context->id())->where('cohort_id', $session->cohort_id)
+                ->where('status', 'active')->whereDate('joined_on', '<=', $sessionDate)
+                ->where(fn ($query) => $query->whereNull('left_on')->orWhereDate('left_on', '>=', $sessionDate))
+                ->whereHas('enrollment', fn ($query) => $query->where('status', EnrollmentStatus::Active->value)
+                    ->whereDate('starts_on', '<=', $sessionDate)
+                    ->where(fn ($query) => $query->whereNull('ends_on')->orWhereDate('ends_on', '>=', $sessionDate)))
+                ->with('player')->get()->pluck('player')->unique('id')
+                ->sortBy(fn (Player $player): string => "$player->last_name $player->first_name")->values();
+        }
 
         return Enrollment::query()->where('academy_id', $context->id())->where('programme_id', $session->programme_id)
             ->where('status', EnrollmentStatus::Active->value)->whereDate('starts_on', '<=', $sessionDate)
