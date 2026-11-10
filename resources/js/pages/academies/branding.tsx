@@ -1,5 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
 import {
+    Building2,
     CheckCircle2,
     ImageIcon,
     Landmark,
@@ -58,6 +59,7 @@ function readableForeground(background: string): string {
 
 export default function AcademyBranding({ branding }: Props) {
     const logoInput = useRef<HTMLInputElement>(null);
+    const profileForm = useForm({ name: branding.name });
     const logoForm = useForm<{ logo: File | null }>({ logo: null });
     const themeForm = useForm({
         primary_color: branding.theme.primary,
@@ -91,6 +93,13 @@ export default function AcademyBranding({ branding }: Props) {
         });
     }
 
+    function submitProfile(event: FormEvent) {
+        event.preventDefault();
+        profileForm.patch('/app/settings/academy/profile', {
+            preserveScroll: true,
+        });
+    }
+
     function submitTheme(event: FormEvent) {
         event.preventDefault();
         themeForm.patch('/app/settings/academy/theme', {
@@ -114,14 +123,14 @@ export default function AcademyBranding({ branding }: Props) {
 
     return (
         <>
-            <Head title="Academy branding" />
+            <Head title="Academy settings" />
             <main className="mx-auto w-full max-w-6xl p-4 sm:p-6 lg:p-8">
                 <div className="mb-7">
                     <p className="text-sm font-medium text-primary">
                         Academy settings
                     </p>
                     <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-                        Logo and brand identity
+                        Academy identity
                     </h1>
                     <p className="mt-2 text-sm text-muted-foreground">
                         Make {branding.name} instantly recognisable to every
@@ -130,6 +139,61 @@ export default function AcademyBranding({ branding }: Props) {
                 </div>
 
                 <div className="grid gap-6 xl:grid-cols-2">
+                    <Card className="xl:col-span-2">
+                        <CardHeader>
+                            <div className="flex items-center gap-2">
+                                <Building2 className="size-5 text-primary" />
+                                <h2 className="font-semibold">
+                                    Academy profile
+                                </h2>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                                Update the academy name shown throughout the
+                                platform. This does not change its public URL or
+                                subdomain.
+                            </p>
+                        </CardHeader>
+                        <CardContent>
+                            <form
+                                onSubmit={submitProfile}
+                                className="max-w-2xl space-y-5"
+                            >
+                                <div className="grid gap-2">
+                                    <Label htmlFor="academy_name">
+                                        Academy name
+                                    </Label>
+                                    <Input
+                                        id="academy_name"
+                                        value={profileForm.data.name}
+                                        onChange={(event) =>
+                                            profileForm.setData(
+                                                'name',
+                                                event.target.value,
+                                            )
+                                        }
+                                        maxLength={160}
+                                        autoComplete="organization"
+                                        required
+                                    />
+                                    <InputError
+                                        message={profileForm.errors.name}
+                                    />
+                                </div>
+                                <Button
+                                    type="submit"
+                                    disabled={
+                                        profileForm.processing ||
+                                        !profileForm.isDirty
+                                    }
+                                >
+                                    {profileForm.processing
+                                        ? 'Saving…'
+                                        : 'Save academy name'}
+                                </Button>
+                            </form>
+                        </CardContent>
+                    </Card>
+
                     <Card>
                         <CardHeader>
                             <h2 className="font-semibold">Academy logo</h2>

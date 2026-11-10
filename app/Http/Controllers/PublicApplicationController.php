@@ -4,10 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Academies\Actions\SaveApplication;
 use App\Academies\ApplicationIntakeAvailability;
+use App\Enums\AcademyInvoicePurpose;
 use App\Http\Requests\Public\StorePublicApplicationRequest;
+use App\Models\AcademyInvoice;
+use App\Models\AcademyInvoiceItem;
+use App\Models\AcademyPayment;
 use App\Models\AcademyWebsite;
 use App\Models\Application;
+use App\Models\Branch;
 use App\Models\OnlinePaymentIntent;
+use App\Models\ProgrammeCycleFeeItem;
 use App\Notifications\ApplicationSubmittedNotification;
 use App\Payments\ApplicationPaymentPlan;
 use App\Payments\Contracts\PaymentProvider;
@@ -68,7 +74,19 @@ class PublicApplicationController extends Controller
         [$website, $application] = $this->authorizedApplication($request, $subdomain, $reference);
         $application->load(['programmeCycle.programme', 'programmeCycle.cycle', 'programmeCycle.branch', 'programmeCycle.feeItems', 'invoices.items']);
         $offering = $application->programmeCycle;
-        $applicableFeeItems = $offering->feeItems->filter(fn ($item): bool => $item->cohort_id === null || $item->cohort_id === $application->cohort_id);
+        $programmeInvoice = $application->invoices->first(
+            fn (AcademyInvoice $invoice): bool => $invoice->purpose === AcademyInvoicePurpose::Programme,
+        );
+        $applicableFeeItems = $programmeInvoice !== null
+            ? $programmeInvoice->items->sortBy('sort_order')->values()->map(fn (AcademyInvoiceItem $item): array => [
+                'name' => $item->description, 'amount_minor' => (int) $item->amount_minor,
+            ])
+            : $offering->feeItems
+                ->filter(fn (ProgrammeCycleFeeItem $item): bool => $item->cohort_id === null || $item->cohort_id === $application->cohort_id)
+                ->sortBy('sort_order')->values()->map(fn (ProgrammeCycleFeeItem $item): array => [
+                    'name' => $item->name, 'amount_minor' => (int) $item->amount_minor,
+                ]);
+        $branch = $offering->getRelation('branch');
         $baseUrl = $request->routeIs('public.tenant.*') ? '' : '/sites/'.$website->subdomain;
 
         return Inertia::render('public/application-fees', $this->common($website, $baseUrl) + [
@@ -81,12 +99,10 @@ class PublicApplicationController extends Controller
             'offering' => [
                 'programme_name' => $offering->programme->name,
                 'cycle_name' => $offering->cycle->name,
-                'branch_name' => $offering->branch?->name ?? 'All locations',
+                'branch_name' => $branch instanceof Branch ? $branch->name : 'All locations',
                 'currency' => $offering->currency,
                 'fee_name' => $offering->fee_name,
-                'fee_items' => $applicableFeeItems->sortBy('sort_order')->values()->map(fn ($item): array => [
-                    'name' => $item->name, 'amount_minor' => (int) $item->amount_minor,
-                ]),
+                'fee_items' => $applicableFeeItems,
             ],
             'payment_options' => $plans->options($website->academy, $application),
             'paystack_ready' => filled(config('services.paystack.secret_key')),
@@ -106,6 +122,7 @@ class PublicApplicationController extends Controller
                 ->firstOrFail();
         }
         $baseUrl = $request->routeIs('public.tenant.*') ? '' : '/sites/'.$website->subdomain;
+        $payment = $intent?->getRelation('payment');
 
         return Inertia::render('public/application-complete', $this->common($website, $baseUrl) + [
             'application' => [
@@ -119,7 +136,7 @@ class PublicApplicationController extends Controller
                 'status' => $intent->status,
                 'amount' => Money::fromMinor($intent->charged_amount_minor),
                 'currency' => $intent->currency,
-                'reference' => $intent->payment?->reference ?? $intent->reference,
+                'reference' => $payment instanceof AcademyPayment ? $payment->reference : $intent->reference,
             ],
         ]);
     }

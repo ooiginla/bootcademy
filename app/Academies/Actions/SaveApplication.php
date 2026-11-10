@@ -6,6 +6,7 @@ use App\Enums\ApplicationStatus;
 use App\Models\Academy;
 use App\Models\AcademyApiKey;
 use App\Models\Application;
+use App\Models\ProgrammeCyclePaymentPlan;
 use App\Models\User;
 use App\Platform\AuditLogger;
 use Illuminate\Http\Request;
@@ -54,7 +55,8 @@ class SaveApplication
         $oldSignaturePath = $application?->guardian_signature_path;
 
         if (($data['cohort_id'] ?? null) !== null) {
-            $cohort = $academy->cohorts()->with('programmeCycle')->findOrFail($data['cohort_id']);
+            $cohortId = (int) $data['cohort_id'];
+            $cohort = $academy->cohorts()->with('programmeCycle')->findOrFail($cohortId);
             $cohortBranchId = $cohort->branch_id ?? $cohort->programmeCycle->branch_id;
             $effectiveBranchId = $cohortBranchId ?? ($data['branch_id'] ?? null);
             if ($application !== null && $application->invoices()->exists()
@@ -93,6 +95,28 @@ class SaveApplication
                 $data['programme_cycle_id'] = $offering->id;
             }
             $data['programme_id'] = $offering->programme_id;
+
+            if (($data['programme_cycle_payment_plan_id'] ?? null) !== null) {
+                $paymentPlanId = (int) $data['programme_cycle_payment_plan_id'];
+                $paymentPlan = ProgrammeCyclePaymentPlan::query()
+                    ->where('academy_id', $academy->id)
+                    ->where('programme_cycle_id', $offering->id)
+                    ->where('term_scope_id', 0)
+                    ->when($creating, fn ($query) => $query->where('is_active', true))
+                    ->find($paymentPlanId);
+                $cohortScopeId = (int) ($data['cohort_id'] ?? 0);
+                if ($paymentPlan === null || ! in_array($paymentPlan->cohort_scope_id, [0, $cohortScopeId], true)) {
+                    throw ValidationException::withMessages([
+                        'programme_cycle_payment_plan_id' => 'The selected payment plan is not available for this application.',
+                    ]);
+                }
+                if ($application !== null && $application->invoices()->exists()
+                    && $application->programme_cycle_payment_plan_id !== $paymentPlan->id) {
+                    throw ValidationException::withMessages([
+                        'programme_cycle_payment_plan_id' => 'The payment plan cannot change after an invoice has been issued.',
+                    ]);
+                }
+            }
         }
 
         try {
@@ -137,6 +161,7 @@ class SaveApplication
         $this->audit->record($creating ? 'academy.application.created' : 'academy.application.updated', $actor, $academy, $application, [
             'reference' => $reference,
             'programme_id' => $application->programme_id,
+            'programme_cycle_payment_plan_id' => $application->programme_cycle_payment_plan_id,
             'branch_id' => $application->branch_id,
             'source' => $application->source,
             'api_key_id' => $apiKey instanceof AcademyApiKey ? $apiKey->id : null,

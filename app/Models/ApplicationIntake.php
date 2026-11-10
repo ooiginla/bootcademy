@@ -9,6 +9,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property int $academy_id
+ * @property int $programme_cycle_id
+ * @property int|null $cohort_id
+ * @property int|null $branch_id
+ * @property Carbon|null $opens_on
+ * @property Carbon|null $closes_on
+ * @property-read ProgrammeCycle $programmeCycle
+ * @property-read Cohort|null $cohort
+ * @property-read Branch|null $branch
+ */
 #[Fillable([
     'academy_id', 'programme_cycle_id', 'cohort_id', 'cohort_scope_id', 'branch_id',
     'branch_scope_id', 'opens_on', 'closes_on', 'is_enabled', 'created_by_user_id',

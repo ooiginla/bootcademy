@@ -31,8 +31,9 @@
             }
         </style>
 
-        <link rel="icon" href="/images/bootcademy-mark.png" type="image/png">
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        <link rel="icon" href="{{ asset('images/bootcademy-mark.png') }}?v=bootcademy" type="image/png" sizes="256x256">
+        <link rel="shortcut icon" href="{{ asset('favicon.ico') }}?v=bootcademy">
+        <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}?v=bootcademy" sizes="180x180">
 
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])

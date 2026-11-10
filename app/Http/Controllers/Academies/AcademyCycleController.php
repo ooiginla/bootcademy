@@ -37,7 +37,7 @@ class AcademyCycleController extends Controller
     public function store(SaveAcademyCycleRequest $request, AcademyContext $context, SaveAcademyCycle $save): RedirectResponse
     {
         $cycle = $save->handle($context->academy(), $request->user(), $request->validated(), $request);
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Billing cycle created.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Cycle created.']);
 
         return to_route('academy.cycles.show', $cycle);
     }
@@ -49,7 +49,7 @@ class AcademyCycleController extends Controller
         SaveAcademyCycle $save,
     ): RedirectResponse {
         $save->handle($context->academy(), $request->user(), $request->validated(), $request, $cycle);
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Billing cycle updated.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Cycle updated.']);
 
         return back();
     }
@@ -97,8 +97,8 @@ class AcademyCycleController extends Controller
                     'is_active' => $offering->is_active,
                     'fee_items' => $offering->feeItems->sortBy('sort_order')->values()->map(fn ($item): array => [
                         'id' => $item->id, 'name' => $item->name, 'amount' => Money::fromMinor((int) $item->amount_minor),
-                        'academy_cycle_term_id' => $item->academy_cycle_term_id,
-                        'term_name' => $item->term?->name,
+                        'academy_cycle_term_id' => $cycle->supportsTerms() ? $item->academy_cycle_term_id : null,
+                        'term_name' => $cycle->supportsTerms() ? $item->term?->name : null,
                         'cohort_id' => $item->cohort_id,
                         'cohort_name' => $item->cohort?->name,
                     ]),
@@ -107,7 +107,7 @@ class AcademyCycleController extends Controller
                         'due_on' => $item->due_on?->toDateString(), 'due_offset_days' => $item->due_offset_days,
                     ]),
                 ]),
-                'terms' => $cycle->terms->map(fn (AcademyCycleTerm $term): array => [
+                'terms' => ($cycle->supportsTerms() ? $cycle->terms : collect())->map(fn (AcademyCycleTerm $term): array => [
                     'id' => $term->id, 'name' => $term->name,
                     'starts_on' => $term->starts_on?->toDateString(), 'ends_on' => $term->ends_on?->toDateString(),
                     'sort_order' => $term->sort_order, 'is_default' => $term->is_default, 'is_active' => $term->is_active,
@@ -125,7 +125,8 @@ class AcademyCycleController extends Controller
                 'id' => $fee->id, 'name' => $fee->name, 'category' => $fee->category,
                 'amount' => Money::fromMinor($fee->amount_minor), 'currency' => $fee->currency,
                 'is_compulsory' => $fee->is_compulsory, 'applies_to_all_programmes' => $fee->applies_to_all_programmes,
-                'academy_cycle_term_id' => $fee->academy_cycle_term_id, 'term_name' => $fee->term?->name,
+                'academy_cycle_term_id' => $cycle->supportsTerms() ? $fee->academy_cycle_term_id : null,
+                'term_name' => $cycle->supportsTerms() ? $fee->term?->name : null,
                 'cohort_id' => $fee->cohort_id, 'cohort_name' => $fee->cohort?->name,
                 'is_active' => $fee->is_active, 'programmes' => $fee->programmes->map->only(['id', 'name'])->values(),
             ]),
@@ -174,7 +175,8 @@ class AcademyCycleController extends Controller
             'ends_on' => $cycle->ends_on?->toDateString(), 'duration_value' => $cycle->duration_value,
             'duration_unit' => $cycle->duration_unit?->value,
             'status' => $cycle->status->value, 'programme_cycles_count' => $cycle->programme_cycles_count ?? 0,
-            'enrollments_count' => $cycle->enrollments_count ?? 0, 'terms_count' => $cycle->terms_count ?? 0,
+            'enrollments_count' => $cycle->enrollments_count ?? 0,
+            'terms_count' => $cycle->supportsTerms() ? ($cycle->terms_count ?? 0) : 0,
         ];
     }
 }

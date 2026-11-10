@@ -14,6 +14,7 @@ use App\Models\Programme;
 use App\Models\ProgrammeCycle;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class CycleFeeManagementTest extends TestCase
@@ -27,7 +28,7 @@ class CycleFeeManagementTest extends TestCase
             ->post(route('academy.cycles.store'), [
                 'name' => '2026 Academic Year', 'type' => 'fixed', 'starts_on' => '2026-01-01',
                 'ends_on' => '2026-12-31', 'status' => 'active',
-            ])->assertRedirect()->assertInertiaFlash('toast.message', 'Billing cycle created.');
+            ])->assertRedirect()->assertInertiaFlash('toast.message', 'Cycle created.');
         $fixed = AcademyCycle::query()->whereBelongsTo($academy)->firstOrFail();
         $this->assertSame('active', $fixed->status->value);
         $this->assertNull($fixed->duration_months);
@@ -48,8 +49,59 @@ class CycleFeeManagementTest extends TestCase
         $this->assertSame('weeks', $rolling->duration_unit?->value);
         $this->assertSame('2026-11-12', $rolling->rollingEndDate(now()->setDate(2026, 10, 29)->startOfDay())->toDateString());
         $this->assertNull($rolling->starts_on);
+        $this->assertSame(0, $rolling->terms()->count());
         $this->assertSame('closed', $fixed->fresh()->status->value);
         $this->assertSame(1, $academy->cycles()->where('status', 'active')->count());
+    }
+
+    public function test_rolling_cycles_reject_terms_and_store_fees_at_cycle_scope(): void
+    {
+        [$owner, $academy] = $this->member(AcademyRole::OwnerAdmin);
+        $cycle = AcademyCycle::query()->create([
+            'academy_id' => $academy->id, 'name' => 'Six-week rolling cycle', 'type' => 'rolling',
+            'duration_value' => 6, 'duration_unit' => 'weeks', 'status' => 'active',
+        ]);
+        $legacyTerm = AcademyCycleTerm::query()->create([
+            'academy_id' => $academy->id, 'academy_cycle_id' => $cycle->id,
+            'name' => 'Legacy default', 'sort_order' => 1, 'is_default' => true, 'is_active' => true,
+        ]);
+        $programme = Programme::factory()->for($academy)->create();
+        $member = $this->actingAs($owner)->withSession(['active_academy_id' => $academy->id]);
+
+        $member->post(route('academy.cycles.terms.store', $cycle), [
+            'name' => 'Term 1', 'sort_order' => 1, 'is_default' => false, 'is_active' => true,
+        ])->assertSessionHasErrors('name');
+
+        $member->post(route('academy.cycles.offerings.store', $cycle), [
+            'programme_id' => $programme->id, 'application_fee' => '0', 'payment_mode' => 'one_off',
+            'is_active' => true, 'fee_items' => [[
+                'name' => 'Cycle tuition', 'amount' => '10000.00',
+                'academy_cycle_term_id' => $legacyTerm->id,
+            ]],
+        ])->assertSessionHasErrors('fee_items.0.academy_cycle_term_id');
+
+        $member->post(route('academy.cycles.fees.store', $cycle), [
+            'name' => 'Insurance', 'category' => 'insurance', 'amount' => '5000.00',
+            'is_compulsory' => false, 'applies_to_all_programmes' => true, 'is_active' => true,
+            'academy_cycle_term_id' => $legacyTerm->id,
+        ])->assertSessionHasErrors('academy_cycle_term_id');
+
+        $member->post(route('academy.cycles.offerings.store', $cycle), [
+            'programme_id' => $programme->id, 'application_fee' => '0', 'payment_mode' => 'one_off',
+            'is_active' => true, 'fee_items' => [['name' => 'Cycle tuition', 'amount' => '10000.00']],
+        ])->assertRedirect();
+
+        $offering = ProgrammeCycle::query()->where('academy_cycle_id', $cycle->id)->sole();
+        $this->assertNull($offering->feeItems()->sole()->academy_cycle_term_id);
+
+        // Preserve legacy rows for auditability while presenting them at rolling-cycle scope.
+        $offering->feeItems()->sole()->update(['academy_cycle_term_id' => $legacyTerm->id]);
+        $member->get(route('academy.cycles.show', $cycle))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('cycle.terms', 0)
+                ->where('cycle.terms_count', 0)
+                ->where('cycle.offerings.0.fee_items.0.academy_cycle_term_id', null));
     }
 
     public function test_programme_cycle_stores_minor_unit_fee_breakdown_and_balanced_installments(): void

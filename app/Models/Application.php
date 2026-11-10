@@ -40,6 +40,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $privacy_policy_version
  * @property int|null $programme_id
  * @property int|null $programme_cycle_id
+ * @property int|null $programme_cycle_payment_plan_id
  * @property int|null $branch_id
  * @property array<string, mixed>|null $custom_fields
  * @property ApplicationStatus $status
@@ -57,7 +58,7 @@ use Illuminate\Support\Carbon;
     'guardian_whatsapp_number', 'guardian_relationship', 'guardian_signature_path',
     'guardian_consent_at', 'privacy_policy_version',
     'programme_id', 'branch_id', 'custom_fields', 'status',
-    'programme_cycle_id', 'cohort_id', 'application_intake_id',
+    'programme_cycle_id', 'programme_cycle_payment_plan_id', 'cohort_id', 'application_intake_id',
     'review_notes', 'reviewed_by_user_id', 'reviewed_at', 'converted_player_id', 'enrolled_at',
 ])]
 class Application extends Model
@@ -78,6 +79,12 @@ class Application extends Model
     public function programmeCycle(): BelongsTo
     {
         return $this->belongsTo(ProgrammeCycle::class);
+    }
+
+    /** @return BelongsTo<ProgrammeCyclePaymentPlan, $this> */
+    public function programmeCyclePaymentPlan(): BelongsTo
+    {
+        return $this->belongsTo(ProgrammeCyclePaymentPlan::class);
     }
 
     /** @return BelongsTo<Cohort, $this> */

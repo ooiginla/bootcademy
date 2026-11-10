@@ -8,6 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $academy_id
+ * @property int $programme_cycle_id
+ * @property int|null $branch_id
+ * @property string $name
+ * @property-read ProgrammeCycle $programmeCycle
+ */
 #[Fillable([
     'academy_id', 'programme_cycle_id', 'branch_id', 'name', 'code', 'starts_on',
     'ends_on', 'capacity', 'delivery_mode', 'status',

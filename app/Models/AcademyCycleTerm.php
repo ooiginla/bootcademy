@@ -2,11 +2,20 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $academy_id
+ * @property int $academy_cycle_id
+ * @property string $name
+ * @property Carbon|null $starts_on
+ * @property Carbon|null $ends_on
+ */
 #[Fillable(['academy_id', 'academy_cycle_id', 'name', 'starts_on', 'ends_on', 'sort_order', 'is_default', 'is_active'])]
 class AcademyCycleTerm extends Model
 {

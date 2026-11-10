@@ -28,6 +28,7 @@ use App\Http\Controllers\Academies\GuardianSignatureController;
 use App\Http\Controllers\Academies\PlayerController;
 use App\Http\Controllers\Academies\PlayerImportController;
 use App\Http\Controllers\Academies\ProgrammeController;
+use App\Http\Controllers\Academies\ProgrammeCyclePaymentPlanController;
 use App\Http\Controllers\Academies\ReferralController;
 use App\Http\Controllers\Academies\ScholarshipController;
 use App\Http\Controllers\Academies\StoreController;
@@ -169,7 +170,10 @@ Route::middleware([
         Route::post('app/finance/cycles/{cycle}/terms', [AcademyCycleController::class, 'storeTerm'])->name('academy.cycles.terms.store');
         Route::patch('app/finance/cycles/{cycle}/terms/{term}', [AcademyCycleController::class, 'updateTerm'])->name('academy.cycles.terms.update');
         Route::post('app/finance/cycles/{cycle}/programmes', [AcademyCycleController::class, 'storeOffering'])->name('academy.cycles.offerings.store');
+        Route::get('app/finance/cycles/{cycle}/programmes/{programmeCycle}', [ProgrammeCyclePaymentPlanController::class, 'show'])->name('academy.cycles.offerings.show');
         Route::patch('app/finance/cycles/{cycle}/programmes/{programmeCycle}', [AcademyCycleController::class, 'updateOffering'])->name('academy.cycles.offerings.update');
+        Route::post('app/finance/cycles/{cycle}/programmes/{programmeCycle}/payment-plans', [ProgrammeCyclePaymentPlanController::class, 'store'])->name('academy.cycles.offerings.payment-plans.store');
+        Route::patch('app/finance/cycles/{cycle}/programmes/{programmeCycle}/payment-plans/{paymentPlan}', [ProgrammeCyclePaymentPlanController::class, 'update'])->name('academy.cycles.offerings.payment-plans.update');
         Route::get('app/players', [PlayerController::class, 'index'])->name('academy.players.index');
         Route::get('app/players/import', [PlayerImportController::class, 'create'])->name('academy.players.import.create');
         Route::post('app/players/import/preview', [PlayerImportController::class, 'preview'])->name('academy.players.import.preview');
@@ -260,6 +264,8 @@ Route::middleware([
             ->name('academy.branding.edit');
         Route::post('app/settings/academy/logo', [AcademyBrandingController::class, 'update'])
             ->name('academy.branding.update');
+        Route::patch('app/settings/academy/profile', [AcademyBrandingController::class, 'updateProfile'])
+            ->name('academy.branding.profile.update');
         Route::patch('app/settings/academy/theme', [AcademyBrandingController::class, 'updateTheme'])
             ->name('academy.branding.theme.update');
         Route::patch('app/settings/academy/terminology', [AcademyBrandingController::class, 'updateTerminology'])

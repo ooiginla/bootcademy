@@ -5,6 +5,7 @@ namespace App\Http\Requests\Academies;
 use App\Academies\AcademyContext;
 use App\Models\AcademyCycle;
 use App\Models\Cohort;
+use App\Models\ProgrammeCycle;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -32,16 +33,19 @@ class SaveAcademyCycleFeeRequest extends FormRequest
         return $context->canManageFinance();
     }
 
+    /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
         $academyId = app(AcademyContext::class)->id();
+        $cycle = $this->route('cycle');
+        abort_unless($cycle instanceof AcademyCycle, 404);
         $forAcademy = fn (Builder $query): Builder => $query->where('academy_id', $academyId);
 
         return [
             'name' => ['required', 'string', 'max:160', Rule::unique('academy_cycle_fees', 'name')->where(
                 fn (Builder $query): Builder => $query
                     ->where('academy_id', $academyId)
-                    ->where('academy_cycle_id', $this->route('cycle')->id)
+                    ->where('academy_cycle_id', $cycle->id)
                     ->where('term_scope_id', (int) ($this->input('academy_cycle_term_id') ?: 0))
                     ->where('cohort_scope_id', (int) ($this->input('cohort_id') ?: 0)),
             )], 'category' => ['required', 'string', 'max:80'],
@@ -60,21 +64,26 @@ class SaveAcademyCycleFeeRequest extends FormRequest
             /** @var AcademyCycle $cycle */
             $cycle = $this->route('cycle');
             $termId = $this->input('academy_cycle_term_id');
-            if ($termId && ! $cycle->terms()->whereKey($termId)->exists()) {
-                $validator->errors()->add('academy_cycle_term_id', 'Select a term from this billing cycle.');
+            if ($termId && ! $cycle->supportsTerms()) {
+                $validator->errors()->add('academy_cycle_term_id', 'Rolling cycles do not use terms.');
+            } elseif ($termId && ! $cycle->terms()->whereKey($termId)->exists()) {
+                $validator->errors()->add('academy_cycle_term_id', 'Select a term from this cycle.');
             }
             $cohortId = $this->input('cohort_id');
             if (! $cohortId) {
                 return;
             }
-            $cohort = Cohort::query()->with('programmeCycle')->whereKey($cohortId)->first();
-            if ($cohort?->programmeCycle?->academy_cycle_id !== $cycle->id) {
-                $validator->errors()->add('cohort_id', 'Select a cohort from this billing cycle.');
+            $programmeCycleId = Cohort::query()->whereKey($cohortId)->value('programme_cycle_id');
+            $programmeCycle = is_numeric($programmeCycleId)
+                ? ProgrammeCycle::query()->whereKey((int) $programmeCycleId)->first()
+                : null;
+            if ($programmeCycle?->academy_cycle_id !== $cycle->id) {
+                $validator->errors()->add('cohort_id', 'Select a cohort from this cycle.');
 
                 return;
             }
             if (! $this->boolean('applies_to_all_programmes')
-                && ! in_array($cohort->programmeCycle->programme_id, array_map('intval', $this->input('programme_ids', [])), true)) {
+                && ! in_array($programmeCycle->programme_id, array_map('intval', $this->input('programme_ids', [])), true)) {
                 $validator->errors()->add('cohort_id', 'The selected cohort must belong to one of the selected programmes.');
             }
         });

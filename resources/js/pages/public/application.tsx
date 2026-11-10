@@ -1,5 +1,6 @@
 import { Form, usePage } from '@inertiajs/react';
 import {
+    CheckCircle2,
     ChevronRight,
     FileText,
     LockKeyhole,
@@ -82,6 +83,7 @@ export default function PublicApplication({
     const [cohortId, setCohortId] = useState('');
     const [locationId, setLocationId] = useState('');
     const [intakeId, setIntakeId] = useState('');
+    const [paymentPlanId, setPaymentPlanId] = useState('');
     const { errors } = usePage<{ errors: Record<string, string> }>().props;
     const programmes = useMemo(
         () =>
@@ -153,6 +155,9 @@ export default function PublicApplication({
     );
     const selectedLocation = locationOptions.find(
         (location) => location.id === locationId,
+    );
+    const selectedPaymentPlan = selectedIntake?.payment_plans.find(
+        (plan) => String(plan.id) === paymentPlanId,
     );
     const guardianSingular = academy.guardian_singular ?? 'Guardian';
     const collectGuardianInformation =
@@ -255,6 +260,7 @@ export default function PublicApplication({
                                                         setCohortId('');
                                                         setLocationId('');
                                                         setIntakeId('');
+                                                        setPaymentPlanId('');
                                                     }}
                                                     className={inputClass}
                                                 >
@@ -291,6 +297,7 @@ export default function PublicApplication({
                                                         setCohortId('');
                                                         setLocationId('');
                                                         setIntakeId('');
+                                                        setPaymentPlanId('');
                                                     }}
                                                     className={inputClass}
                                                 >
@@ -328,6 +335,7 @@ export default function PublicApplication({
                                                         );
                                                         setLocationId('');
                                                         setIntakeId('');
+                                                        setPaymentPlanId('');
                                                     }}
                                                     className={inputClass}
                                                 >
@@ -375,6 +383,19 @@ export default function PublicApplication({
                                                                     '',
                                                             ),
                                                         );
+                                                        const defaultPlan =
+                                                            intake?.payment_plans.find(
+                                                                (plan) =>
+                                                                    plan.is_default,
+                                                            ) ??
+                                                            intake
+                                                                ?.payment_plans[0];
+                                                        setPaymentPlanId(
+                                                            String(
+                                                                defaultPlan?.id ??
+                                                                    '',
+                                                            ),
+                                                        );
                                                     }}
                                                     className={inputClass}
                                                 >
@@ -413,6 +434,14 @@ export default function PublicApplication({
                                                         : locationId
                                                 }
                                             />
+                                            {selectedIntake?.payment_plans
+                                                .length === 0 && (
+                                                <input
+                                                    type="hidden"
+                                                    name="programme_cycle_payment_plan_id"
+                                                    value=""
+                                                />
+                                            )}
                                         </div>
                                     </section>
 
@@ -727,7 +756,12 @@ export default function PublicApplication({
 
                                     <button
                                         type="submit"
-                                        disabled={!selectedIntake}
+                                        disabled={
+                                            !selectedIntake ||
+                                            (selectedIntake.payment_plans
+                                                .length > 0 &&
+                                                !selectedPaymentPlan)
+                                        }
                                         className="flex w-full items-center justify-between rounded-full bg-[var(--site-primary)] px-6 py-4 text-sm font-black text-[var(--site-primary-fg)] shadow-lg disabled:cursor-not-allowed disabled:opacity-45"
                                     >
                                         Preview application & fees
@@ -778,36 +812,169 @@ export default function PublicApplication({
                                                         <strong>
                                                             {formatCurrency(
                                                                 selectedIntake.currency,
-                                                                selectedIntake.total,
+                                                                selectedPaymentPlan?.total ??
+                                                                    selectedIntake.total,
                                                             )}
                                                         </strong>
                                                     </div>
                                                 </div>
-                                                {selectedIntake.fee_items
+                                                {selectedIntake.payment_plans
                                                     .length > 0 && (
+                                                    <fieldset className="mt-5">
+                                                        <legend className="text-xs font-bold tracking-wide text-white/65 uppercase">
+                                                            Choose a payment
+                                                            plan
+                                                        </legend>
+                                                        <div className="mt-3 grid gap-2">
+                                                            {selectedIntake.payment_plans.map(
+                                                                (plan) => {
+                                                                    const selected =
+                                                                        plan.id ===
+                                                                        selectedPaymentPlan?.id;
+
+                                                                    return (
+                                                                        <label
+                                                                            key={
+                                                                                plan.id
+                                                                            }
+                                                                            className={`cursor-pointer rounded-2xl border p-3 transition ${selected ? 'border-[var(--site-primary)] bg-white/10' : 'border-white/10 bg-white/[0.03] hover:border-white/25'}`}
+                                                                        >
+                                                                            <input
+                                                                                type="radio"
+                                                                                name="programme_cycle_payment_plan_id"
+                                                                                value={
+                                                                                    plan.id
+                                                                                }
+                                                                                checked={
+                                                                                    selected
+                                                                                }
+                                                                                onChange={() =>
+                                                                                    setPaymentPlanId(
+                                                                                        String(
+                                                                                            plan.id,
+                                                                                        ),
+                                                                                    )
+                                                                                }
+                                                                                className="sr-only"
+                                                                                required
+                                                                                aria-label={
+                                                                                    plan.name
+                                                                                }
+                                                                            />
+                                                                            <span className="flex items-start justify-between gap-3">
+                                                                                <span>
+                                                                                    <span className="flex items-center gap-2 text-sm font-bold">
+                                                                                        {
+                                                                                            plan.name
+                                                                                        }
+                                                                                        {plan.is_default && (
+                                                                                            <span className="rounded-full bg-[var(--site-primary)]/20 px-2 py-0.5 text-[10px] text-[var(--site-primary)]">
+                                                                                                Recommended
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </span>
+                                                                                    <span className="mt-1 block text-xs text-white/50">
+                                                                                        {
+                                                                                            plan
+                                                                                                .installments
+                                                                                                .length
+                                                                                        }{' '}
+                                                                                        {plan
+                                                                                            .installments
+                                                                                            .length ===
+                                                                                        1
+                                                                                            ? 'payment'
+                                                                                            : 'payments'}
+                                                                                    </span>
+                                                                                </span>
+                                                                                <span className="shrink-0 text-sm font-black">
+                                                                                    {formatCurrency(
+                                                                                        selectedIntake.currency,
+                                                                                        plan.total,
+                                                                                    )}
+                                                                                </span>
+                                                                            </span>
+                                                                        </label>
+                                                                    );
+                                                                },
+                                                            )}
+                                                        </div>
+                                                    </fieldset>
+                                                )}
+                                                <div className="mt-5 flex items-center gap-2 text-xs font-bold text-white/65">
+                                                    <CheckCircle2 className="size-4 text-[var(--site-primary)]" />
+                                                    {selectedPaymentPlan
+                                                        ? `${selectedPaymentPlan.name} breakdown`
+                                                        : 'Fee breakdown'}
+                                                </div>
+                                                {(
+                                                    selectedPaymentPlan?.items ??
+                                                    selectedIntake.fee_items
+                                                ).length > 0 && (
                                                     <div className="mt-5 grid gap-2">
-                                                        {selectedIntake.fee_items.map(
-                                                            (item) => (
-                                                                <div
-                                                                    key={
-                                                                        item.name
-                                                                    }
-                                                                    className="flex justify-between gap-4 text-xs text-white/50"
-                                                                >
-                                                                    <span>
-                                                                        {
-                                                                            item.name
-                                                                        }
-                                                                    </span>
-                                                                    <span>
-                                                                        {formatCurrency(
-                                                                            selectedIntake.currency,
-                                                                            item.amount,
-                                                                        )}
-                                                                    </span>
-                                                                </div>
-                                                            ),
-                                                        )}
+                                                        {(
+                                                            selectedPaymentPlan?.items ??
+                                                            selectedIntake.fee_items
+                                                        ).map((item) => (
+                                                            <div
+                                                                key={item.name}
+                                                                className="flex justify-between gap-4 text-xs text-white/50"
+                                                            >
+                                                                <span>
+                                                                    {item.name}
+                                                                </span>
+                                                                <span>
+                                                                    {formatCurrency(
+                                                                        selectedIntake.currency,
+                                                                        item.amount,
+                                                                    )}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {selectedPaymentPlan && (
+                                                    <div className="mt-5 border-t border-white/10 pt-4">
+                                                        <p className="text-xs font-bold text-white/65">
+                                                            Repayment schedule
+                                                        </p>
+                                                        <div className="mt-3 grid gap-3">
+                                                            {selectedPaymentPlan.installments.map(
+                                                                (
+                                                                    installment,
+                                                                    index,
+                                                                ) => (
+                                                                    <div
+                                                                        key={`${installment.name}-${index}`}
+                                                                        className="flex items-start justify-between gap-3 text-xs"
+                                                                    >
+                                                                        <span>
+                                                                            <span className="block text-white/80">
+                                                                                {
+                                                                                    installment.name
+                                                                                }
+                                                                            </span>
+                                                                            <span className="mt-0.5 block text-white/40">
+                                                                                {installment.due_on ??
+                                                                                    (installment.due_offset_days ===
+                                                                                    0
+                                                                                        ? 'On activation'
+                                                                                        : installment.due_offset_days !==
+                                                                                            null
+                                                                                          ? `${installment.due_offset_days} days after activation`
+                                                                                          : 'Schedule confirmed by academy')}
+                                                                            </span>
+                                                                        </span>
+                                                                        <strong className="shrink-0">
+                                                                            {formatCurrency(
+                                                                                selectedIntake.currency,
+                                                                                installment.amount,
+                                                                            )}
+                                                                        </strong>
+                                                                    </div>
+                                                                ),
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
@@ -826,9 +993,10 @@ export default function PublicApplication({
                                             Your information
                                         </p>
                                         <p className="mt-2 text-xs leading-5 text-slate-500">
-                                            Your application is saved securely
-                                            before you choose how to pay on the
-                                            next page.
+                                            Your selected payment plan is saved
+                                            with the application. The next page
+                                            lets you choose which amount to pay
+                                            now.
                                         </p>
                                     </div>
                                 </aside>

@@ -27,6 +27,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['academy_id', 'name', 'type', 'starts_on', 'ends_on', 'duration_months', 'duration_value', 'duration_unit', 'status'])]
 class AcademyCycle extends Model
 {
+    public function supportsTerms(): bool
+    {
+        return $this->type === AcademyCycleType::Fixed;
+    }
+
     public function rollingEndDate(CarbonInterface $activation): Carbon
     {
         $value = (int) $this->duration_value;

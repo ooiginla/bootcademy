@@ -13,7 +13,7 @@ vi.mock('@inertiajs/react', () => ({
     ),
 }));
 
-describe('Academy billing cycles', () => {
+describe('Academy cycles', () => {
     it('lists historical cycles and supports fixed or rolling creation', () => {
         render(
             <Cycles
@@ -42,7 +42,7 @@ describe('Academy billing cycles', () => {
         expect(screen.getByRole('table')).toHaveTextContent('24');
         fireEvent.click(screen.getByRole('button', { name: 'Add cycle' }));
         expect(
-            screen.getByRole('dialog', { name: 'Create billing cycle' }),
+            screen.getByRole('dialog', { name: 'Create academy cycle' }),
         ).toBeInTheDocument();
         fireEvent.change(screen.getByRole('combobox', { name: 'Cycle type' }), {
             target: { value: 'rolling' },

@@ -34,6 +34,50 @@ class AcademyBrandingTest extends TestCase
             );
     }
 
+    public function test_owner_admin_can_update_the_active_academy_name_without_changing_its_slug(): void
+    {
+        [$user, $academy] = $this->member(AcademyRole::OwnerAdmin);
+        $originalSlug = $academy->slug;
+        $foreignAcademy = Academy::factory()->create(['name' => 'Foreign Academy']);
+
+        $this->actingAs($user)
+            ->withSession(['active_academy_id' => $academy->id])
+            ->patch(route('academy.branding.profile.update'), [
+                'name' => "  King's Court Football Academy  ",
+            ])
+            ->assertRedirect()
+            ->assertInertiaFlash('toast.message', 'Academy profile updated.');
+
+        $academy->refresh();
+        $this->assertSame("King's Court Football Academy", $academy->name);
+        $this->assertSame($originalSlug, $academy->slug);
+        $this->assertSame('Foreign Academy', $foreignAcademy->fresh()->name);
+        $this->assertDatabaseHas(AuditLog::class, [
+            'academy_id' => $academy->id,
+            'actor_user_id' => $user->id,
+            'action' => 'academy.profile.updated',
+        ]);
+    }
+
+    public function test_academy_name_rejects_markup_and_preserves_the_existing_name(): void
+    {
+        [$user, $academy] = $this->member(AcademyRole::OwnerAdmin);
+        $originalName = $academy->name;
+
+        $this->actingAs($user)
+            ->withSession(['active_academy_id' => $academy->id])
+            ->patch(route('academy.branding.profile.update'), [
+                'name' => '<strong>Renamed Academy</strong>',
+            ])
+            ->assertSessionHasErrors('name');
+
+        $this->assertSame($originalName, $academy->fresh()->name);
+        $this->assertDatabaseMissing(AuditLog::class, [
+            'academy_id' => $academy->id,
+            'action' => 'academy.profile.updated',
+        ]);
+    }
+
     public function test_owner_admin_can_update_own_academy_theme_and_change_is_audited(): void
     {
         [$user, $academy] = $this->member(AcademyRole::OwnerAdmin);
@@ -204,6 +248,13 @@ class AcademyBrandingTest extends TestCase
         $this->actingAs($user)
             ->withSession(['active_academy_id' => $academy->id])
             ->get(route('academy.branding.edit'))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->withSession(['active_academy_id' => $academy->id])
+            ->patch(route('academy.branding.profile.update'), [
+                'name' => 'Unauthorized rename',
+            ])
             ->assertForbidden();
 
         $this->actingAs($user)

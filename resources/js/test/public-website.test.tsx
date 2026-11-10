@@ -136,6 +136,46 @@ const applicationIntake: PublicApplicationIntake = {
             due_offset_days: 30,
         },
     ],
+    payment_plans: [
+        {
+            id: 31,
+            name: 'Pay once',
+            description: 'Lowest total price.',
+            total: '100000.00',
+            is_default: false,
+            items: [{ name: 'Tuition', amount: '100000.00' }],
+            installments: [
+                {
+                    name: 'Full payment',
+                    amount: '100000.00',
+                    due_on: null,
+                    due_offset_days: 0,
+                },
+            ],
+        },
+        {
+            id: 32,
+            name: 'Two payments',
+            description: 'Split the programme fee into two payments.',
+            total: '120000.00',
+            is_default: true,
+            items: [{ name: 'Tuition', amount: '120000.00' }],
+            installments: [
+                {
+                    name: 'First payment',
+                    amount: '60000.00',
+                    due_on: null,
+                    due_offset_days: 0,
+                },
+                {
+                    name: 'Final payment',
+                    amount: '60000.00',
+                    due_on: null,
+                    due_offset_days: 30,
+                },
+            ],
+        },
+    ],
 };
 
 describe('Bootcademy public website', () => {
@@ -349,7 +389,7 @@ describe('Bootcademy public website', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('saves the main application before asking the applicant to choose a payment option', () => {
+    it('selects a payment plan in the application summary before submission', () => {
         render(
             <PublicApplication
                 academy={{
@@ -399,14 +439,16 @@ describe('Bootcademy public website', () => {
             document.querySelector('input[name="preferred_branch_id"]'),
         ).toHaveValue('4');
 
-        expect(screen.queryByText('Pay in full')).not.toBeInTheDocument();
-        expect(
-            screen.queryByText('Pay in installments'),
-        ).not.toBeInTheDocument();
+        expect(screen.getByLabelText('Two payments')).toBeChecked();
+        expect(screen.getByText('Recommended')).toBeInTheDocument();
+        expect(screen.getByText('Repayment schedule')).toBeInTheDocument();
+        fireEvent.click(screen.getByLabelText('Pay once'));
+        expect(screen.getByLabelText('Pay once')).toBeChecked();
+        expect(screen.getByText('Pay once breakdown')).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: /Preview application & fees/ }),
         ).toBeInTheDocument();
-        expect(screen.getAllByText('₦120,000.00')).toHaveLength(2);
+        expect(screen.getAllByText('₦100,000.00').length).toBeGreaterThan(1);
         expect(screen.getByLabelText(/Laptop access/)).toBeRequired();
         expect(screen.getByLabelText('Country')).toHaveValue('Nigeria');
         expect(screen.getByText('Next of Kin information')).toBeInTheDocument();
@@ -414,7 +456,7 @@ describe('Bootcademy public website', () => {
             screen.getByLabelText('Next of Kin first name'),
         ).toBeInTheDocument();
         expect(
-            screen.getByText(/saved securely before you choose how to pay/),
+            screen.getByText(/selected payment plan is saved/),
         ).toBeInTheDocument();
     });
 
@@ -617,6 +659,7 @@ describe('Bootcademy public website', () => {
                                 { name: 'Tuition', amount: '120000.00' },
                             ],
                             installments: [],
+                            payment_plans: [],
                         },
                     ],
                 }}

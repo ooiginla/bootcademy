@@ -68,6 +68,12 @@ class ProgrammeCycle extends Model
         return $this->hasMany(ProgrammeCycleInstallment::class);
     }
 
+    /** @return HasMany<ProgrammeCyclePaymentPlan, $this> */
+    public function paymentPlans(): HasMany
+    {
+        return $this->hasMany(ProgrammeCyclePaymentPlan::class);
+    }
+
     /** @return HasMany<Enrollment, $this> */
     public function enrollments(): HasMany
     {

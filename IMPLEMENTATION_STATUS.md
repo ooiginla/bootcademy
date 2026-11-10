@@ -35,6 +35,8 @@ M3 is complete. The next milestone is M4 pilot readiness. Online settlement rema
 3. `[x]` Add cycle-specific programme offerings, optional application fees and itemized fee schedules using integer minor units and currency.
 4. `[x]` Create immutable applicant/student invoices that retain the amount applicable when issued.
 5. `[x]` Support default and student-specific installments, partial payments and payment allocations without rewriting history.
+    - `[x]` Add cycle/term/cohort-scoped programme payment-plan details with independent fee breakdowns, contracted totals and balanced repayment schedules.
+    - `[x]` Let public applicants compare and select an active plan during registration, then snapshot its fee items and repayments onto the issued programme invoice.
 6. `[x]` Add audited manual/offline verified payment recording with duplicate-reference and overpayment protection.
 7. `[x]` Convert and enroll immediately on authorized acceptance after any required application fee is fully paid; retain programme fees as player balances.
 8. `[x]` Show each player's current and historical cycle memberships, invoices, payments and balances.
@@ -82,10 +84,10 @@ The system will never enroll from a website-supplied `paid: true` or `accepted: 
 ## Recently completed
 
 - Tenant-safe scholarship and sponsorship administration with full/percentage/fixed coverage, cycle/term/programme/branch scopes, beneficiary approvals, duplicate-safe invoice application, academy concessions, sponsor receivables, verified contribution payments and reversal-aware ledgers.
-- Cycle terms with automatic default-term normalization, term/cohort fee scopes, cohort-aware compulsory invoicing and a term-tabbed cycle fee workspace.
+- Optional fixed-cycle terms with automatic default-term normalization, term/cohort fee scopes, cohort-aware compulsory invoicing and a term-tabbed fee workspace; rolling cycles remain directly cycle-scoped without terms.
 - Academy commerce workspace with product categories, tags, variants, server-priced orders, central/branch stock, immutable adjustment/reservation/sale movements, partial/full order payments, independent fulfilment status, offline counter sales, public academy cart/checkout and authenticated external storefront APIs.
 
-- Academy branding, theme colours, tenant logo and favicon.
+- Academy branding with an audited editable academy name, theme colours, tenant logo and favicon.
 - Academy-specific Student/Player/Customer terminology.
 - Team invitation links and immediate administrator-created accounts.
 - Super Admin academy impersonation/support mode without approval or expiry.

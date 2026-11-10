@@ -3,9 +3,11 @@
 namespace App\Http\Requests\Academies;
 
 use App\Academies\AcademyContext;
+use App\Models\AcademyCycle;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class BulkReenrollProgrammeMembersRequest extends FormRequest
 {
@@ -22,6 +24,7 @@ class BulkReenrollProgrammeMembersRequest extends FormRequest
         return app(AcademyContext::class)->canManageAcademy();
     }
 
+    /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
         $academyId = app(AcademyContext::class)->id();
@@ -36,5 +39,23 @@ class BulkReenrollProgrammeMembersRequest extends FormRequest
             'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where($forAcademy)],
             'cohort_id' => ['nullable', 'integer', Rule::exists('cohorts', 'id')->where($forAcademy)],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $cycleId = $this->input('academy_cycle_id');
+            if (! $cycleId) {
+                return;
+            }
+
+            $cycle = AcademyCycle::query()
+                ->where('academy_id', app(AcademyContext::class)->id())
+                ->whereKey((int) $cycleId)
+                ->first();
+            if ($cycle !== null && ! $cycle->supportsTerms()) {
+                $validator->errors()->add('academy_cycle_id', 'Rolling cycles do not use term re-enrollment.');
+            }
+        });
     }
 }

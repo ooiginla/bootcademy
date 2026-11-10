@@ -85,8 +85,10 @@ class SaveProgrammeCycleRequest extends FormRequest
                     continue;
                 }
                 $termId = $item['academy_cycle_term_id'] ?? null;
-                if ($termId && ! $cycle->terms()->whereKey($termId)->exists()) {
-                    $validator->errors()->add("fee_items.{$index}.academy_cycle_term_id", 'Select a term from this billing cycle.');
+                if ($termId && ! $cycle->supportsTerms()) {
+                    $validator->errors()->add("fee_items.{$index}.academy_cycle_term_id", 'Rolling cycles do not use terms.');
+                } elseif ($termId && ! $cycle->terms()->whereKey($termId)->exists()) {
+                    $validator->errors()->add("fee_items.{$index}.academy_cycle_term_id", 'Select a term from this cycle.');
                 }
                 $cohortId = $item['cohort_id'] ?? null;
                 if ($cohortId) {

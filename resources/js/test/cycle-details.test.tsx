@@ -127,6 +127,15 @@ describe('Programme cycle fees', () => {
             />,
         );
 
+        expect(
+            screen
+                .getAllByRole('link', { name: 'Details' })
+                .some(
+                    (link) =>
+                        link.getAttribute('href') ===
+                        '/app/finance/cycles/1/programmes/20?term_id=5',
+                ),
+        ).toBe(true);
         fireEvent.click(
             screen.getByRole('button', { name: 'Add programme fees' }),
         );
@@ -158,5 +167,48 @@ describe('Programme cycle fees', () => {
         expect(screen.getByText('Medical fee')).toBeInTheDocument();
         expect(screen.getByText('₦25,000.00')).toBeInTheDocument();
         expect(screen.getByText('Optional')).toBeInTheDocument();
+    });
+
+    it('uses cycle-level fees without term controls for a rolling cycle', () => {
+        render(
+            <CycleDetailsPage
+                currency="NGN"
+                programmes={[{ id: 1, name: 'Under 17' }]}
+                branches={[]}
+                cohorts={[]}
+                cycle_fees={[]}
+                cycle={{
+                    id: 2,
+                    name: 'Six-week membership',
+                    type: 'rolling',
+                    type_label: 'Rolling duration',
+                    starts_on: null,
+                    ends_on: null,
+                    duration_value: 6,
+                    duration_unit: 'weeks',
+                    status: 'active',
+                    programme_cycles_count: 0,
+                    enrollments_count: 0,
+                    terms_count: 0,
+                    offerings: [],
+                    terms: [],
+                }}
+            />,
+        );
+
+        expect(
+            screen.queryByRole('button', { name: 'Add term' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', { name: 'Cycle fees' }),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('Terms')).not.toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Add programme fees' }),
+        );
+        expect(
+            screen.queryByRole('combobox', { name: 'Fee 1 term' }),
+        ).not.toBeInTheDocument();
     });
 });

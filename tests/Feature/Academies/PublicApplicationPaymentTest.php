@@ -32,14 +32,23 @@ class PublicApplicationPaymentTest extends TestCase
 
         $response = $this->post(route('public.academy.application.store', $website->subdomain), $this->payload($offering));
         $application = Application::query()->firstOrFail();
+        $selectedPlan = $offering->paymentPlans()->sole();
 
         $response->assertRedirectContains('/applications/'.$application->reference.'/fees?token=');
         $this->assertSame('applicant@example.com', $application->email);
         $this->assertSame('website', $application->source);
         $this->assertSame($offering->branch_id, $application->branch_id);
+        $this->assertSame($selectedPlan->id, $application->programme_cycle_payment_plan_id);
         $this->assertNotNull($application->public_access_token_hash);
         $this->assertDatabaseHas('academy_invoices', ['application_id' => $application->id, 'purpose' => AcademyInvoicePurpose::Application->value, 'total_minor' => 500000]);
-        $this->assertDatabaseHas('academy_invoices', ['application_id' => $application->id, 'purpose' => AcademyInvoicePurpose::Programme->value, 'total_minor' => 12000000]);
+        $this->assertDatabaseHas('academy_invoices', [
+            'application_id' => $application->id,
+            'purpose' => AcademyInvoicePurpose::Programme->value,
+            'programme_cycle_payment_plan_id' => $selectedPlan->id,
+            'total_minor' => 13000000,
+        ]);
+        $programmeInvoice = $application->invoices()->where('purpose', AcademyInvoicePurpose::Programme->value)->firstOrFail();
+        $this->assertSame(['First plan payment', 'Final plan payment'], $programmeInvoice->installments()->orderBy('sequence')->pluck('name')->all());
         Notification::assertSentOnDemand(ApplicationSubmittedNotification::class, function ($notification, array $channels, $notifiable): bool {
             $mail = $notification->toMail($notifiable);
 
@@ -108,6 +117,19 @@ class PublicApplicationPaymentTest extends TestCase
         $payload['guardian_first_name'] = 'Not accepted';
         $this->post(route('public.academy.application.store', $website->subdomain), $payload)
             ->assertSessionHasErrors('guardian_first_name');
+    }
+
+    public function test_public_application_rejects_a_payment_plan_from_another_academy(): void
+    {
+        Notification::fake();
+        [, $website, $offering] = $this->offering('plan-owner');
+        [, , $foreignOffering] = $this->offering('foreign-plan-owner');
+        $payload = $this->payload($offering);
+        $payload['programme_cycle_payment_plan_id'] = $foreignOffering->paymentPlans()->value('id');
+
+        $this->post(route('public.academy.application.store', $website->subdomain), $payload)
+            ->assertSessionHasErrors('programme_cycle_payment_plan_id');
+        $this->assertDatabaseMissing(Application::class, ['academy_id' => $website->academy_id]);
     }
 
     public function test_paystack_initialization_uses_only_the_server_calculated_amount(): void
@@ -294,6 +316,25 @@ class PublicApplicationPaymentTest extends TestCase
             ['academy_id' => $academy->id, 'name' => 'First installment', 'amount_minor' => 6000000, 'sequence' => 1],
             ['academy_id' => $academy->id, 'name' => 'Final installment', 'amount_minor' => 6000000, 'sequence' => 2],
         ]);
+        $plan = $offering->paymentPlans()->create([
+            'academy_id' => $academy->id,
+            'term_scope_id' => 0,
+            'cohort_scope_id' => 0,
+            'name' => 'Two-payment plan',
+            'description' => 'Two payments with a plan adjustment.',
+            'currency' => 'NGN',
+            'total_minor' => 13000000,
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+        $plan->items()->createMany([
+            ['academy_id' => $academy->id, 'name' => 'Tuition', 'amount_minor' => 12000000, 'sort_order' => 0],
+            ['academy_id' => $academy->id, 'name' => 'Plan adjustment', 'amount_minor' => 1000000, 'sort_order' => 1],
+        ]);
+        $plan->installments()->createMany([
+            ['academy_id' => $academy->id, 'name' => 'First plan payment', 'amount_minor' => 6500000, 'sequence' => 1],
+            ['academy_id' => $academy->id, 'name' => 'Final plan payment', 'amount_minor' => 6500000, 'sequence' => 2],
+        ]);
         $cohort = Cohort::query()->create([
             'academy_id' => $academy->id, 'programme_cycle_id' => $offering->id,
             'branch_id' => $branch->id, 'name' => 'January cohort',
@@ -327,6 +368,7 @@ class PublicApplicationPaymentTest extends TestCase
         return [
             'application_intake_id' => ApplicationIntake::query()->where('programme_cycle_id', $offering->id)->value('id'),
             'preferred_branch_id' => $offering->branch_id,
+            'programme_cycle_payment_plan_id' => $offering->paymentPlans()->where('is_default', true)->value('id'),
             'first_name' => 'Amara', 'last_name' => 'Okafor', 'email' => 'applicant@example.com',
             'date_of_birth' => '2014-05-02', 'gender' => 'Female', 'country' => 'Nigeria',
             'consent_accepted' => '1',

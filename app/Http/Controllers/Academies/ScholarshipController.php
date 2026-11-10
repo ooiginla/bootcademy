@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Academies;
 use App\Academies\AcademyContext;
 use App\Academies\Actions\ApplyScholarshipAward;
 use App\Academies\Actions\RecordSponsorContribution;
+use App\Enums\AcademyCycleType;
 use App\Enums\AcademyInvoiceStatus;
 use App\Enums\AcademyPaymentMethod;
 use App\Http\Controllers\Controller;
@@ -115,7 +116,10 @@ class ScholarshipController extends Controller
                     'cycle_id' => $invoice->academy_cycle_id, 'programme_id' => $invoice->programme_id,
                     'branch_id' => $invoice->branch_id,
                 ])->values(),
-            'cycles' => $academy->cycles()->with(['terms' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])->orderByDesc('starts_on')->get(),
+            'cycles' => $academy->cycles()->with(['terms' => fn ($query) => $query
+                ->where('is_active', true)
+                ->whereHas('cycle', fn ($cycle) => $cycle->where('type', AcademyCycleType::Fixed->value))
+                ->orderBy('sort_order')])->orderByDesc('starts_on')->get(),
             'programmes' => $academy->programmes()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'branches' => $academy->branches()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'payment_methods' => collect(AcademyPaymentMethod::cases())->reject(fn ($method) => $method === AcademyPaymentMethod::Paystack)
@@ -313,9 +317,11 @@ class ScholarshipController extends Controller
         }
         if (! empty($data['academy_cycle_term_id'])) {
             $termMatches = $academy->cycleTerms()->whereKey($data['academy_cycle_term_id'])
-                ->where('academy_cycle_id', $data['academy_cycle_id'])->exists();
+                ->where('academy_cycle_id', $data['academy_cycle_id'])
+                ->whereHas('cycle', fn ($cycle) => $cycle->where('type', AcademyCycleType::Fixed->value))
+                ->exists();
             if (! $termMatches) {
-                throw ValidationException::withMessages(['academy_cycle_term_id' => 'The selected term does not belong to the selected cycle.']);
+                throw ValidationException::withMessages(['academy_cycle_term_id' => 'Select a term from a fixed cycle. Rolling cycles do not use terms.']);
             }
         }
         $values = [

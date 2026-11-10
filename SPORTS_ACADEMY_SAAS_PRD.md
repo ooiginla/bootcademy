@@ -75,7 +75,7 @@ These are **draft launch prices**, not immutable business rules. Plans and limit
 
 ### 4.2 Academy and branch management (P0)
 
-- Academy details, logo, contact information, academic/training terms, policies.
+- Academy details, logo, contact information, academic/training cycles, optional fixed-cycle terms and policies. Rolling cycles are managed directly without terms.
 - Branches, venues, age bands, programmes, sessions, schedules, capacities, coach assignment.
 - Branch-specific dashboards and access restrictions.
 - Configurable programmes such as football, athletics, fitness, camps; no assumption that every programme is offered at every branch.
@@ -105,8 +105,8 @@ These are **draft launch prices**, not immutable business rules. Plans and limit
 
 ### 4.6 Academy fees and finance (P0)
 
-- Configurable fee schedules by programme, term, age band, academy and effective date.
-- Invoices, installments, discounts, scholarships/waivers, payments, receipts, adjustments, outstanding balances, renewals.
+- Configurable fee schedules by programme, cycle, optional fixed-cycle term, age band, academy and effective date. Training-cycle structure must remain separate from SaaS subscription billing periods.
+- Invoices, configurable payment-plan totals and repayment schedules, discounts, scholarships/waivers, payments, receipts, adjustments, outstanding balances and renewals. Each plan must expose its fee breakdown and its repayments must equal its contracted total.
 - Manual payment recording with verification status and audit trail.
 - Expense categories, branch attribution, supporting attachments and basic cash summaries.
 - Do not treat a payment webhook as trusted without signature verification and idempotency checks.

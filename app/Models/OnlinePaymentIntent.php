@@ -6,6 +6,16 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $academy_id
+ * @property int $application_id
+ * @property string $reference
+ * @property string $status
+ * @property string $currency
+ * @property int $charged_amount_minor
+ * @property-read AcademyPayment|null $payment
+ */
 #[Fillable([
     'academy_id', 'application_id', 'academy_payment_id', 'provider', 'reference', 'selection_key',
     'status', 'currency', 'base_amount_minor', 'surcharge_minor', 'charged_amount_minor',
