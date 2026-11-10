@@ -10,21 +10,25 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['academy_id', 'academy_cycle_id', 'name', 'starts_on', 'ends_on', 'sort_order', 'is_default', 'is_active'])]
 class AcademyCycleTerm extends Model
 {
+    /** @return BelongsTo<Academy, $this> */
     public function academy(): BelongsTo
     {
         return $this->belongsTo(Academy::class);
     }
 
+    /** @return BelongsTo<AcademyCycle, $this> */
     public function cycle(): BelongsTo
     {
         return $this->belongsTo(AcademyCycle::class, 'academy_cycle_id');
     }
 
+    /** @return HasMany<ProgrammeCycleFeeItem, $this> */
     public function programmeFeeItems(): HasMany
     {
         return $this->hasMany(ProgrammeCycleFeeItem::class);
     }
 
+    /** @return HasMany<AcademyCycleFee, $this> */
     public function cycleFees(): HasMany
     {
         return $this->hasMany(AcademyCycleFee::class);

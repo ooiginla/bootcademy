@@ -337,14 +337,14 @@ class ProgrammeManagementTest extends TestCase
         $this->asAcademy($owner, $academy)
             ->get(route('academy.programmes.show', ['programme' => $programme, 'tab' => 'members', 'status' => 'completed']))
             ->assertOk()->assertInertia(fn (Assert $page) => $page
-                ->where('selected_status', 'completed')
-                ->has('members.data', 1)
-                ->where('members.data.0.id', $completed->id));
+            ->where('selected_status', 'completed')
+            ->has('members.data', 1)
+            ->where('members.data.0.id', $completed->id));
         $this->asAcademy($owner, $academy)
             ->get(route('academy.programmes.show', ['programme' => $programme, 'tab' => 'members', 'status' => 'active']))
             ->assertOk()->assertInertia(fn (Assert $page) => $page
-                ->has('members.data', 1)
-                ->where('members.data.0.id', $active->id));
+            ->has('members.data', 1)
+            ->where('members.data.0.id', $active->id));
     }
 
     public function test_owner_can_complete_selected_programme_enrollments_without_deleting_history(): void
@@ -481,6 +481,11 @@ class ProgrammeManagementTest extends TestCase
         AcademyMembership::factory()->for($user)->for($academy)->asRole($role)->create();
 
         return [$user, $academy];
+    }
+
+    private function asAcademy(User $user, Academy $academy): static
+    {
+        return $this->actingAs($user)->withSession(['active_academy_id' => $academy->id]);
     }
 
     private function validPng(string $name = 'programme.png'): UploadedFile

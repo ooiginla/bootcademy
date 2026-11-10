@@ -1,0 +1,1021 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Offset ''enabled'' does not exist on array\{label\: string, description\: string, fields\: array\<string, array\<string, mixed\>\>\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Academies/AcademyWebsiteDefaults.php
+
+		-
+			message: '#^Offset ''title'' does not exist on array\{label\: string, description\: string, fields\: array\<string, array\<string, mixed\>\>\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Academies/AcademyWebsiteDefaults.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 6
+			path: app/Academies/Actions/ApplyScholarshipAward.php
+
+		-
+			message: '#^Property App\\Models\\AcademyInvoice\:\:\$scholarship_concession_minor \(int\<0, max\>\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Academies/Actions/ApplyScholarshipAward.php
+
+		-
+			message: '#^Property App\\Models\\AcademyInvoice\:\:\$sponsor_responsibility_minor \(int\<0, max\>\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Academies/Actions/ApplyScholarshipAward.php
+
+		-
+			message: '#^Property App\\Models\\AcademyInvoiceInstallment\:\:\$scholarship_concession_minor \(int\<0, max\>\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Academies/Actions/ApplyScholarshipAward.php
+
+		-
+			message: '#^Property App\\Models\\AcademyInvoiceInstallment\:\:\$sponsor_responsibility_minor \(int\<0, max\>\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Academies/Actions/ApplyScholarshipAward.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>academy_cycle_term_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Academies/Actions/ApplyScholarshipAward.php
+
+		-
+			message: '#^Called ''count'' on Laravel collection, but could have been retrieved as a query\.$#'
+			identifier: larastan.noUnnecessaryCollectionCall
+			count: 1
+			path: app/Academies/Actions/BulkReenrollProgrammeMembers.php
+
+		-
+			message: '#^Parameter \#1 \$activation of method App\\Models\\AcademyCycle\:\:rollingEndDate\(\) expects Carbon\\CarbonInterface, Carbon\\Carbon\|Carbon\\CarbonImmutable\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Academies/Actions/BulkReenrollProgrammeMembers.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>first_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Academies/Actions/PayReferralReward.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>last_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Academies/Actions/PayReferralReward.php
+
+		-
+			message: '#^Method App\\Academies\\Actions\\ReconcileReferralRewards\:\:enrollmentEvent\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Academies/Actions/ReconcileReferralRewards.php
+
+		-
+			message: '#^Method App\\Academies\\Actions\\ReconcileReferralRewards\:\:firstPaymentEvent\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Academies/Actions/ReconcileReferralRewards.php
+
+		-
+			message: '#^Method App\\Academies\\Actions\\ReconcileReferralRewards\:\:paidInvoiceEvent\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Academies/Actions/ReconcileReferralRewards.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ExpenseCategory\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ExpenseCategory\>\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Academies/Actions/RecordAcademyExpense.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ExpenseCategory\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ExpenseCategory\>\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Academies/Actions/RecordAcademyExpense.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ExpenseVendor\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ExpenseVendor\>\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Academies/Actions/RecordAcademyExpense.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ExpenseVendor\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ExpenseVendor\>\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Academies/Actions/RecordAcademyExpense.php
+
+		-
+			message: '#^Property App\\Models\\AcademyInvoice\:\:\$sponsor_paid_minor \(int\<0, max\>\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Academies/Actions/RecordSponsorContribution.php
+
+		-
+			message: '#^Property App\\Models\\AcademyInvoiceInstallment\:\:\$sponsor_paid_minor \(int\<0, max\>\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Academies/Actions/RecordSponsorContribution.php
+
+		-
+			message: '#^Property App\\Models\\ScholarshipInvoiceAllocation\:\:\$funded_minor \(int\<0, max\>\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Academies/Actions/RecordSponsorContribution.php
+
+		-
+			message: '#^Property App\\Models\\SponsorCommitment\:\:\$received_minor \(int\<0, max\>\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Academies/Actions/RecordSponsorContribution.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\AcademyPaymentAllocation\:\:\$reversed_minor\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Academies/Actions/ReverseAcademyPayment.php
+
+		-
+			message: '#^Property App\\Models\\AcademyInvoice\:\:\$sponsor_paid_minor \(int\<0, max\>\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Academies/Actions/ReverseAcademyPayment.php
+
+		-
+			message: '#^Property App\\Models\\AcademyInvoiceInstallment\:\:\$sponsor_paid_minor \(int\<0, max\>\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Academies/Actions/ReverseAcademyPayment.php
+
+		-
+			message: '#^Property App\\Models\\AcademyPayment\:\:\$reversed_minor \(int\<0, max\>\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Academies/Actions/ReverseAcademyPayment.php
+
+		-
+			message: '#^Property App\\Models\\ScholarshipInvoiceAllocation\:\:\$funded_minor \(int\<0, max\>\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Academies/Actions/ReverseAcademyPayment.php
+
+		-
+			message: '#^Property App\\Models\\SponsorCommitment\:\:\$received_minor \(int\<0, max\>\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Academies/Actions/ReverseAcademyPayment.php
+
+		-
+			message: '#^Property App\\Models\\SponsorContribution\:\:\$reversed_minor \(int\<0, max\>\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Academies/Actions/ReverseAcademyPayment.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments string, array\{App\\Enums\\CohortStatus\:\:Completed, App\\Enums\\CohortStatus\:\:Cancelled\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Academies/Actions/ReviewApplication.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Academies/Actions/SaveAcademyCycleFee.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Academies/Actions/SaveAcademyCycleFee.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Cohort\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Cohort\>\:\:\$programmeCycle\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Academies/Actions/SaveApplication.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Cohort\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Cohort\>\:\:\$programme_cycle_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Academies/Actions/SaveApplication.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Cohort\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Cohort\>\:\:\$branch_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Academies/Actions/SaveApplicationIntake.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Cohort\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Cohort\>\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Academies/Actions/SaveApplicationIntake.php
+
+		-
+			message: '#^Method App\\Academies\\Actions\\SaveApplicationIntake\:\:handle\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Academies/Actions/SaveApplicationIntake.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>branch_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Academies/Actions/SaveApplicationIntake.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Academies/Actions/SaveApplicationIntake.php
+
+		-
+			message: '#^Method App\\Academies\\Actions\\SaveAttendance\:\:handle\(\) has parameter \$allowedPlayerIds with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Academies/Actions/SaveAttendance.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ProgrammeCycle\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ProgrammeCycle\>\:\:\$branch_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Academies/Actions/SaveCohort.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ProgrammeCycle\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ProgrammeCycle\>\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Academies/Actions/SaveCohort.php
+
+		-
+			message: '#^Method App\\Academies\\Actions\\SaveCohort\:\:handle\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Academies/Actions/SaveCohort.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Academies/Actions/SaveProgramme.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Academies/Actions/SaveProgramme.php
+
+		-
+			message: '#^Method App\\Academies\\Actions\\SendAcademyCommunication\:\:queue\(\) has parameter \$lines with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Academies/Actions/SendAcademyCommunication.php
+
+		-
+			message: '#^Method App\\Academies\\Actions\\SendAcademyCommunication\:\:queue\(\) has parameter \$recipient with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Academies/Actions/SendAcademyCommunication.php
+
+		-
+			message: '#^Method App\\Academies\\Actions\\SendAcademyCommunication\:\:toPlayerGuardians\(\) has parameter \$lines with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Academies/Actions/SendAcademyCommunication.php
+
+		-
+			message: '#^Method App\\Academies\\Actions\\SendAcademyCommunication\:\:toPlayerGuardians\(\) has parameter \$player with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Academies/Actions/SendAcademyCommunication.php
+
+		-
+			message: '#^Parameter \#2 \$timestamp of function date expects int\|null, int\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Academies/Actions/SendAcademyCommunication.php
+
+		-
+			message: '#^Parameter \#3 \$lines of class App\\Notifications\\AcademyCommunicationNotification constructor expects list\<string\>, array given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Academies/Actions/SendAcademyCommunication.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Carbon\\CarbonImmutable\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Academies/AcademyAuditLogController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/Academies/AcademyCycleController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\AcademyCycleTerm\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Academies/AcademyCycleController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\AcademyCycleTerm\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/AcademyCycleController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:values\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/AcademyCycleController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Academies/AcademyExpenseController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Pagination\\AbstractPaginator\<int,App\\Models\\AcademyExpense\>\:\:through\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Academies/AcademyExpenseController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Pagination\\AbstractPaginator\<int,App\\Models\\AcademyExpense\>\:\:through\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/AcademyExpenseController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Academies/AcademyExpenseController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Academies/AcademyExportController.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fclose expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Academies/AcademyExportController.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fputcsv expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/Academies/AcademyExportController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Academies/AcademyPaymentController.php
+
+		-
+			message: '#^Parameter \#4 \$data of method App\\Academies\\Actions\\UpdateAcademyWebsite\:\:handle\(\) expects array\{subdomain\: string, theme_key\: string, is_published\: bool, sections\: array\<string, array\<string, mixed\>\>\}, array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Academies/AcademyWebsiteController.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 4
+			path: app/Http/Controllers/Academies/ApplicationController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 4
+			path: app/Http/Controllers/Academies/ApplicationController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Cohort\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Http/Controllers/Academies/ApplicationController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Cohort\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 2
+			path: app/Http/Controllers/Academies/ApplicationController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:values\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 2
+			path: app/Http/Controllers/Academies/ApplicationController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>is_enabled" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Academies/ApplicationController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>changes_count" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Academies/AttendanceController.php
+
+		-
+			message: '#^Parameter \#3 \$recipients of method App\\Academies\\Actions\\SendAcademyCommunication\:\:announcement\(\) expects iterable\<int, array\{email\: string, name\: string\}\>, Illuminate\\Support\\Collection\<int, array\{email\: string\|null, name\: string\}\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Academies/CommunicationController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>due_on" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Academies/CommunicationController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>first_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Academies/CommunicationController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>last_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Academies/CommunicationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\TrainingSession\:\:\$attended\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Academies/DashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\TrainingSession\:\:\$marked\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Academies/DashboardController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Http/Controllers/Academies/PlayerController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/Academies/ProgrammeController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\AcademyCycle\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Academies/ProgrammeController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\AcademyCycleTerm\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Academies/ProgrammeController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\AcademyCycle\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/ProgrammeController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\AcademyCycleTerm\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/ProgrammeController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, bool\|Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>\|int\|string\>\>\:\:values\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/ProgrammeController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:values\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/ProgrammeController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/Academies/ReferralController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Referral\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Academies/ReferralController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ReferralReward\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Academies/ReferralController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Referral\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/ReferralController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ReferralReward\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/ReferralController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>first_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/Academies/ReferralController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>last_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/Academies/ReferralController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ScholarshipScheme\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ScholarshipScheme\>\:\:\$funding_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Academies/ScholarshipController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ScholarshipScheme\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ScholarshipScheme\>\:\:\$sponsor_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Academies/ScholarshipController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 7
+			path: app/Http/Controllers/Academies/ScholarshipController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ScholarshipAward\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Academies/ScholarshipController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ScholarshipScheme\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Academies/ScholarshipController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Sponsor\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Academies/ScholarshipController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\SponsorCommitment\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Academies/ScholarshipController.php
+
+		-
+			message: '#^Parameter \#3 \$invoice of method App\\Academies\\Actions\\ApplyScholarshipAward\:\:handle\(\) expects App\\Models\\AcademyInvoice, App\\Models\\AcademyInvoice\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\AcademyInvoice\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Academies/ScholarshipController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ScholarshipAward\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/ScholarshipController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ScholarshipScheme\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/ScholarshipController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Sponsor\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/ScholarshipController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\SponsorCommitment\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/ScholarshipController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:values\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/ScholarshipController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Academies/ScholarshipController.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$academy_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Academies/StoreController.php
+
+		-
+			message: '#^Call to an undefined method object\:\:where\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Academies/StoreController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Academies/StoreController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 6
+			path: app/Http/Controllers/Academies/StoreController.php
+
+		-
+			message: '#^Comparison operation "\<" between int\<0, max\> and 0 is always false\.$#'
+			identifier: smaller.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/Academies/StoreController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Academies\\StoreController\:\:slug\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Http/Controllers/Academies/StoreController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\StoreOrder\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Academies/StoreController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\StoreOrderPayment\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Academies/StoreController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\StoreOrder\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/StoreController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\StoreOrderPayment\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/StoreController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:values\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Academies/StoreController.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Http/Controllers/Academies/StoreController.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Http/Controllers/Academies/StoreController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/Academies/StoreController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/Academies/StoreController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/Api/V1/ApplicationController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ApplicationIntake\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/V1/ApplicationController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ApplicationIntake\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Api/V1/ApplicationController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:values\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Api/V1/ApplicationController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/V1/ApplicationController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/PublicAcademyWebsiteController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ApplicationIntake\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/PublicAcademyWebsiteController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ApplicationIntake\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/PublicAcademyWebsiteController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:values\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/PublicAcademyWebsiteController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Http/Controllers/PublicAcademyWebsiteController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/PublicApplicationController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>reference" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/PublicApplicationController.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Academies\\BookPlayerCycleFeeRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Academies/BookPlayerCycleFeeRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Academies\\BulkCompleteProgrammeEnrollmentsRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Academies/BulkCompleteProgrammeEnrollmentsRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Academies\\BulkReenrollProgrammeMembersRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Academies/BulkReenrollProgrammeMembersRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Academies\\CancelAcademyInvoiceRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Academies/CancelAcademyInvoiceRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Academies\\ReverseAcademyPaymentRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Academies/ReverseAcademyPaymentRequest.php
+
+		-
+			message: '#^Access to an undefined property \(object\|string\)\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Requests/Academies/SaveAcademyCycleFeeRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Academies\\SaveAcademyCycleFeeRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Academies/SaveAcademyCycleFeeRequest.php
+
+		-
+			message: '#^Access to an undefined property \(object\|string\)\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Requests/Academies/SaveAcademyCycleTermRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Academies\\SaveAcademyCycleTermRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Academies/SaveAcademyCycleTermRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Academies\\SaveAcademyExpenseRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Academies/SaveAcademyExpenseRequest.php
+
+		-
+			message: '#^Access to an undefined property \(object\|string\)\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Requests/Academies/SaveApplicationIntakeRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Academies\\SaveApplicationIntakeRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Academies/SaveApplicationIntakeRequest.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>branch_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Requests/Academies/SaveApplicationIntakeRequest.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Requests/Academies/SaveApplicationIntakeRequest.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Requests/Academies/SaveApplicationRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Academies\\SaveAttendanceRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Academies/SaveAttendanceRequest.php
+
+		-
+			message: '#^Access to an undefined property \(object\|string\)\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Requests/Academies/SaveCohortRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Academies\\SaveCohortRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Academies/SaveCohortRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Academies\\SaveExpenseCategoryRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Academies/SaveExpenseCategoryRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Academies\\SaveExpenseVendorRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Academies/SaveExpenseVendorRequest.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Http/Requests/Academies/SaveTrainingSessionRequest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Http/Requests/Academies/SaveTrainingSessionRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Academies\\WriteOffAcademyInvoiceRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Academies/WriteOffAcademyInvoiceRequest.php
+
+		-
+			message: '#^Cannot call method startOfDay\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Models/ApplicationIntake.php
+
+		-
+			message: '#^Method App\\Notifications\\AcademyCommunicationNotification\:\:via\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Notifications/AcademyCommunicationNotification.php
+
+		-
+			message: '#^Method App\\Notifications\\AcademyPaymentReceiptNotification\:\:via\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Notifications/AcademyPaymentReceiptNotification.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>first_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Notifications/AcademyPaymentReceiptNotification.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>last_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Notifications/AcademyPaymentReceiptNotification.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>middle_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Notifications/AcademyPaymentReceiptNotification.php
+
+		-
+			message: '#^Method App\\Notifications\\ApplicationSubmittedNotification\:\:via\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Notifications/ApplicationSubmittedNotification.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Notifications/ApplicationSubmittedNotification.php
+
+		-
+			message: '#^Method App\\Notifications\\StoreOrderPaymentReceiptNotification\:\:via\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Notifications/StoreOrderPaymentReceiptNotification.php
+
+		-
+			message: '#^Argument of an invalid type string supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: app/Payments/SettleOnlinePayment.php
+
+		-
+			message: '#^Parameter \#2 \$haystack of function in_array expects array, array\|string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: routes/console.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>due_on" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: routes/console.php

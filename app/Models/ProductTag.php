@@ -10,11 +10,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 #[Fillable(['academy_id', 'name', 'slug'])]
 class ProductTag extends Model
 {
+    /** @return BelongsTo<Academy, $this> */
     public function academy(): BelongsTo
     {
         return $this->belongsTo(Academy::class);
     }
 
+    /** @return BelongsToMany<Product, $this> */
     public function products(): BelongsToMany
     {
         return $this->belongsToMany(Product::class)->withPivot('academy_id');

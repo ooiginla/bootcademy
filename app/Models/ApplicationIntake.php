@@ -15,26 +15,34 @@ use Illuminate\Support\Carbon;
 ])]
 class ApplicationIntake extends Model
 {
+    /** @return BelongsTo<ProgrammeCycle, $this> */
     public function programmeCycle(): BelongsTo
     {
         return $this->belongsTo(ProgrammeCycle::class);
     }
 
+    /** @return BelongsTo<Cohort, $this> */
     public function cohort(): BelongsTo
     {
         return $this->belongsTo(Cohort::class);
     }
 
+    /** @return BelongsTo<Branch, $this> */
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
     }
 
+    /** @return HasMany<Application, $this> */
     public function applications(): HasMany
     {
         return $this->hasMany(Application::class);
     }
 
+    /**
+     * @param  Builder<ApplicationIntake>  $query
+     * @return Builder<ApplicationIntake>
+     */
     public function scopeOpenOn(Builder $query, Carbon|string $date): Builder
     {
         $date = Carbon::parse($date)->toDateString();

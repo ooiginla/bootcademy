@@ -9,16 +9,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['academy_id', 'store_order_id', 'reference', 'method', 'status', 'currency', 'amount_minor', 'surcharge_minor', 'charged_amount_minor', 'provider_fee_minor', 'received_on', 'external_reference', 'access_code', 'failure_reason', 'initialized_at', 'verified_at', 'receipt_queued_at', 'notes', 'recorded_by_user_id'])]
 class StoreOrderPayment extends Model
 {
+    /** @return BelongsTo<Academy, $this> */
     public function academy(): BelongsTo
     {
         return $this->belongsTo(Academy::class);
     }
 
+    /** @return BelongsTo<StoreOrder, $this> */
     public function order(): BelongsTo
     {
         return $this->belongsTo(StoreOrder::class, 'store_order_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by_user_id');

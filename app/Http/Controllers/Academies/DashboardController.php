@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Academies;
 use App\Academies\AcademyContext;
 use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\Controller;
+use App\Models\TrainingSession;
 use App\Support\Money;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -102,6 +103,7 @@ class DashboardController extends Controller
         ];
     }
 
+    /** @param Builder<TrainingSession> $query */
     private function branchSessions(Builder $query, ?int $branchId): void
     {
         $query->when($branchId, fn (Builder $query) => $query->where(fn (Builder $scope) => $scope->where('all_branches', true)->orWhereHas('branches', fn (Builder $branches) => $branches->whereKey($branchId))));

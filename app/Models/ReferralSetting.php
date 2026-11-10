@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['academy_id', 'is_enabled', 'qualifying_event', 'reward_type', 'reward_basis_points', 'fixed_reward_minor', 'eligible_payment_scope'])]
 class ReferralSetting extends Model
 {
+    /** @return BelongsTo<Academy, $this> */
     public function academy(): BelongsTo
     {
         return $this->belongsTo(Academy::class);

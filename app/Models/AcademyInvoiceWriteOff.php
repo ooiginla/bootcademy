@@ -10,16 +10,19 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable(['academy_id', 'academy_invoice_id', 'amount_minor', 'reason', 'created_by_user_id'])]
 class AcademyInvoiceWriteOff extends Model
 {
+    /** @return BelongsTo<Academy, $this> */
     public function academy(): BelongsTo
     {
         return $this->belongsTo(Academy::class);
     }
 
+    /** @return BelongsTo<AcademyInvoice, $this> */
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(AcademyInvoice::class, 'academy_invoice_id');
     }
 
+    /** @return HasOne<AcademyExpense, $this> */
     public function expense(): HasOne
     {
         return $this->hasOne(AcademyExpense::class);

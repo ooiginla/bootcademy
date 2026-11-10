@@ -166,6 +166,7 @@ class AcademyExpenseController extends Controller
         ]);
     }
 
+    /** @param Builder<AcademyExpense> $query */
     private function applyFilters(Builder $query, ?int $categoryId, ?int $branchId, ?int $cycleId, ?string $dateFrom, ?string $dateTo): void
     {
         $query->when($categoryId, fn (Builder $query) => $query->where('expense_category_id', $categoryId))

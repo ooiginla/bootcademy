@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['academy_id', 'academy_payment_adjustment_id', 'academy_payment_allocation_id', 'amount_minor'])]
 class AcademyPaymentAdjustmentAllocation extends Model
 {
+    /** @return BelongsTo<AcademyPaymentAdjustment, $this> */
     public function adjustment(): BelongsTo
     {
         return $this->belongsTo(AcademyPaymentAdjustment::class, 'academy_payment_adjustment_id');

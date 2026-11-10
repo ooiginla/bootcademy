@@ -9,11 +9,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['academy_id', 'product_variant_id', 'branch_id', 'type', 'on_hand_delta', 'reserved_delta', 'transfer_reference', 'reference_type', 'reference_id', 'notes', 'created_by_user_id', 'occurred_at'])]
 class StockMovement extends Model
 {
+    /** @return BelongsTo<ProductVariant, $this> */
     public function variant(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class, 'product_variant_id');
     }
 
+    /** @return BelongsTo<Branch, $this> */
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);

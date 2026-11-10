@@ -40,6 +40,12 @@ return new class extends Migration
         });
 
         Schema::table('academy_cycle_fees', function (Blueprint $table): void {
+            // MySQL may use the existing name uniqueness constraint to support
+            // cycle_fee_cycle_fk. Keep a dedicated supporting index in place
+            // before replacing that unique constraint with the scoped version.
+            $table->index(['academy_id', 'academy_cycle_id'], 'cycle_fee_cycle_index');
+        });
+        Schema::table('academy_cycle_fees', function (Blueprint $table): void {
             $table->dropUnique(['academy_id', 'academy_cycle_id', 'name']);
             $table->foreignId('academy_cycle_term_id')->nullable()->after('academy_cycle_id');
             $table->foreignId('cohort_id')->nullable()->after('academy_cycle_term_id');
@@ -95,6 +101,9 @@ return new class extends Migration
             $table->dropUnique('cycle_fee_name_scope_unique');
             $table->dropColumn(['academy_cycle_term_id', 'cohort_id', 'term_scope_id', 'cohort_scope_id']);
             $table->unique(['academy_id', 'academy_cycle_id', 'name']);
+        });
+        Schema::table('academy_cycle_fees', function (Blueprint $table): void {
+            $table->dropIndex('cycle_fee_cycle_index');
         });
         Schema::table('programme_cycle_fee_items', function (Blueprint $table): void {
             $table->dropForeign('programme_fee_term_fk');

@@ -10,16 +10,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['academy_id', 'product_id', 'name', 'sku', 'attributes', 'price_minor', 'is_active'])]
 class ProductVariant extends Model
 {
+    /** @return BelongsTo<Academy, $this> */
     public function academy(): BelongsTo
     {
         return $this->belongsTo(Academy::class);
     }
 
+    /** @return BelongsTo<Product, $this> */
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
+    /** @return HasMany<InventoryStock, $this> */
     public function stocks(): HasMany
     {
         return $this->hasMany(InventoryStock::class);

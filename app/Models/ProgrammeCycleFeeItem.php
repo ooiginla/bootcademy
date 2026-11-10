@@ -15,11 +15,13 @@ class ProgrammeCycleFeeItem extends Model
         return $this->belongsTo(ProgrammeCycle::class);
     }
 
+    /** @return BelongsTo<AcademyCycleTerm, $this> */
     public function term(): BelongsTo
     {
         return $this->belongsTo(AcademyCycleTerm::class, 'academy_cycle_term_id');
     }
 
+    /** @return BelongsTo<Cohort, $this> */
     public function cohort(): BelongsTo
     {
         return $this->belongsTo(Cohort::class);

@@ -14,31 +14,37 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class Cohort extends Model
 {
+    /** @return BelongsTo<Academy, $this> */
     public function academy(): BelongsTo
     {
         return $this->belongsTo(Academy::class);
     }
 
+    /** @return BelongsTo<ProgrammeCycle, $this> */
     public function programmeCycle(): BelongsTo
     {
         return $this->belongsTo(ProgrammeCycle::class);
     }
 
+    /** @return BelongsTo<Branch, $this> */
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
     }
 
+    /** @return HasMany<CohortMembership, $this> */
     public function memberships(): HasMany
     {
         return $this->hasMany(CohortMembership::class);
     }
 
+    /** @return HasMany<ApplicationIntake, $this> */
     public function intakes(): HasMany
     {
         return $this->hasMany(ApplicationIntake::class);
     }
 
+    /** @return HasMany<TrainingSession, $this> */
     public function trainingSessions(): HasMany
     {
         return $this->hasMany(TrainingSession::class);

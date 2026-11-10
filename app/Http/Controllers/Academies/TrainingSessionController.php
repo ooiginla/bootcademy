@@ -76,6 +76,7 @@ class TrainingSessionController extends Controller
         return back();
     }
 
+    /** @param Builder<TrainingSession> $query */
     private function scopeVisibility(Builder $query, ?AcademyMembership $membership, AcademyContext $context): void
     {
         if ($context->isSupportMode() || $membership?->role === AcademyRole::OwnerAdmin) {

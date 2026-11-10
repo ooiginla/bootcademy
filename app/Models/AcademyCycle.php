@@ -70,11 +70,13 @@ class AcademyCycle extends Model
         return $this->hasMany(Enrollment::class);
     }
 
+    /** @return HasMany<AcademyCycleFee, $this> */
     public function fees(): HasMany
     {
         return $this->hasMany(AcademyCycleFee::class);
     }
 
+    /** @return HasMany<AcademyCycleTerm, $this> */
     public function terms(): HasMany
     {
         return $this->hasMany(AcademyCycleTerm::class);

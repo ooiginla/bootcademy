@@ -94,21 +94,25 @@ class AcademyInvoice extends Model
         return $this->hasMany(AcademyPaymentAllocation::class);
     }
 
+    /** @return HasMany<AcademyInvoiceWriteOff, $this> */
     public function writeOffs(): HasMany
     {
         return $this->hasMany(AcademyInvoiceWriteOff::class);
     }
 
+    /** @return BelongsTo<AcademyCycleFee, $this> */
     public function cycleFee(): BelongsTo
     {
         return $this->belongsTo(AcademyCycleFee::class, 'academy_cycle_fee_id');
     }
 
+    /** @return BelongsTo<EnrollmentTermRegistration, $this> */
     public function enrollmentTermRegistration(): BelongsTo
     {
         return $this->belongsTo(EnrollmentTermRegistration::class);
     }
 
+    /** @return HasMany<ScholarshipInvoiceAllocation, $this> */
     public function scholarshipAllocations(): HasMany
     {
         return $this->hasMany(ScholarshipInvoiceAllocation::class);

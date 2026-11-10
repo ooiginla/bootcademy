@@ -80,11 +80,13 @@ class Application extends Model
         return $this->belongsTo(ProgrammeCycle::class);
     }
 
+    /** @return BelongsTo<Cohort, $this> */
     public function cohort(): BelongsTo
     {
         return $this->belongsTo(Cohort::class);
     }
 
+    /** @return BelongsTo<ApplicationIntake, $this> */
     public function applicationIntake(): BelongsTo
     {
         return $this->belongsTo(ApplicationIntake::class);
@@ -102,6 +104,7 @@ class Application extends Model
         return $this->hasMany(AcademyPayment::class);
     }
 
+    /** @return HasMany<OnlinePaymentIntent, $this> */
     public function onlinePaymentIntents(): HasMany
     {
         return $this->hasMany(OnlinePaymentIntent::class);

@@ -28,11 +28,13 @@ class AcademyPaymentAllocation extends Model
         return $this->belongsTo(AcademyInvoiceInstallment::class, 'academy_invoice_installment_id');
     }
 
+    /** @return HasMany<AcademyPaymentAdjustmentAllocation, $this> */
     public function adjustmentAllocations(): HasMany
     {
         return $this->hasMany(AcademyPaymentAdjustmentAllocation::class);
     }
 
+    /** @return BelongsTo<ScholarshipInvoiceAllocation, $this> */
     public function scholarshipAllocation(): BelongsTo
     {
         return $this->belongsTo(ScholarshipInvoiceAllocation::class, 'scholarship_invoice_allocation_id');

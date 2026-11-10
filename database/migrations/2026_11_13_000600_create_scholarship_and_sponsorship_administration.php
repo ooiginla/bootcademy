@@ -125,7 +125,7 @@ return new class extends Migration
 
             $table->unique(['academy_id', 'id']);
             $table->unique(['scholarship_award_id', 'academy_invoice_id'], 'scholarship_award_invoice_unique');
-            $table->index(['academy_id', 'funding_type', 'status']);
+            $table->index(['academy_id', 'funding_type', 'status'], 'scholarship_allocation_funding_index');
             $table->foreign('academy_id')->references('id')->on('academies')->cascadeOnDelete();
             $table->foreign(['academy_id', 'scholarship_award_id'], 'scholarship_allocation_award_fk')->references(['academy_id', 'id'])->on('scholarship_awards')->restrictOnDelete();
             $table->foreign(['academy_id', 'academy_invoice_id'], 'scholarship_allocation_invoice_fk')->references(['academy_id', 'id'])->on('academy_invoices')->restrictOnDelete();

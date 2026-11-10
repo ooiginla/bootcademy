@@ -30,6 +30,7 @@ use Illuminate\Support\Carbon;
 ])]
 class AcademyPayment extends Model
 {
+    /** @return BelongsTo<Academy, $this> */
     public function academy(): BelongsTo
     {
         return $this->belongsTo(Academy::class);
@@ -47,11 +48,13 @@ class AcademyPayment extends Model
         return $this->belongsTo(Player::class);
     }
 
+    /** @return BelongsTo<Sponsor, $this> */
     public function sponsor(): BelongsTo
     {
         return $this->belongsTo(Sponsor::class);
     }
 
+    /** @return HasOne<SponsorContribution, $this> */
     public function sponsorContribution(): HasOne
     {
         return $this->hasOne(SponsorContribution::class);
@@ -63,6 +66,7 @@ class AcademyPayment extends Model
         return $this->hasMany(AcademyPaymentAllocation::class);
     }
 
+    /** @return HasMany<AcademyPaymentAdjustment, $this> */
     public function adjustments(): HasMany
     {
         return $this->hasMany(AcademyPaymentAdjustment::class);

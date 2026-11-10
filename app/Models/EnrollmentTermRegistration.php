@@ -11,16 +11,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class EnrollmentTermRegistration extends Model
 {
+    /** @return BelongsTo<Enrollment, $this> */
     public function enrollment(): BelongsTo
     {
         return $this->belongsTo(Enrollment::class);
     }
 
+    /** @return BelongsTo<AcademyCycleTerm, $this> */
     public function term(): BelongsTo
     {
         return $this->belongsTo(AcademyCycleTerm::class, 'academy_cycle_term_id');
     }
 
+    /** @return BelongsTo<Cohort, $this> */
     public function cohort(): BelongsTo
     {
         return $this->belongsTo(Cohort::class);

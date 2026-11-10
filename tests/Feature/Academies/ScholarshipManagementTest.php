@@ -71,7 +71,7 @@ class ScholarshipManagementTest extends TestCase
         ]);
         $this->asAcademy($owner, $academy)->get(route('academy.scholarships.index'))
             ->assertOk()->assertInertia(fn (Assert $page) => $page
-                ->component('academies/scholarships')->has('sponsors', 1)->has('schemes', 1)->has('awards', 1));
+            ->component('academies/scholarships')->has('sponsors', 1)->has('schemes', 1)->has('awards', 1));
     }
 
     public function test_academy_funded_scholarship_reduces_personal_and_collectible_balance_without_fake_payment(): void
@@ -202,5 +202,10 @@ class ScholarshipManagementTest extends TestCase
         AcademyMembership::factory()->for($academy)->for($owner)->asRole(AcademyRole::OwnerAdmin)->create();
 
         return [$owner, $academy];
+    }
+
+    private function asAcademy(User $user, Academy $academy): static
+    {
+        return $this->actingAs($user)->withSession(['active_academy_id' => $academy->id]);
     }
 }

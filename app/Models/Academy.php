@@ -142,6 +142,7 @@ class Academy extends Model
         return $this->hasMany(AcademyCycle::class);
     }
 
+    /** @return HasMany<AcademyCycleTerm, $this> */
     public function cycleTerms(): HasMany
     {
         return $this->hasMany(AcademyCycleTerm::class);
@@ -153,11 +154,13 @@ class Academy extends Model
         return $this->hasMany(ProgrammeCycle::class);
     }
 
+    /** @return HasMany<Cohort, $this> */
     public function cohorts(): HasMany
     {
         return $this->hasMany(Cohort::class);
     }
 
+    /** @return HasMany<ApplicationIntake, $this> */
     public function applicationIntakes(): HasMany
     {
         return $this->hasMany(ApplicationIntake::class);
@@ -175,86 +178,103 @@ class Academy extends Model
         return $this->hasMany(AcademyPayment::class);
     }
 
+    /** @return HasMany<Sponsor, $this> */
     public function sponsors(): HasMany
     {
         return $this->hasMany(Sponsor::class);
     }
 
+    /** @return HasMany<SponsorCommitment, $this> */
     public function sponsorCommitments(): HasMany
     {
         return $this->hasMany(SponsorCommitment::class);
     }
 
+    /** @return HasMany<ScholarshipScheme, $this> */
     public function scholarshipSchemes(): HasMany
     {
         return $this->hasMany(ScholarshipScheme::class);
     }
 
+    /** @return HasMany<ScholarshipAward, $this> */
     public function scholarshipAwards(): HasMany
     {
         return $this->hasMany(ScholarshipAward::class);
     }
 
+    /** @return HasMany<OnlinePaymentIntent, $this> */
     public function onlinePaymentIntents(): HasMany
     {
         return $this->hasMany(OnlinePaymentIntent::class);
     }
 
+    /** @return HasMany<Announcement, $this> */
     public function announcements(): HasMany
     {
         return $this->hasMany(Announcement::class);
     }
 
+    /** @return HasMany<NotificationDelivery, $this> */
     public function notificationDeliveries(): HasMany
     {
         return $this->hasMany(NotificationDelivery::class);
     }
 
+    /** @return HasMany<Referral, $this> */
     public function referrals(): HasMany
     {
         return $this->hasMany(Referral::class);
     }
 
+    /** @return HasMany<ReferralReward, $this> */
     public function referralRewards(): HasMany
     {
         return $this->hasMany(ReferralReward::class);
     }
 
+    /** @return HasMany<AcademyCycleFee, $this> */
     public function cycleFees(): HasMany
     {
         return $this->hasMany(AcademyCycleFee::class);
     }
 
+    /** @return HasMany<AcademyExpense, $this> */
     public function expenses(): HasMany
     {
         return $this->hasMany(AcademyExpense::class);
     }
 
+    /** @return HasMany<ExpenseCategory, $this> */
     public function expenseCategories(): HasMany
     {
         return $this->hasMany(ExpenseCategory::class);
     }
 
+    /** @return HasMany<ExpenseVendor, $this> */
     public function expenseVendors(): HasMany
     {
         return $this->hasMany(ExpenseVendor::class);
     }
 
+    /** @return HasMany<Product, $this> */
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
     }
 
+    /** @return HasMany<ProductCategory, $this> */
     public function productCategories(): HasMany
     {
         return $this->hasMany(ProductCategory::class);
     }
 
+    /** @return HasMany<ProductTag, $this> */
     public function productTags(): HasMany
     {
         return $this->hasMany(ProductTag::class);
     }
 
+    /** @return HasMany<StoreOrder, $this> */
     public function storeOrders(): HasMany
     {
         return $this->hasMany(StoreOrder::class);

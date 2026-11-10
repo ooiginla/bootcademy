@@ -47,6 +47,7 @@ class TrainingSession extends Model
         return $this->belongsTo(Programme::class);
     }
 
+    /** @return BelongsTo<Cohort, $this> */
     public function cohort(): BelongsTo
     {
         return $this->belongsTo(Cohort::class);

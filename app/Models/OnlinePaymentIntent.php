@@ -14,16 +14,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class OnlinePaymentIntent extends Model
 {
+    /** @return BelongsTo<Academy, $this> */
     public function academy(): BelongsTo
     {
         return $this->belongsTo(Academy::class);
     }
 
+    /** @return BelongsTo<Application, $this> */
     public function application(): BelongsTo
     {
         return $this->belongsTo(Application::class);
     }
 
+    /** @return BelongsTo<AcademyPayment, $this> */
     public function payment(): BelongsTo
     {
         return $this->belongsTo(AcademyPayment::class, 'academy_payment_id');

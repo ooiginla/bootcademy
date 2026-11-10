@@ -66,11 +66,13 @@ class Enrollment extends Model
         return $this->belongsTo(Branch::class);
     }
 
+    /** @return HasMany<CohortMembership, $this> */
     public function cohortMemberships(): HasMany
     {
         return $this->hasMany(CohortMembership::class);
     }
 
+    /** @return HasMany<EnrollmentTermRegistration, $this> */
     public function termRegistrations(): HasMany
     {
         return $this->hasMany(EnrollmentTermRegistration::class);

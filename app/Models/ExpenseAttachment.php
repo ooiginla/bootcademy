@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['academy_id', 'academy_expense_id', 'path', 'original_name', 'mime_type', 'size_bytes', 'uploaded_by_user_id'])]
 class ExpenseAttachment extends Model
 {
+    /** @return BelongsTo<AcademyExpense, $this> */
     public function expense(): BelongsTo
     {
         return $this->belongsTo(AcademyExpense::class, 'academy_expense_id');
