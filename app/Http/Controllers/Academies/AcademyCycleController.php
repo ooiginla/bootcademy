@@ -96,7 +96,8 @@ class AcademyCycleController extends Controller
                     'enrollment_payment_rule' => $offering->enrollment_payment_rule->value,
                     'is_active' => $offering->is_active,
                     'fee_items' => $offering->feeItems->sortBy('sort_order')->values()->map(fn ($item): array => [
-                        'id' => $item->id, 'name' => $item->name, 'amount' => Money::fromMinor((int) $item->amount_minor),
+                        'id' => $item->id, 'name' => $item->name, 'description' => $item->description,
+                        'amount' => Money::fromMinor((int) $item->amount_minor),
                         'academy_cycle_term_id' => $cycle->supportsTerms() ? $item->academy_cycle_term_id : null,
                         'term_name' => $cycle->supportsTerms() ? $item->term?->name : null,
                         'cohort_id' => $item->cohort_id,

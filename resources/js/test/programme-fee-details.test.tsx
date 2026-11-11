@@ -53,13 +53,18 @@ describe('Programme fee payment plans', () => {
                     cohort_name: null,
                 }}
                 base_fee_items={[
-                    { name: 'Annual programme fee', amount: '100000.00' },
+                    {
+                        name: 'Annual programme fee',
+                        description: 'One annual payment',
+                        amount: '100000.00',
+                    },
                 ]}
                 plans={[
                     {
                         id: 9,
                         name: 'Two payments',
                         description: 'Two equal repayments.',
+                        sort_order: 20,
                         currency: 'NGN',
                         total: '110000.00',
                         is_default: true,
@@ -68,6 +73,7 @@ describe('Programme fee payment plans', () => {
                         items: [
                             {
                                 name: 'Annual programme fee',
+                                description: '₦50,000 every six months',
                                 amount: '100000.00',
                             },
                             {
@@ -116,5 +122,9 @@ describe('Programme fee payment plans', () => {
         expect(screen.getByLabelText('Fee item 1 name')).toHaveValue(
             'Annual programme fee',
         );
+        expect(screen.getByLabelText('Fee item 1 description')).toHaveValue(
+            'One annual payment',
+        );
+        expect(screen.getByLabelText('Display order')).toHaveValue(30);
     });
 });

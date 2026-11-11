@@ -48,17 +48,12 @@ type CohortOption = Option & {
 type FeeRow = {
     id?: number;
     name: string;
+    description?: string | null;
     amount: string;
     academy_cycle_term_id: number | null;
     term_name?: string | null;
     cohort_id: number | null;
     cohort_name?: string | null;
-};
-type InstallmentRow = {
-    name: string;
-    amount: string;
-    due_on: string;
-    due_offset_days: string;
 };
 type Offering = {
     id: number;
@@ -367,36 +362,17 @@ function OfferingDialog({
         fee_name: offering?.fee_name ?? 'Programme fee',
         branch_id: String(offering?.branch_id ?? ''),
         application_fee: offering?.application_fee ?? '0.00',
-        payment_mode: offering?.payment_mode ?? ('one_off' as const),
         is_active: offering?.is_active ?? true,
         fee_items: offering?.fee_items ?? [
             {
                 name: 'Tuition',
+                description: '',
                 amount: '',
                 academy_cycle_term_id:
                     terms.find((term) => term.is_default)?.id ??
                     terms[0]?.id ??
                     null,
                 cohort_id: null,
-            },
-        ],
-        installments: offering?.installments.map((item) => ({
-            name: item.name,
-            amount: item.amount,
-            due_on: item.due_on ?? '',
-            due_offset_days: item.due_offset_days?.toString() ?? '',
-        })) ?? [
-            {
-                name: 'First installment',
-                amount: '',
-                due_on: '',
-                due_offset_days: '0',
-            },
-            {
-                name: 'Final installment',
-                amount: '',
-                due_on: '',
-                due_offset_days: '',
             },
         ],
     });
@@ -413,18 +389,6 @@ function OfferingDialog({
         form.setData(
             'fee_items',
             form.data.fee_items.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, [key]: value } : item,
-            ),
-        );
-    }
-    function updateInstallment(
-        index: number,
-        key: keyof InstallmentRow,
-        value: string,
-    ) {
-        form.setData(
-            'installments',
-            form.data.installments.map((item, itemIndex) =>
                 itemIndex === index ? { ...item, [key]: value } : item,
             ),
         );
@@ -560,16 +524,18 @@ function OfferingDialog({
                     </div>
 
                     <fieldset className="space-y-3">
-                        <legend className="font-medium">Fee breakdown</legend>
+                        <legend className="font-medium">
+                            Standard one-off payment plan
+                        </legend>
                         <p className="text-xs text-muted-foreground">
-                            {`Enter all amounts in ${currencySymbol(currency)}. Thousands separators are added automatically.`}
+                            {`This becomes the first payment plan. Enter all amounts in ${currencySymbol(currency)}; descriptions are shown to applicants instead of the total price.`}
                             {!editing &&
                                 ' Save the programme offering first, then edit it to target an existing cohort.'}
                         </p>
                         {form.data.fee_items.map((item, index) => (
                             <div
                                 key={index}
-                                className="grid gap-2 rounded-lg border p-3 sm:grid-cols-2 lg:grid-cols-[1fr_11rem_12rem_12rem_auto]"
+                                className="grid gap-2 rounded-lg border p-3 sm:grid-cols-2 lg:grid-cols-[1fr_1.5fr_11rem_12rem_12rem_auto]"
                             >
                                 <Input
                                     aria-label={`Fee ${index + 1} name`}
@@ -583,6 +549,19 @@ function OfferingDialog({
                                     }
                                     placeholder="Tuition"
                                     required
+                                />
+                                <Input
+                                    aria-label={`Fee ${index + 1} description`}
+                                    value={item.description ?? ''}
+                                    onChange={(event) =>
+                                        updateFee(
+                                            index,
+                                            'description',
+                                            event.target.value,
+                                        )
+                                    }
+                                    placeholder="e.g. $3/month"
+                                    maxLength={500}
                                 />
                                 <Input
                                     aria-label={`Fee ${index + 1} amount`}
@@ -684,6 +663,13 @@ function OfferingDialog({
                                 <InputError
                                     message={
                                         form.errors[
+                                            `fee_items.${index}.description`
+                                        ]
+                                    }
+                                />
+                                <InputError
+                                    message={
+                                        form.errors[
                                             `fee_items.${index}.academy_cycle_term_id`
                                         ]
                                     }
@@ -711,6 +697,7 @@ function OfferingDialog({
                                     ...form.data.fee_items,
                                     {
                                         name: '',
+                                        description: '',
                                         amount: '',
                                         academy_cycle_term_id:
                                             terms.find(
@@ -758,183 +745,6 @@ function OfferingDialog({
                         </p>
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="grid gap-2">
-                            <Label>Payment options</Label>
-                            <label className="flex items-start gap-2 rounded-md border p-3 text-sm">
-                                <input
-                                    type="checkbox"
-                                    className="mt-0.5"
-                                    checked={
-                                        form.data.payment_mode ===
-                                        'installments'
-                                    }
-                                    onChange={(event) =>
-                                        form.setData(
-                                            'payment_mode',
-                                            event.target.checked
-                                                ? 'installments'
-                                                : 'one_off',
-                                        )
-                                    }
-                                />
-                                <span>
-                                    <span className="block font-medium">
-                                        Add a default installment plan
-                                    </span>
-                                    <span className="text-muted-foreground">
-                                        Full payment is always available. This
-                                        schedule is for students who choose to
-                                        pay in installments.
-                                    </span>
-                                </span>
-                            </label>
-                        </div>
-                    </div>
-
-                    {form.data.payment_mode === 'installments' && (
-                        <fieldset className="space-y-3">
-                            <legend className="font-medium">
-                                Default installment schedule
-                            </legend>
-                            <p className="text-xs text-muted-foreground">
-                                The installment total must equal the fee
-                                breakdown total. A student-specific schedule can
-                                replace this when their invoice is issued.
-                            </p>
-                            {form.data.installments.map((item, index) => (
-                                <div
-                                    key={index}
-                                    className="grid gap-2 rounded-lg border p-3 sm:grid-cols-2 lg:grid-cols-4"
-                                >
-                                    <div className="grid gap-1">
-                                        <Label>Name</Label>
-                                        <Input
-                                            value={item.name}
-                                            onChange={(event) =>
-                                                updateInstallment(
-                                                    index,
-                                                    'name',
-                                                    event.target.value,
-                                                )
-                                            }
-                                            required
-                                        />
-                                    </div>
-                                    <div className="grid gap-1">
-                                        <Label>{`Amount (${currencySymbol(currency)})`}</Label>
-                                        <Input
-                                            value={formatMoneyInput(
-                                                item.amount,
-                                            )}
-                                            onChange={(event) =>
-                                                updateInstallment(
-                                                    index,
-                                                    'amount',
-                                                    normalizeMoneyInput(
-                                                        event.target.value,
-                                                    ),
-                                                )
-                                            }
-                                            inputMode="decimal"
-                                            required
-                                        />
-                                    </div>
-                                    {cycle.type === 'fixed' ? (
-                                        <div className="grid gap-1">
-                                            <Label>Due date</Label>
-                                            <Input
-                                                type="date"
-                                                value={item.due_on}
-                                                min={
-                                                    cycle.starts_on ?? undefined
-                                                }
-                                                max={cycle.ends_on ?? undefined}
-                                                onChange={(event) =>
-                                                    updateInstallment(
-                                                        index,
-                                                        'due_on',
-                                                        event.target.value,
-                                                    )
-                                                }
-                                                required
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="grid gap-1">
-                                            <Label>Days after activation</Label>
-                                            <Input
-                                                type="number"
-                                                min={0}
-                                                value={item.due_offset_days}
-                                                onChange={(event) =>
-                                                    updateInstallment(
-                                                        index,
-                                                        'due_offset_days',
-                                                        event.target.value,
-                                                    )
-                                                }
-                                                required
-                                            />
-                                        </div>
-                                    )}
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        disabled={
-                                            form.data.installments.length <= 2
-                                        }
-                                        onClick={() =>
-                                            form.setData(
-                                                'installments',
-                                                form.data.installments.filter(
-                                                    (_, row) => row !== index,
-                                                ),
-                                            )
-                                        }
-                                    >
-                                        <Trash2 className="size-4" />
-                                        Remove
-                                    </Button>
-                                    <InputError
-                                        message={
-                                            form.errors[
-                                                `installments.${index}.amount`
-                                            ]
-                                        }
-                                    />
-                                    <InputError
-                                        message={
-                                            form.errors[
-                                                `installments.${index}.${cycle.type === 'fixed' ? 'due_on' : 'due_offset_days'}`
-                                            ]
-                                        }
-                                    />
-                                </div>
-                            ))}
-                            <InputError message={form.errors.installments} />
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                    form.setData('installments', [
-                                        ...form.data.installments,
-                                        {
-                                            name: '',
-                                            amount: '',
-                                            due_on: '',
-                                            due_offset_days: '',
-                                        },
-                                    ])
-                                }
-                            >
-                                <Plus className="size-4" />
-                                Add installment
-                            </Button>
-                        </fieldset>
-                    )}
                     <label className="flex items-center gap-2 text-sm">
                         <input
                             type="checkbox"

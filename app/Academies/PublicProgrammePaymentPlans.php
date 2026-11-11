@@ -22,7 +22,7 @@ class PublicProgrammePaymentPlans
 
         return $base->where('cohort_scope_id', $scopeId)
             ->with(['items', 'installments'])
-            ->orderByDesc('is_default')
+            ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
     }

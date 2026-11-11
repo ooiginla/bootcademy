@@ -46,7 +46,7 @@ class ProgrammeCyclePaymentPlanController extends Controller
             ->where('term_scope_id', (int) ($termId ?? 0))
             ->where('cohort_scope_id', (int) ($cohortId ?? 0))
             ->with(['items', 'installments'])
-            ->orderByDesc('is_default')->orderBy('name')->get();
+            ->orderBy('sort_order')->orderBy('name')->get();
 
         return Inertia::render('academies/programme-fee-details', [
             'offering' => [
@@ -71,15 +71,18 @@ class ProgrammeCyclePaymentPlanController extends Controller
                 'cohort_name' => $cohort?->name,
             ],
             'base_fee_items' => $baseItems->map(fn (ProgrammeCycleFeeItem $item): array => [
-                'name' => $item->name, 'amount' => Money::fromMinor((int) $item->amount_minor),
+                'name' => $item->name, 'description' => $item->description,
+                'amount' => Money::fromMinor((int) $item->amount_minor),
             ])->values(),
             'plans' => $plans->map(fn (ProgrammeCyclePaymentPlan $plan): array => [
                 'id' => $plan->id, 'name' => $plan->name, 'description' => $plan->description,
+                'sort_order' => $plan->sort_order,
                 'currency' => $plan->currency, 'total' => Money::fromMinor($plan->total_minor),
                 'is_default' => $plan->is_default, 'is_active' => $plan->is_active,
-                'is_legacy' => $plan->is_legacy,
+                'is_legacy' => $plan->is_legacy, 'is_standard' => $plan->is_standard,
                 'items' => $plan->items->sortBy('sort_order')->values()->map(fn (ProgrammeCyclePaymentPlanItem $item): array => [
-                    'name' => $item->name, 'amount' => Money::fromMinor($item->amount_minor),
+                    'name' => $item->name, 'description' => $item->description,
+                    'amount' => Money::fromMinor($item->amount_minor),
                 ]),
                 'installments' => $plan->installments->sortBy('sequence')->values()->map(fn (ProgrammeCyclePaymentPlanInstallment $installment): array => [
                     'name' => $installment->name, 'amount' => Money::fromMinor($installment->amount_minor),

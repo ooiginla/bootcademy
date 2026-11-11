@@ -242,6 +242,7 @@ class PublicAcademyWebsiteController extends Controller
             'total' => Money::fromMinor($totalMinor),
             'fee_items' => $publicFeeItems->map(fn (ProgrammeCycleFeeItem $item): array => [
                 'name' => $item->name,
+                'description' => $item->description,
                 'amount' => Money::fromMinor($item->amount_minor),
             ]),
             'installments' => $offering->installments->sortBy('sequence')->values()->map(fn (ProgrammeCycleInstallment $installment): array => [
@@ -254,10 +255,12 @@ class PublicAcademyWebsiteController extends Controller
                 'id' => $plan->id,
                 'name' => $plan->name,
                 'description' => $plan->description,
+                'sort_order' => $plan->sort_order,
                 'total' => Money::fromMinor($plan->total_minor),
                 'is_default' => $plan->is_default,
                 'items' => $plan->items->sortBy('sort_order')->values()->map(fn (ProgrammeCyclePaymentPlanItem $item): array => [
                     'name' => $item->name,
+                    'description' => $item->description,
                     'amount' => Money::fromMinor($item->amount_minor),
                 ]),
                 'installments' => $plan->installments->sortBy('sequence')->values()->map(fn (ProgrammeCyclePaymentPlanInstallment $installment): array => [

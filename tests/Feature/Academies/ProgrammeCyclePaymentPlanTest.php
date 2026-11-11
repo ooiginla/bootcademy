@@ -26,6 +26,7 @@ class ProgrammeCyclePaymentPlanTest extends TestCase
         [$cycle, $offering] = $this->offering($academy);
         $offering->feeItems()->create([
             'academy_id' => $academy->id, 'name' => 'Annual programme fee',
+            'description' => 'One annual payment',
             'amount_minor' => 10000000, 'sort_order' => 0,
         ]);
         $member = $this->actingAs($owner)->withSession(['active_academy_id' => $academy->id]);
@@ -36,18 +37,20 @@ class ProgrammeCyclePaymentPlanTest extends TestCase
                 ->component('academies/programme-fee-details')
                 ->where('offering.programme_name', $offering->programme->name)
                 ->where('base_fee_items.0.name', 'Annual programme fee')
+                ->where('base_fee_items.0.description', 'One annual payment')
                 ->where('base_fee_items.0.amount', '100000.00'));
 
         $member->post(route('academy.cycles.offerings.payment-plans.store', [$cycle, $offering]), [
             'name' => 'Two payments',
             'description' => 'Two equal repayments, six months apart.',
+            'sort_order' => 20,
             'academy_cycle_term_id' => null,
             'cohort_id' => null,
             'is_default' => true,
             'is_active' => true,
             'fee_items' => [
-                ['name' => 'Annual programme fee', 'amount' => '100000.00'],
-                ['name' => 'Two-payment plan adjustment', 'amount' => '10000.00'],
+                ['name' => 'Annual programme fee', 'description' => '₦50,000 every six months', 'amount' => '100000.00'],
+                ['name' => 'Two-payment plan adjustment', 'description' => 'Installment administration', 'amount' => '10000.00'],
             ],
             'installments' => [
                 ['name' => 'First payment', 'amount' => '55000.00', 'due_on' => '2028-01-15'],
@@ -57,8 +60,10 @@ class ProgrammeCyclePaymentPlanTest extends TestCase
 
         $plan = ProgrammeCyclePaymentPlan::query()->where('programme_cycle_id', $offering->id)->sole();
         $this->assertSame(11000000, $plan->total_minor);
+        $this->assertSame(20, $plan->sort_order);
         $this->assertTrue($plan->is_default);
         $this->assertSame(2, $plan->items()->count());
+        $this->assertSame('₦50,000 every six months', $plan->items()->orderBy('sort_order')->firstOrFail()->description);
         $this->assertSame(2, $plan->installments()->count());
         $this->assertSame(11000000, (int) $plan->installments()->sum('amount_minor'));
         $this->assertDatabaseHas(AuditLog::class, [
@@ -66,6 +71,43 @@ class ProgrammeCyclePaymentPlanTest extends TestCase
             'actor_user_id' => $owner->id,
             'action' => 'academy.programme_payment_plan.created',
         ]);
+
+        $earlier = $offering->paymentPlans()->create([
+            'academy_id' => $academy->id,
+            'term_scope_id' => 0,
+            'cohort_scope_id' => 0,
+            'name' => 'Pay once',
+            'description' => 'One payment.',
+            'sort_order' => 10,
+            'currency' => 'NGN',
+            'total_minor' => 10000000,
+            'is_default' => false,
+            'is_active' => true,
+            'is_legacy' => false,
+            'is_standard' => false,
+        ]);
+        $earlier->items()->create([
+            'academy_id' => $academy->id,
+            'name' => 'Annual programme fee',
+            'description' => 'One payment',
+            'amount_minor' => 10000000,
+            'sort_order' => 0,
+        ]);
+        $earlier->installments()->create([
+            'academy_id' => $academy->id,
+            'name' => 'Full payment',
+            'amount_minor' => 10000000,
+            'due_on' => '2028-01-15',
+            'sequence' => 1,
+        ]);
+
+        $member->get(route('academy.cycles.offerings.show', [$cycle, $offering]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('plans.0.name', 'Pay once')
+                ->where('plans.0.sort_order', 10)
+                ->where('plans.1.name', 'Two payments')
+                ->where('plans.1.sort_order', 20));
     }
 
     public function test_plan_rejects_mismatched_repayments_and_cross_tenant_access(): void

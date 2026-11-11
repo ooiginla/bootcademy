@@ -69,7 +69,11 @@ export type PublicOffering = {
     currency: string;
     application_fee: string;
     total: string;
-    fee_items: Array<{ name: string; amount: string }>;
+    fee_items: Array<{
+        name: string;
+        description?: string | null;
+        amount: string;
+    }>;
     installments: Array<{
         name: string;
         amount: string;
@@ -83,9 +87,14 @@ export type PublicPaymentPlan = {
     id: number;
     name: string;
     description: string | null;
+    sort_order?: number;
     total: string;
     is_default: boolean;
-    items: Array<{ name: string; amount: string }>;
+    items: Array<{
+        name: string;
+        description?: string | null;
+        amount: string;
+    }>;
     installments: Array<{
         name: string;
         amount: string;

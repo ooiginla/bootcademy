@@ -23,6 +23,7 @@ class SaveProgrammeCyclePaymentPlanRequest extends FormRequest
         $this->merge([
             'name' => trim((string) $this->input('name')),
             'description' => trim((string) $this->input('description')) ?: null,
+            'sort_order' => $this->integer('sort_order', 100),
             'academy_cycle_term_id' => $this->input('academy_cycle_term_id') ?: null,
             'cohort_id' => $this->input('cohort_id') ?: null,
             'is_default' => $this->boolean('is_default'),
@@ -70,12 +71,14 @@ class SaveProgrammeCyclePaymentPlanRequest extends FormRequest
                     ->where('cohort_scope_id', $cohortScopeId))
                 ->ignore($planId)],
             'description' => ['nullable', 'string', 'max:500'],
+            'sort_order' => ['required', 'integer', 'min:0', 'max:65535'],
             'academy_cycle_term_id' => ['nullable', 'integer', Rule::exists('academy_cycle_terms', 'id')->where($forAcademy)],
             'cohort_id' => ['nullable', 'integer', Rule::exists('cohorts', 'id')->where($forAcademy)],
             'is_default' => ['required', 'boolean'],
             'is_active' => ['required', 'boolean'],
             'fee_items' => ['required', 'array', 'min:1', 'max:30'],
             'fee_items.*.name' => ['required', 'string', 'max:120'],
+            'fee_items.*.description' => ['nullable', 'string', 'max:500'],
             'fee_items.*.amount' => ['required', 'regex:/^\d{1,12}(?:\.\d{1,2})?$/', 'not_in:0,0.00'],
             'installments' => ['required', 'array', 'min:1', 'max:24'],
             'installments.*.name' => ['required', 'string', 'max:120'],
@@ -120,6 +123,11 @@ class SaveProgrammeCyclePaymentPlanRequest extends FormRequest
             }
             if ($this->boolean('is_default') && ! $this->boolean('is_active')) {
                 $validator->errors()->add('is_active', 'The default payment plan must remain active.');
+            }
+
+            if ($plan instanceof ProgrammeCyclePaymentPlan && $plan->is_standard
+                && count($this->input('installments', [])) !== 1) {
+                $validator->errors()->add('installments', 'The standard payment plan must contain one full payment.');
             }
 
             $feeTotal = $this->sumAmounts($this->input('fee_items', []));

@@ -66,6 +66,7 @@ class SaveProgrammeCyclePaymentPlan
                 'cohort_scope_id' => (int) ($cohortId ?? 0),
                 'name' => trim((string) $data['name']),
                 'description' => $data['description'] ?: null,
+                'sort_order' => (int) $data['sort_order'],
                 'currency' => $offering->currency,
                 'total_minor' => $totalMinor,
                 'is_default' => $isDefault,
@@ -82,6 +83,7 @@ class SaveProgrammeCyclePaymentPlan
                 $plan->items()->create([
                     'academy_id' => $academy->id,
                     'name' => trim((string) $item['name']),
+                    'description' => filled($item['description'] ?? null) ? trim((string) $item['description']) : null,
                     'amount_minor' => Money::toMinor((string) $item['amount']),
                     'sort_order' => $index,
                 ]);
@@ -99,6 +101,27 @@ class SaveProgrammeCyclePaymentPlan
                 ]);
             }
 
+            if ($plan->is_standard) {
+                $offering->feeItems()
+                    ->where('academy_cycle_term_id', $termId)
+                    ->where('cohort_id', $cohortId)
+                    ->delete();
+                foreach (array_values($feeItems) as $index => $item) {
+                    if (! is_array($item)) {
+                        continue;
+                    }
+                    $offering->feeItems()->create([
+                        'academy_id' => $academy->id,
+                        'academy_cycle_term_id' => $termId,
+                        'cohort_id' => $cohortId,
+                        'name' => trim((string) $item['name']),
+                        'description' => filled($item['description'] ?? null) ? trim((string) $item['description']) : null,
+                        'amount_minor' => Money::toMinor((string) $item['amount']),
+                        'sort_order' => $index,
+                    ]);
+                }
+            }
+
             $this->audit->record(
                 $wasExisting ? 'academy.programme_payment_plan.updated' : 'academy.programme_payment_plan.created',
                 $actor,
@@ -110,6 +133,7 @@ class SaveProgrammeCyclePaymentPlan
                     'cohort_id' => $cohortId,
                     'total_minor' => $totalMinor,
                     'payment_count' => count($data['installments']),
+                    'sort_order' => (int) $data['sort_order'],
                 ],
                 $request,
             );

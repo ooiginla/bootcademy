@@ -104,7 +104,7 @@ class CycleFeeManagementTest extends TestCase
                 ->where('cycle.offerings.0.fee_items.0.academy_cycle_term_id', null));
     }
 
-    public function test_programme_cycle_stores_minor_unit_fee_breakdown_and_balanced_installments(): void
+    public function test_programme_cycle_creates_a_standard_one_off_payment_plan(): void
     {
         [$owner, $academy] = $this->member(AcademyRole::OwnerAdmin);
         $cycle = AcademyCycle::query()->create([
@@ -114,14 +114,10 @@ class CycleFeeManagementTest extends TestCase
         $programme = Programme::factory()->for($academy)->create();
         $payload = [
             'programme_id' => $programme->id, 'fee_name' => 'Annual tuition', 'application_fee' => '5000.00',
-            'payment_mode' => 'installments', 'enrollment_payment_rule' => 'first_installment', 'is_active' => true,
+            'is_active' => true,
             'fee_items' => [
-                ['name' => 'Tuition', 'amount' => '100000.00'],
-                ['name' => 'Kit', 'amount' => '50000.00'],
-            ],
-            'installments' => [
-                ['name' => 'First installment', 'amount' => '75000.00', 'due_on' => '2026-01-15'],
-                ['name' => 'Final installment', 'amount' => '75000.00', 'due_on' => '2026-06-15'],
+                ['name' => 'Tuition', 'description' => 'Core coaching programme', 'amount' => '100000.00'],
+                ['name' => 'Kit', 'description' => 'One academy kit', 'amount' => '50000.00'],
             ],
         ];
         $this->actingAs($owner)->withSession(['active_academy_id' => $academy->id])
@@ -132,8 +128,14 @@ class CycleFeeManagementTest extends TestCase
         $this->assertSame(500000, $offering->application_fee_minor);
         $this->assertSame('Annual tuition', $offering->fee_name);
         $this->assertSame(15000000, (int) $offering->feeItems()->sum('amount_minor'));
-        $this->assertSame(15000000, (int) $offering->installments()->sum('amount_minor'));
         $this->assertNotNull($offering->feeItems()->firstOrFail()->academy_cycle_term_id);
+        $standard = $offering->paymentPlans()->where('is_standard', true)->sole();
+        $this->assertSame('Standard payment', $standard->name);
+        $this->assertSame(0, $standard->sort_order);
+        $this->assertSame(15000000, $standard->total_minor);
+        $this->assertSame('Core coaching programme', $standard->items()->orderBy('sort_order')->firstOrFail()->description);
+        $this->assertSame(1, $standard->installments()->count());
+        $this->assertSame(15000000, $standard->installments()->sole()->amount_minor);
     }
 
     public function test_terms_and_cohorts_can_scope_programme_fee_items_without_cross_tenant_access(): void
@@ -276,7 +278,7 @@ class CycleFeeManagementTest extends TestCase
         $this->assertSame(100000, $fallbackApplication->invoices()->firstOrFail()->total_minor);
     }
 
-    public function test_installment_total_and_cycle_timing_are_validated(): void
+    public function test_legacy_installment_fields_do_not_create_a_second_schedule(): void
     {
         [$owner, $academy] = $this->member(AcademyRole::OwnerAdmin);
         $cycle = AcademyCycle::query()->create([
@@ -293,8 +295,11 @@ class CycleFeeManagementTest extends TestCase
                     ['name' => 'First', 'amount' => '40.00', 'due_on' => '2025-12-01'],
                     ['name' => 'Second', 'amount' => '40.00', 'due_on' => '2026-06-01'],
                 ],
-            ])->assertSessionHasErrors(['installments', 'installments.0.due_on']);
-        $this->assertDatabaseCount('programme_cycles', 0);
+            ])->assertRedirect();
+        $offering = ProgrammeCycle::query()->whereBelongsTo($academy)->sole();
+        $this->assertSame('one_off', $offering->payment_mode->value);
+        $this->assertDatabaseCount('programme_cycle_installments', 0);
+        $this->assertSame(1, $offering->paymentPlans()->where('is_standard', true)->count());
     }
 
     public function test_cycle_and_offering_cannot_be_managed_across_tenants_or_by_coach(): void

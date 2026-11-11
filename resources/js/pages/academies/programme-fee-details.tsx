@@ -5,7 +5,6 @@ import {
     CheckCircle2,
     Pencil,
     Plus,
-    ReceiptText,
     Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -34,7 +33,7 @@ import {
     sumMoney,
 } from '@/lib/money';
 
-type MoneyRow = { name: string; amount: string };
+type MoneyRow = { name: string; description?: string | null; amount: string };
 type InstallmentRow = MoneyRow & {
     due_on: string;
     due_offset_days: string;
@@ -43,11 +42,13 @@ type PaymentPlan = {
     id: number;
     name: string;
     description: string | null;
+    sort_order?: number;
     currency: string;
     total: string;
     is_default: boolean;
     is_active: boolean;
     is_legacy: boolean;
+    is_standard?: boolean;
     items: MoneyRow[];
     installments: InstallmentRow[];
 };
@@ -87,15 +88,18 @@ function PaymentPlanDialog({
     scope,
     baseFeeItems,
     plan,
+    nextSortOrder = 100,
 }: Pick<Props, 'offering' | 'cycle' | 'scope'> & {
     baseFeeItems: MoneyRow[];
     plan?: PaymentPlan;
+    nextSortOrder?: number;
 }) {
     const [open, setOpen] = useState(false);
     const baseTotal = sumMoney(baseFeeItems.map((item) => item.amount));
     const form = useForm({
         name: plan?.name ?? '',
         description: plan?.description ?? '',
+        sort_order: plan?.sort_order ?? nextSortOrder,
         academy_cycle_term_id: scope.academy_cycle_term_id,
         cohort_id: scope.cohort_id,
         is_default: plan?.is_default ?? false,
@@ -183,7 +187,7 @@ function PaymentPlanDialog({
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={submit} className="space-y-6">
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-4 sm:grid-cols-3">
                         <div className="grid gap-2">
                             <Label htmlFor="payment-plan-name">Plan name</Label>
                             <Input
@@ -216,6 +220,26 @@ function PaymentPlanDialog({
                             />
                             <InputError message={form.errors.description} />
                         </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="payment-plan-order">
+                                Display order
+                            </Label>
+                            <Input
+                                id="payment-plan-order"
+                                type="number"
+                                min={0}
+                                max={65535}
+                                value={form.data.sort_order}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'sort_order',
+                                        Number(event.target.value),
+                                    )
+                                }
+                                required
+                            />
+                            <InputError message={form.errors.sort_order} />
+                        </div>
                     </div>
 
                     <fieldset className="space-y-3">
@@ -231,7 +255,7 @@ function PaymentPlanDialog({
                         {form.data.fee_items.map((item, index) => (
                             <div
                                 key={index}
-                                className="grid gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_12rem_auto]"
+                                className="grid gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_1.5fr_12rem_auto]"
                             >
                                 <Input
                                     aria-label={`Fee item ${index + 1} name`}
@@ -245,6 +269,19 @@ function PaymentPlanDialog({
                                     }
                                     placeholder="Programme fee"
                                     required
+                                />
+                                <Input
+                                    aria-label={`Fee item ${index + 1} description`}
+                                    value={item.description ?? ''}
+                                    onChange={(event) =>
+                                        updateFeeItem(
+                                            index,
+                                            'description',
+                                            event.target.value,
+                                        )
+                                    }
+                                    placeholder="e.g. $3/month"
+                                    maxLength={500}
                                 />
                                 <Input
                                     aria-label={`Fee item ${index + 1} amount`}
@@ -280,6 +317,13 @@ function PaymentPlanDialog({
                                 </Button>
                                 <InputError
                                     message={
+                                        form.errors[
+                                            `fee_items.${index}.description`
+                                        ]
+                                    }
+                                />
+                                <InputError
+                                    message={
                                         form.errors[`fee_items.${index}.amount`]
                                     }
                                 />
@@ -292,7 +336,7 @@ function PaymentPlanDialog({
                             onClick={() =>
                                 form.setData('fee_items', [
                                     ...form.data.fee_items,
-                                    { name: '', amount: '' },
+                                    { name: '', description: '', amount: '' },
                                 ])
                             }
                         >
@@ -306,9 +350,11 @@ function PaymentPlanDialog({
                                 Repayment schedule
                             </legend>
                             <p className="text-sm text-muted-foreground">
-                                {cycle.type === 'fixed'
-                                    ? 'Set the amount and due date for every repayment.'
-                                    : 'Set each amount and the number of days after activation when it becomes due.'}
+                                {plan?.is_standard
+                                    ? 'The standard plan is always collected as one full payment.'
+                                    : cycle.type === 'fixed'
+                                      ? 'Set the amount and due date for every repayment.'
+                                      : 'Set each amount and the number of days after activation when it becomes due.'}
                             </p>
                         </div>
                         {form.data.installments.map((item, index) => (
@@ -413,24 +459,26 @@ function PaymentPlanDialog({
                                 />
                             </div>
                         ))}
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                                form.setData('installments', [
-                                    ...form.data.installments,
-                                    {
-                                        name: `Payment ${form.data.installments.length + 1}`,
-                                        amount: '',
-                                        due_on: '',
-                                        due_offset_days: '',
-                                    },
-                                ])
-                            }
-                        >
-                            <Plus className="size-4" /> Add repayment
-                        </Button>
+                        {!plan?.is_standard && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                    form.setData('installments', [
+                                        ...form.data.installments,
+                                        {
+                                            name: `Payment ${form.data.installments.length + 1}`,
+                                            amount: '',
+                                            due_on: '',
+                                            due_offset_days: '',
+                                        },
+                                    ])
+                                }
+                            >
+                                <Plus className="size-4" /> Add repayment
+                            </Button>
+                        )}
                         <InputError message={form.errors.installments} />
                     </fieldset>
 
@@ -529,7 +577,8 @@ export default function ProgrammeFeeDetails({
     base_fee_items,
     plans,
 }: Props) {
-    const baseTotal = sumMoney(base_fee_items.map((item) => item.amount));
+    const nextSortOrder =
+        Math.max(0, ...plans.map((plan) => plan.sort_order ?? 0)) + 10;
 
     return (
         <>
@@ -561,51 +610,9 @@ export default function ProgrammeFeeDetails({
                         cycle={cycle}
                         scope={scope}
                         baseFeeItems={base_fee_items}
+                        nextSortOrder={nextSortOrder}
                     />
                 </div>
-
-                <Card className="mb-6">
-                    <CardHeader>
-                        <div className="flex items-center gap-2">
-                            <ReceiptText className="size-5 text-primary" />
-                            <h2 className="font-semibold">
-                                Current programme fee
-                            </h2>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                            This is the starting breakdown copied into a new
-                            payment plan. You can add a clearly labelled plan
-                            adjustment when totals differ.
-                        </p>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="divide-y rounded-lg border">
-                            {base_fee_items.map((item, index) => (
-                                <div
-                                    key={`${item.name}-${index}`}
-                                    className="flex justify-between gap-4 px-4 py-3 text-sm"
-                                >
-                                    <span>{item.name}</span>
-                                    <span className="font-medium">
-                                        {formatCurrency(
-                                            offering.currency,
-                                            item.amount,
-                                        )}
-                                    </span>
-                                </div>
-                            ))}
-                            <div className="flex justify-between gap-4 bg-muted/40 px-4 py-3 font-semibold">
-                                <span>Base total</span>
-                                <span>
-                                    {formatCurrency(
-                                        offering.currency,
-                                        baseTotal,
-                                    )}
-                                </span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
 
                 <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
@@ -624,8 +631,8 @@ export default function ProgrammeFeeDetails({
                                 No payment plans yet
                             </h3>
                             <p className="mt-2 text-sm text-muted-foreground">
-                                Start with the base fee, then define how many
-                                repayments are allowed.
+                                Add a payment plan and define its fee items and
+                                repayment schedule.
                             </p>
                         </CardContent>
                     </Card>
@@ -660,6 +667,11 @@ export default function ProgrammeFeeDetails({
                                                 {plan.is_legacy && (
                                                     <Badge variant="outline">
                                                         Existing schedule
+                                                    </Badge>
+                                                )}
+                                                {plan.is_standard && (
+                                                    <Badge variant="outline">
+                                                        Standard one-off
                                                     </Badge>
                                                 )}
                                             </div>
@@ -727,7 +739,16 @@ export default function ProgrammeFeeDetails({
                                                             className="flex justify-between gap-4 px-3 py-2 text-sm"
                                                         >
                                                             <span>
-                                                                {item.name}
+                                                                <span className="block">
+                                                                    {item.name}
+                                                                </span>
+                                                                {item.description && (
+                                                                    <span className="block text-xs text-muted-foreground">
+                                                                        {
+                                                                            item.description
+                                                                        }
+                                                                    </span>
+                                                                )}
                                                             </span>
                                                             <span className="font-medium">
                                                                 {formatCurrency(

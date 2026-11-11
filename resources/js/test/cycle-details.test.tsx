@@ -150,8 +150,9 @@ describe('Programme cycle fees', () => {
         expect(screen.getAllByText('₦150,000.00').length).toBeGreaterThan(0);
         expect(screen.getByText('₦155,000.00')).toBeInTheDocument();
         expect(
-            screen.getByText(/Full payment is always available/),
+            screen.getByText('Standard one-off payment plan'),
         ).toBeInTheDocument();
+        expect(screen.getByLabelText('Fee 1 description')).toBeInTheDocument();
         expect(
             screen.getByRole('option', { name: 'All branches (default)' }),
         ).toBeInTheDocument();

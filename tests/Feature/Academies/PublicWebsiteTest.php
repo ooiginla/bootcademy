@@ -199,13 +199,15 @@ class PublicWebsiteTest extends TestCase
             'cohort_scope_id' => 0,
             'name' => 'Two payments',
             'description' => 'Two equal payments.',
+            'sort_order' => 20,
             'currency' => 'NGN',
             'total_minor' => 12000000,
             'is_default' => true,
             'is_active' => true,
         ]);
         $plan->items()->create([
-            'academy_id' => $academy->id, 'name' => 'Tuition', 'amount_minor' => 12000000, 'sort_order' => 0,
+            'academy_id' => $academy->id, 'name' => 'Tuition', 'description' => '₦10,000/month',
+            'amount_minor' => 12000000, 'sort_order' => 0,
         ]);
         $plan->installments()->createMany([
             ['academy_id' => $academy->id, 'name' => 'First payment', 'amount_minor' => 6000000, 'sequence' => 1],
@@ -242,7 +244,9 @@ class PublicWebsiteTest extends TestCase
             ->has('intakes.0.installments', 2)
             ->has('intakes.0.payment_plans', 1)
             ->where('intakes.0.payment_plans.0.name', 'Two payments')
+            ->where('intakes.0.payment_plans.0.sort_order', 20)
             ->where('intakes.0.payment_plans.0.total', '120000.00')
+            ->where('intakes.0.payment_plans.0.items.0.description', '₦10,000/month')
             ->has('intakes.0.payment_plans.0.items', 1)
             ->has('intakes.0.payment_plans.0.installments', 2)
             ->where('academy.guardian_singular', 'Guardian')

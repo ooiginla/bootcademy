@@ -18,17 +18,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $cohort_scope_id
  * @property string $name
  * @property string|null $description
+ * @property int $sort_order
  * @property string $currency
  * @property int $total_minor
  * @property bool $is_default
  * @property bool $is_active
  * @property bool $is_legacy
+ * @property bool $is_standard
  * @property-read Collection<int, ProgrammeCyclePaymentPlanItem> $items
  * @property-read Collection<int, ProgrammeCyclePaymentPlanInstallment> $installments
  */
 #[Fillable([
     'academy_id', 'programme_cycle_id', 'academy_cycle_term_id', 'cohort_id', 'term_scope_id', 'cohort_scope_id',
-    'name', 'description', 'currency', 'total_minor', 'is_default', 'is_active', 'is_legacy', 'created_by_user_id',
+    'name', 'description', 'sort_order', 'currency', 'total_minor', 'is_default', 'is_active', 'is_legacy', 'is_standard',
+    'created_by_user_id',
 ])]
 class ProgrammeCyclePaymentPlan extends Model
 {
@@ -71,8 +74,8 @@ class ProgrammeCyclePaymentPlan extends Model
     protected function casts(): array
     {
         return [
-            'total_minor' => 'integer', 'term_scope_id' => 'integer', 'cohort_scope_id' => 'integer',
-            'is_default' => 'boolean', 'is_active' => 'boolean', 'is_legacy' => 'boolean',
+            'total_minor' => 'integer', 'term_scope_id' => 'integer', 'cohort_scope_id' => 'integer', 'sort_order' => 'integer',
+            'is_default' => 'boolean', 'is_active' => 'boolean', 'is_legacy' => 'boolean', 'is_standard' => 'boolean',
         ];
     }
 }

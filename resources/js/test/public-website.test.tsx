@@ -143,7 +143,13 @@ const applicationIntake: PublicApplicationIntake = {
             description: 'Lowest total price.',
             total: '100000.00',
             is_default: false,
-            items: [{ name: 'Tuition', amount: '100000.00' }],
+            items: [
+                {
+                    name: 'Tuition',
+                    description: 'One payment',
+                    amount: '100000.00',
+                },
+            ],
             installments: [
                 {
                     name: 'Full payment',
@@ -159,7 +165,13 @@ const applicationIntake: PublicApplicationIntake = {
             description: 'Split the programme fee into two payments.',
             total: '120000.00',
             is_default: true,
-            items: [{ name: 'Tuition', amount: '120000.00' }],
+            items: [
+                {
+                    name: 'Tuition',
+                    description: '₦10,000/month',
+                    amount: '120000.00',
+                },
+            ],
             installments: [
                 {
                     name: 'First payment',
@@ -441,14 +453,18 @@ describe('Bootcademy public website', () => {
 
         expect(screen.getByLabelText('Two payments')).toBeChecked();
         expect(screen.getByText('Recommended')).toBeInTheDocument();
-        expect(screen.getByText('Repayment schedule')).toBeInTheDocument();
+        expect(screen.getByText('₦10,000/month')).toBeInTheDocument();
+        expect(screen.queryByText('Programme fees')).not.toBeInTheDocument();
+        expect(screen.getByText('View repayment schedule')).toBeInTheDocument();
         fireEvent.click(screen.getByLabelText('Pay once'));
         expect(screen.getByLabelText('Pay once')).toBeChecked();
         expect(screen.getByText('Pay once breakdown')).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: /Preview application & fees/ }),
         ).toBeInTheDocument();
-        expect(screen.getAllByText('₦100,000.00').length).toBeGreaterThan(1);
+        expect(
+            screen.getByLabelText('Pay once').closest('label'),
+        ).not.toHaveTextContent('₦100,000.00');
         expect(screen.getByLabelText(/Laptop access/)).toBeRequired();
         expect(screen.getByLabelText('Country')).toHaveValue('Nigeria');
         expect(screen.getByText('Next of Kin information')).toBeInTheDocument();

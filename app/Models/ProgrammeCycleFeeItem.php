@@ -12,10 +12,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $programme_cycle_id
  * @property int|null $cohort_id
  * @property string $name
+ * @property string|null $description
  * @property int $amount_minor
  * @property int $sort_order
  */
-#[Fillable(['academy_id', 'programme_cycle_id', 'academy_cycle_term_id', 'cohort_id', 'name', 'amount_minor', 'sort_order'])]
+#[Fillable(['academy_id', 'programme_cycle_id', 'academy_cycle_term_id', 'cohort_id', 'name', 'description', 'amount_minor', 'sort_order'])]
 class ProgrammeCycleFeeItem extends Model
 {
     /** @return BelongsTo<ProgrammeCycle, $this> */

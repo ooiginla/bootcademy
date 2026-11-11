@@ -36,11 +36,13 @@ For fixed cycles, bulk re-enrollment records one idempotent term registration be
 A programme is offered within a cycle through a programme-cycle record. The offering contains:
 
 - an optional application fee;
-- an itemized programme fee breakdown;
+- a standard one-off payment plan with an itemized fee breakdown;
 - a scope-specific payment-plan catalogue with independently itemized contracted totals;
 - one or more repayments per plan, using dates for fixed cycles and activation offsets for rolling cycles.
 
-Every visible programme-fee scope (whole cycle, term and optional cohort) has a details workspace. Plans in one scope cannot appear in or move to another scope. A plan's fee items define its contracted total, while its repayment rows must add up exactly to that total. This permits transparent alternatives such as a ₦100,000 one-off plan, a ₦110,000 two-payment plan or a ₦120,000 monthly plan without treating them as the same invoice amount. Existing offering schedules are preserved as an active default **Standard payment** plan when the payment-plan tables are introduced.
+Every visible programme-fee scope (whole cycle, term and optional cohort) has a details workspace. Plans in one scope cannot appear in or move to another scope. A plan's fee items define its contracted total, while its repayment rows must add up exactly to that total. This permits transparent alternatives such as a ₦100,000 one-off plan, a ₦110,000 two-payment plan or a ₦120,000 monthly plan without treating them as the same invoice amount. Each scope has one canonical **Standard payment** plan with one full repayment. Legacy offering fee rows remain synchronized internally for backward-compatible invoice fallback, but are no longer presented as a second pricing source. Existing scopes missing a standard plan are backfilled without replacing an academy's chosen default plan.
+
+Payment plans have an explicit display order. Their fee items may include a short public description, such as `₦10,000/month`; the initial public application summary shows this description instead of exposing the plan total. Repayment amounts remain available through an expandable repayment schedule.
 
 Each programme/cycle can have one academy-wide default fee schedule and one override per branch. Leaving the branch blank creates the default. When an applicant selects a branch, the branch override is used if one exists; otherwise the academy-wide default is retained. The branch belongs to the same tenant, and duplicate defaults or duplicate overrides for the same scope are blocked by validation and database uniqueness constraints.
 
