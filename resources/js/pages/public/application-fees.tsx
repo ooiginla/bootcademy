@@ -1,4 +1,4 @@
-import { Form, Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import {
     CheckCircle2,
     CircleAlert,
@@ -36,7 +36,43 @@ type PaymentOption = {
     processing_fee: string;
     total_charge: string;
 };
-type PaymentStatus = 'idle' | 'initializing' | 'waiting' | 'verified' | 'error';
+type PaymentStatus =
+    | 'idle'
+    | 'initializing'
+    | 'waiting'
+    | 'verified'
+    | 'skipping'
+    | 'error';
+type OnlineFeeRule = {
+    basis_points: number;
+    fixed_minor: number;
+    cap_minor: number | null;
+    waiver_threshold_minor: number | null;
+};
+type SummaryLine = { label: string; minor: number };
+
+function toMinor(amount: string | number | null | undefined): number {
+    return Math.round(Number(amount ?? 0) * 100);
+}
+
+/**
+ * Mirrors the server's PaystackFeeCalculator so the summary can update as choices change.
+ * The server recalculates the fee before charging.
+ */
+function onlinePaymentFee(rule: OnlineFeeRule, baseMinor: number): number {
+    if (baseMinor <= 0 || rule.basis_points <= 0) return 0;
+    const rate = rule.basis_points / 10000;
+    const withoutFixed = Math.ceil(baseMinor / (1 - rate));
+    let fee =
+        rule.waiver_threshold_minor !== null &&
+        withoutFixed < rule.waiver_threshold_minor
+            ? withoutFixed - baseMinor
+            : Math.ceil((baseMinor + rule.fixed_minor) / (1 - rate)) -
+              baseMinor;
+    if (rule.cap_minor !== null) fee = Math.min(fee, rule.cap_minor);
+
+    return Math.max(0, fee);
+}
 
 declare global {
     interface Window {
@@ -53,7 +89,7 @@ function csrfToken(): string {
     );
 }
 
-async function jsonPost(url: string, body: Record<string, string>) {
+async function jsonPost(url: string, body: Record<string, unknown>) {
     const response = await fetch(url, {
         method: 'POST',
         credentials: 'same-origin',
@@ -107,6 +143,14 @@ export default function PublicApplicationFees({
     payment_plans = [],
     cycle_fees = [],
     payment_options,
+    application_due = '0.00',
+    selection_locked = false,
+    online_fee = {
+        basis_points: 0,
+        fixed_minor: 0,
+        cap_minor: null,
+        waiver_threshold_minor: null,
+    },
     paystack_ready,
     completion_url,
     submitted = false,
@@ -125,7 +169,6 @@ export default function PublicApplicationFees({
         cycle_name: string;
         branch_name: string;
         currency: string;
-        fee_items: Array<{ name: string; amount_minor: number }>;
     };
     payment_plans?: Array<{
         id: number;
@@ -154,11 +197,13 @@ export default function PublicApplicationFees({
         is_selected: boolean;
     }>;
     payment_options: PaymentOption[];
+    application_due?: string;
+    selection_locked?: boolean;
+    online_fee?: OnlineFeeRule;
     paystack_ready: boolean;
     completion_url: string;
     submitted?: boolean;
 }) {
-    const [selection, setSelection] = useState(payment_options[0]?.key ?? '');
     const [selectedPlanId, setSelectedPlanId] = useState(
         String(
             payment_plans.find((plan) => plan.is_selected)?.id ??
@@ -167,34 +212,92 @@ export default function PublicApplicationFees({
         ),
     );
     const [selectedCycleFeeIds, setSelectedCycleFeeIds] = useState<number[]>(
-        cycle_fees.filter((fee) => fee.is_selected).map((fee) => fee.id),
+        cycle_fees
+            .filter((fee) => fee.is_compulsory || fee.is_selected)
+            .map((fee) => fee.id),
     );
     const [submittedDialogOpen, setSubmittedDialogOpen] = useState(submitted);
     const [status, setStatus] = useState<PaymentStatus>('idle');
     const [message, setMessage] = useState('');
     const [paymentReference, setPaymentReference] = useState('');
     const stopped = useRef(false);
-    const selected = useMemo(
-        () => payment_options.find((option) => option.key === selection),
-        [payment_options, selection],
+    const currency = offering.currency;
+    const selectedPlan = payment_plans.find(
+        (plan) => String(plan.id) === selectedPlanId,
     );
+    const busy =
+        status === 'initializing' ||
+        status === 'waiting' ||
+        status === 'skipping';
+    const canChoose = !selection_locked && !busy;
 
-    useEffect(() => {
-        setSelection(payment_options[0]?.key ?? '');
-    }, [payment_options]);
+    // The summary follows the choices on screen. Once fees are locked it shows what is owed.
+    const summary = useMemo(() => {
+        const lines: SummaryLine[] = [];
+        if (selection_locked) {
+            const option = payment_options[0];
+            if (!option) return { lines, feeMinor: 0, totalMinor: 0 };
+            if (toMinor(option.application_amount) > 0)
+                lines.push({
+                    label: 'Application fee',
+                    minor: toMinor(option.application_amount),
+                });
+            if (toMinor(option.programme_amount) > 0)
+                lines.push({
+                    label: option.programme_label ?? 'Programme payment',
+                    minor: toMinor(option.programme_amount),
+                });
+            option.cycle_fees?.forEach((fee) =>
+                lines.push({ label: fee.name, minor: toMinor(fee.amount) }),
+            );
+            const feeMinor = toMinor(option.processing_fee);
 
-    useEffect(() => {
-        setSelectedPlanId(
-            String(
-                payment_plans.find((plan) => plan.is_selected)?.id ??
-                    payment_plans[0]?.id ??
-                    '',
-            ),
-        );
-        setSelectedCycleFeeIds(
-            cycle_fees.filter((fee) => fee.is_selected).map((fee) => fee.id),
-        );
-    }, [payment_plans, cycle_fees]);
+            return {
+                lines,
+                feeMinor,
+                totalMinor: toMinor(option.total_charge),
+            };
+        }
+
+        if (toMinor(application_due) > 0)
+            lines.push({
+                label: 'Application fee',
+                minor: toMinor(application_due),
+            });
+        if (selectedPlan?.first_payment) {
+            lines.push({
+                label: `${selectedPlan.name} · ${selectedPlan.first_payment.name}`,
+                minor: toMinor(selectedPlan.first_payment.amount),
+            });
+        } else if (payment_plans.length === 0 && payment_options[0]) {
+            const programmeMinor = toMinor(payment_options[0].programme_amount);
+            if (programmeMinor > 0)
+                lines.push({
+                    label:
+                        payment_options[0].programme_label ??
+                        'Programme payment',
+                    minor: programmeMinor,
+                });
+        }
+        cycle_fees
+            .filter((fee) => selectedCycleFeeIds.includes(fee.id))
+            .forEach((fee) =>
+                lines.push({ label: fee.name, minor: toMinor(fee.amount) }),
+            );
+        const baseMinor = lines.reduce((total, line) => total + line.minor, 0);
+        const feeMinor = onlinePaymentFee(online_fee, baseMinor);
+
+        return { lines, feeMinor, totalMinor: baseMinor + feeMinor };
+    }, [
+        selection_locked,
+        payment_options,
+        application_due,
+        selectedPlan,
+        payment_plans.length,
+        cycle_fees,
+        selectedCycleFeeIds,
+        online_fee,
+    ]);
 
     useEffect(
         () => () => {
@@ -202,6 +305,14 @@ export default function PublicApplicationFees({
         },
         [],
     );
+
+    const selectionPayload = () => ({
+        token: application.token,
+        programme_cycle_payment_plan_id: selectedPlanId
+            ? Number(selectedPlanId)
+            : null,
+        cycle_fee_ids: selectedCycleFeeIds,
+    });
 
     const pollVerification = async (
         verifyUrl: string,
@@ -245,8 +356,7 @@ export default function PublicApplicationFees({
     };
 
     const pay = async () => {
-        if (!selected || status === 'initializing' || status === 'waiting')
-            return;
+        if (busy || summary.totalMinor <= 0) return;
         stopped.current = false;
         setStatus('initializing');
         setMessage('');
@@ -256,8 +366,9 @@ export default function PublicApplicationFees({
             const { response, payload } = await jsonPost(
                 `${base_url}/applications/${application.reference}/payments`,
                 {
-                    token: application.token,
-                    selection: selected.key,
+                    ...selectionPayload(),
+                    selection: 'initial',
+                    apply_selection: !selection_locked,
                 },
             );
             paymentCompletionUrl = payload.completion_url ?? '';
@@ -288,6 +399,41 @@ export default function PublicApplicationFees({
             );
         }
     };
+
+    // Skipping still saves the plan and optional fees chosen on this page.
+    const skip = () => {
+        if (busy) return;
+        if (selection_locked) {
+            window.location.assign(completion_url);
+            return;
+        }
+        setStatus('skipping');
+        setMessage('');
+        router.post(
+            `${base_url}/applications/${application.reference}/fees`,
+            { ...selectionPayload(), complete: true },
+            {
+                onError: (errors) => {
+                    setStatus('error');
+                    setMessage(
+                        Object.values(errors)[0] ??
+                            'We could not save your fee selection.',
+                    );
+                },
+                onFinish: () =>
+                    setStatus((current) =>
+                        current === 'skipping' ? 'idle' : current,
+                    ),
+            },
+        );
+    };
+
+    const toggleCycleFee = (feeId: number, checked: boolean) =>
+        setSelectedCycleFeeIds((current) =>
+            checked
+                ? [...current, feeId]
+                : current.filter((id) => id !== feeId),
+        );
 
     return (
         <PublicSiteShell
@@ -357,366 +503,191 @@ export default function PublicApplicationFees({
                 </section>
 
                 <section className="px-5 py-10 sm:px-8 lg:py-16">
-                    <div className="mx-auto mb-6 flex max-w-6xl justify-end">
-                        <a
-                            href={completion_url}
-                            className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-100"
-                        >
-                            Skip payment and complete application
-                        </a>
-                    </div>
-                    <div className="mx-auto grid max-w-6xl items-start gap-8 lg:grid-cols-[1fr_380px]">
-                        <div className="space-y-6">
-                            <Form
-                                action={`${base_url}/applications/${application.reference}/fees`}
-                                method="post"
-                                className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
-                            >
-                                {({ processing, errors }) => (
-                                    <>
-                                        <input
-                                            type="hidden"
-                                            name="token"
-                                            value={application.token}
-                                        />
-                                        {selectedCycleFeeIds.map((feeId) => (
-                                            <input
-                                                key={feeId}
-                                                type="hidden"
-                                                name="cycle_fee_ids[]"
-                                                value={feeId}
-                                            />
-                                        ))}
-                                        <p className="text-xs font-black tracking-[0.16em] text-[var(--site-primary)] uppercase">
-                                            Fee selection
-                                        </p>
-                                        <h2 className="mt-2 text-2xl font-black">
-                                            Choose your payment plan
-                                        </h2>
-                                        <p className="mt-2 text-sm leading-6 text-slate-500">
-                                            The first payment in the selected
-                                            plan is the amount included for
-                                            payment now.
-                                        </p>
-
-                                        <div className="mt-6 grid gap-4">
-                                            {payment_plans.map((plan) => {
-                                                const selected =
-                                                    selectedPlanId ===
-                                                    String(plan.id);
-
-                                                return (
-                                                    <label
-                                                        key={plan.id}
-                                                        className={`cursor-pointer rounded-2xl border-2 p-5 transition ${selected ? 'border-[var(--site-primary)] bg-[var(--site-primary)]/5' : 'border-slate-200 hover:border-slate-300'}`}
-                                                    >
-                                                        <span className="flex items-start gap-3">
-                                                            <input
-                                                                type="radio"
-                                                                name="programme_cycle_payment_plan_id"
-                                                                value={plan.id}
-                                                                checked={
-                                                                    selected
-                                                                }
-                                                                onChange={() =>
-                                                                    setSelectedPlanId(
-                                                                        String(
-                                                                            plan.id,
-                                                                        ),
-                                                                    )
-                                                                }
-                                                                className="mt-1 size-4 accent-[var(--site-primary)]"
-                                                                required
-                                                            />
-                                                            <span className="min-w-0 flex-1">
-                                                                <span className="flex flex-wrap items-start justify-between gap-3">
-                                                                    <span>
-                                                                        <strong className="block">
-                                                                            {
-                                                                                plan.name
-                                                                            }
-                                                                        </strong>
-                                                                        {plan.description && (
-                                                                            <span className="mt-1 block text-xs leading-5 font-bold text-slate-600">
-                                                                                {
-                                                                                    plan.description
-                                                                                }
-                                                                            </span>
-                                                                        )}
-                                                                    </span>
-                                                                    {plan.first_payment && (
-                                                                        <strong className="text-right text-lg">
-                                                                            {formatCurrency(
-                                                                                offering.currency,
-                                                                                plan
-                                                                                    .first_payment
-                                                                                    .amount,
-                                                                            )}
-                                                                        </strong>
-                                                                    )}
-                                                                </span>
-                                                                {plan.first_payment && (
-                                                                    <span className="mt-3 block rounded-xl bg-slate-100 px-3 py-2 text-xs text-slate-600">
-                                                                        First of{' '}
-                                                                        {
-                                                                            plan.payment_count
-                                                                        }{' '}
-                                                                        {plan.payment_count ===
-                                                                        1
-                                                                            ? 'payment'
-                                                                            : 'payments'}
-                                                                        :{' '}
-                                                                        <strong>
-                                                                            {
-                                                                                plan
-                                                                                    .first_payment
-                                                                                    .name
-                                                                            }
-                                                                        </strong>
-                                                                    </span>
-                                                                )}
-                                                            </span>
-                                                        </span>
-                                                    </label>
-                                                );
-                                            })}
-                                        </div>
-                                        {errors.programme_cycle_payment_plan_id && (
-                                            <p className="mt-3 text-sm font-bold text-red-600">
-                                                {
-                                                    errors.programme_cycle_payment_plan_id
-                                                }
-                                            </p>
-                                        )}
-
-                                        <div className="mt-8 border-t border-slate-200 pt-7">
-                                            <h3 className="font-black">
-                                                Additional general cycle fees
-                                            </h3>
-                                            <p className="mt-1 text-sm leading-6 text-slate-500">
-                                                Compulsory fees are included
-                                                automatically. Add any optional
-                                                fees you want with this
-                                                application.
-                                            </p>
-                                            {cycle_fees.length > 0 ? (
-                                                <div className="mt-4 grid gap-3">
-                                                    {cycle_fees.map((fee) => {
-                                                        const checked =
-                                                            fee.is_compulsory ||
-                                                            selectedCycleFeeIds.includes(
-                                                                fee.id,
-                                                            );
-
-                                                        return (
-                                                            <label
-                                                                key={fee.id}
-                                                                className={`flex items-start gap-3 rounded-2xl border p-4 ${checked ? 'border-[var(--site-primary)]/40 bg-[var(--site-primary)]/5' : 'border-slate-200'}`}
-                                                            >
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={
-                                                                        checked
-                                                                    }
-                                                                    disabled={
-                                                                        fee.is_compulsory
-                                                                    }
-                                                                    onChange={(
-                                                                        event,
-                                                                    ) =>
-                                                                        setSelectedCycleFeeIds(
-                                                                            (
-                                                                                current,
-                                                                            ) =>
-                                                                                event
-                                                                                    .target
-                                                                                    .checked
-                                                                                    ? [
-                                                                                          ...current,
-                                                                                          fee.id,
-                                                                                      ]
-                                                                                    : current.filter(
-                                                                                          (
-                                                                                              id,
-                                                                                          ) =>
-                                                                                              id !==
-                                                                                              fee.id,
-                                                                                      ),
-                                                                        )
-                                                                    }
-                                                                    className="mt-1 size-4 accent-[var(--site-primary)]"
-                                                                />
-                                                                <span className="min-w-0 flex-1">
-                                                                    <span className="flex justify-between gap-4">
-                                                                        <strong>
-                                                                            {
-                                                                                fee.name
-                                                                            }
-                                                                        </strong>
-                                                                        <strong>
-                                                                            {formatCurrency(
-                                                                                offering.currency,
-                                                                                fee.amount,
-                                                                            )}
-                                                                        </strong>
-                                                                    </span>
-                                                                    <span className="mt-1 block text-xs text-slate-500">
-                                                                        {
-                                                                            fee.category
-                                                                        }{' '}
-                                                                        ·{' '}
-                                                                        {fee.is_compulsory
-                                                                            ? 'Compulsory'
-                                                                            : 'Optional'}
-                                                                    </span>
-                                                                </span>
-                                                            </label>
-                                                        );
-                                                    })}
-                                                </div>
-                                            ) : (
-                                                <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
-                                                    No additional general cycle
-                                                    fees are available.
-                                                </p>
-                                            )}
-                                            {errors.cycle_fee_ids && (
-                                                <p className="mt-3 text-sm font-bold text-red-600">
-                                                    {errors.cycle_fee_ids}
-                                                </p>
-                                            )}
-                                        </div>
-
-                                        <button
-                                            type="submit"
-                                            disabled={
-                                                processing ||
-                                                (payment_plans.length > 0 &&
-                                                    selectedPlanId === '')
-                                            }
-                                            className="mt-6 rounded-full bg-slate-950 px-6 py-3 text-sm font-black text-white disabled:opacity-50"
-                                        >
-                                            {processing
-                                                ? 'Updating fees…'
-                                                : 'Update fee selection'}
-                                        </button>
-                                    </>
-                                )}
-                            </Form>
-
-                            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-                                <p className="text-xs font-black tracking-[0.16em] text-[var(--site-primary)] uppercase">
-                                    Amount due now
+                    {/* Mobile order: choices, summary, then the action buttons last. */}
+                    <div className="mx-auto grid max-w-6xl items-start gap-6 lg:grid-cols-[1fr_380px] lg:gap-x-8">
+                        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 lg:col-start-1 lg:row-start-1">
+                            <p className="text-xs font-black tracking-[0.16em] text-[var(--site-primary)] uppercase">
+                                Fee selection
+                            </p>
+                            <h2 className="mt-2 text-2xl font-black">
+                                Choose your payment plan
+                            </h2>
+                            {selection_locked ? (
+                                <p className="mt-2 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                                    A payment has already been recorded, so
+                                    these choices can no longer change. Contact
+                                    the academy if you need a different plan.
                                 </p>
-                                <h2 className="mt-2 text-2xl font-black">
-                                    First payment from your selected plan
-                                </h2>
-                                {payment_options.length > 0 ? (
-                                    <div className="mt-6 grid gap-4">
-                                        {payment_options.map((option) => (
+                            ) : (
+                                <p className="mt-2 text-sm leading-6 text-slate-500">
+                                    You pay the first payment of the plan you
+                                    choose now. The summary updates as you
+                                    choose.
+                                </p>
+                            )}
+
+                            {payment_plans.length > 0 && (
+                                <fieldset
+                                    className="mt-6 grid gap-4"
+                                    disabled={!canChoose}
+                                >
+                                    <legend className="sr-only">
+                                        Payment plan
+                                    </legend>
+                                    {payment_plans.map((plan) => {
+                                        const selected =
+                                            selectedPlanId === String(plan.id);
+
+                                        return (
                                             <label
-                                                key={option.key}
-                                                className={`cursor-pointer rounded-2xl border-2 p-5 transition ${selection === option.key ? 'border-[var(--site-primary)] bg-[var(--site-primary)]/5' : 'border-slate-200 hover:border-slate-300'}`}
+                                                key={plan.id}
+                                                className={`rounded-2xl border-2 p-5 transition ${canChoose ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'} ${selected ? 'border-[var(--site-primary)] bg-[var(--site-primary)]/5' : 'border-slate-200 hover:border-slate-300'}`}
                                             >
-                                                <span className="flex items-start gap-4">
+                                                <span className="flex items-start gap-3">
                                                     <input
                                                         type="radio"
-                                                        name="payment_option"
-                                                        value={option.key}
-                                                        checked={
-                                                            selection ===
-                                                            option.key
-                                                        }
+                                                        name="programme_cycle_payment_plan_id"
+                                                        value={plan.id}
+                                                        checked={selected}
                                                         onChange={() =>
-                                                            setSelection(
-                                                                option.key,
+                                                            setSelectedPlanId(
+                                                                String(plan.id),
                                                             )
                                                         }
                                                         className="mt-1 size-4 accent-[var(--site-primary)]"
                                                     />
                                                     <span className="min-w-0 flex-1">
-                                                        <span className="flex flex-wrap items-center justify-between gap-2">
-                                                            <strong>
-                                                                {option.label}
-                                                            </strong>
-                                                            <strong className="text-lg">
-                                                                {formatCurrency(
-                                                                    option.currency,
-                                                                    option.total_charge,
+                                                        <span className="flex flex-wrap items-start justify-between gap-3">
+                                                            <span>
+                                                                <strong className="block">
+                                                                    {plan.name}
+                                                                </strong>
+                                                                {plan.description && (
+                                                                    <span className="mt-1 block text-xs leading-5 font-bold text-slate-600">
+                                                                        {
+                                                                            plan.description
+                                                                        }
+                                                                    </span>
                                                                 )}
-                                                            </strong>
-                                                        </span>
-                                                        <span className="mt-2 block text-xs leading-5 text-slate-500">
-                                                            Fees{' '}
-                                                            {formatCurrency(
-                                                                option.currency,
-                                                                option.base_amount,
-                                                            )}{' '}
-                                                            + online processing{' '}
-                                                            {formatCurrency(
-                                                                option.currency,
-                                                                option.processing_fee,
+                                                            </span>
+                                                            {plan.first_payment && (
+                                                                <strong className="text-right text-lg">
+                                                                    {formatCurrency(
+                                                                        currency,
+                                                                        plan
+                                                                            .first_payment
+                                                                            .amount,
+                                                                    )}
+                                                                </strong>
                                                             )}
                                                         </span>
+                                                        {plan.first_payment && (
+                                                            <span className="mt-3 block rounded-xl bg-slate-100 px-3 py-2 text-xs text-slate-600">
+                                                                First of{' '}
+                                                                {
+                                                                    plan.payment_count
+                                                                }{' '}
+                                                                {plan.payment_count ===
+                                                                1
+                                                                    ? 'payment'
+                                                                    : 'payments'}
+                                                                :{' '}
+                                                                <strong>
+                                                                    {
+                                                                        plan
+                                                                            .first_payment
+                                                                            .name
+                                                                    }
+                                                                </strong>
+                                                            </span>
+                                                        )}
                                                     </span>
                                                 </span>
                                             </label>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="mt-6 rounded-2xl bg-emerald-50 p-5 text-sm text-emerald-900">
-                                        There is no outstanding fee for this
-                                        application.
-                                    </div>
-                                )}
-                            </div>
+                                        );
+                                    })}
+                                </fieldset>
+                            )}
 
-                            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-                                <h2 className="font-black">
-                                    Programme fee breakdown
-                                </h2>
-                                <div className="mt-5 divide-y divide-slate-100">
-                                    {offering.fee_items.map((item) => (
-                                        <div
-                                            key={item.name}
-                                            className="flex justify-between gap-4 py-3 text-sm"
-                                        >
-                                            <span className="text-slate-600">
-                                                {item.name}
-                                            </span>
-                                            <strong>
-                                                {formatCurrency(
-                                                    offering.currency,
-                                                    item.amount_minor / 100,
-                                                )}
-                                            </strong>
-                                        </div>
-                                    ))}
-                                    {offering.fee_items.length === 0 && (
-                                        <p className="py-3 text-sm text-slate-500">
-                                            No itemized programme fees were
-                                            configured.
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-slate-300 bg-white/70 p-6 text-center">
-                                <p className="text-sm text-slate-600">
-                                    Not ready to pay? Your application has
-                                    already been saved.
+                            <div className="mt-8 border-t border-slate-200 pt-7">
+                                <h3 className="font-black">
+                                    Additional cycle fees
+                                </h3>
+                                <p className="mt-1 text-sm leading-6 text-slate-500">
+                                    Compulsory fees are included automatically.
+                                    Tick any optional fees you want to add.
                                 </p>
-                                <a
-                                    href={completion_url}
-                                    className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-black text-slate-800 transition hover:border-slate-400 hover:bg-slate-100"
-                                >
-                                    Skip payment and complete application
-                                </a>
+                                {cycle_fees.length > 0 ? (
+                                    <fieldset
+                                        className="mt-4 grid gap-3"
+                                        disabled={!canChoose}
+                                    >
+                                        <legend className="sr-only">
+                                            Additional cycle fees
+                                        </legend>
+                                        {cycle_fees.map((fee) => {
+                                            const checked =
+                                                fee.is_compulsory ||
+                                                selectedCycleFeeIds.includes(
+                                                    fee.id,
+                                                );
+
+                                            return (
+                                                <label
+                                                    key={fee.id}
+                                                    className={`flex items-start gap-3 rounded-2xl border p-4 ${checked ? 'border-[var(--site-primary)]/40 bg-[var(--site-primary)]/5' : 'border-slate-200'} ${fee.is_compulsory || !canChoose ? '' : 'cursor-pointer'}`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        disabled={
+                                                            fee.is_compulsory
+                                                        }
+                                                        onChange={(event) =>
+                                                            toggleCycleFee(
+                                                                fee.id,
+                                                                event.target
+                                                                    .checked,
+                                                            )
+                                                        }
+                                                        className="mt-1 size-4 accent-[var(--site-primary)]"
+                                                    />
+                                                    <span className="min-w-0 flex-1">
+                                                        <span className="flex justify-between gap-4">
+                                                            <strong>
+                                                                {fee.name}
+                                                            </strong>
+                                                            <strong>
+                                                                {formatCurrency(
+                                                                    currency,
+                                                                    fee.amount,
+                                                                )}
+                                                            </strong>
+                                                        </span>
+                                                        <span className="mt-1 block text-xs text-slate-500">
+                                                            {fee.category} ·{' '}
+                                                            {fee.is_compulsory
+                                                                ? 'Compulsory'
+                                                                : 'Optional'}
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                            );
+                                        })}
+                                    </fieldset>
+                                ) : (
+                                    <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
+                                        No additional cycle fees are available.
+                                    </p>
+                                )}
                             </div>
                         </div>
 
-                        <aside className="space-y-4 lg:sticky lg:top-28">
-                            <div className="rounded-3xl bg-slate-950 p-6 text-white shadow-xl">
+                        <aside className="space-y-4 lg:sticky lg:top-28 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+                            <div
+                                className="rounded-3xl bg-slate-950 p-6 text-white shadow-xl"
+                                aria-live="polite"
+                            >
                                 <div className="flex items-center gap-2">
                                     <ReceiptText className="size-5 text-[var(--site-primary)]" />
                                     <h2 className="font-black">
@@ -730,131 +701,55 @@ export default function PublicApplicationFees({
                                     {offering.cycle_name} ·{' '}
                                     {offering.branch_name}
                                 </p>
-                                {selected && (
+                                {summary.totalMinor > 0 ? (
                                     <div className="mt-6 divide-y divide-white/10 border-y border-white/10 text-sm">
-                                        {Number(selected.application_amount) >
-                                            0 && (
-                                            <div className="flex justify-between py-3">
-                                                <span className="text-white/55">
-                                                    Application fee
-                                                </span>
-                                                <strong>
-                                                    {formatCurrency(
-                                                        selected.currency,
-                                                        selected.application_amount,
-                                                    )}
-                                                </strong>
-                                            </div>
-                                        )}
-                                        {Number(selected.programme_amount) >
-                                            0 && (
-                                            <div className="flex justify-between py-3">
-                                                <span className="text-white/55">
-                                                    {selected.programme_label ??
-                                                        'Programme payment'}
-                                                </span>
-                                                <strong>
-                                                    {formatCurrency(
-                                                        selected.currency,
-                                                        selected.programme_amount,
-                                                    )}
-                                                </strong>
-                                            </div>
-                                        )}
-                                        {selected.cycle_fees?.map((fee) => (
+                                        {summary.lines.map((line, index) => (
                                             <div
-                                                key={fee.name}
-                                                className="flex justify-between py-3"
+                                                key={`${line.label}-${index}`}
+                                                className="flex justify-between gap-4 py-3"
                                             >
                                                 <span className="text-white/55">
-                                                    {fee.name}
+                                                    {line.label}
                                                 </span>
-                                                <strong>
+                                                <strong className="shrink-0">
                                                     {formatCurrency(
-                                                        selected.currency,
-                                                        fee.amount,
+                                                        currency,
+                                                        line.minor / 100,
                                                     )}
                                                 </strong>
                                             </div>
                                         ))}
-                                        <div className="flex justify-between py-3">
-                                            <span className="text-white/55">
-                                                Processing fee
-                                            </span>
-                                            <strong>
-                                                {formatCurrency(
-                                                    selected.currency,
-                                                    selected.processing_fee,
-                                                )}
-                                            </strong>
-                                        </div>
+                                        {summary.feeMinor > 0 && (
+                                            <div className="flex justify-between gap-4 py-3">
+                                                <span className="text-white/55">
+                                                    Online payment fee
+                                                    <span className="block text-[11px] text-white/40">
+                                                        Paystack’s charge for
+                                                        paying online
+                                                    </span>
+                                                </span>
+                                                <strong className="shrink-0">
+                                                    {formatCurrency(
+                                                        currency,
+                                                        summary.feeMinor / 100,
+                                                    )}
+                                                </strong>
+                                            </div>
+                                        )}
                                         <div className="flex justify-between py-4 text-base">
-                                            <span>Total to pay</span>
+                                            <span>Total to pay now</span>
                                             <strong className="text-xl">
                                                 {formatCurrency(
-                                                    selected.currency,
-                                                    selected.total_charge,
+                                                    currency,
+                                                    summary.totalMinor / 100,
                                                 )}
                                             </strong>
                                         </div>
                                     </div>
-                                )}
-                                {status === 'verified' ? (
-                                    <div
-                                        className="mt-6 rounded-2xl bg-emerald-400/15 p-4 text-sm text-emerald-200"
-                                        role="status"
-                                    >
-                                        <p className="flex items-center gap-2 font-black">
-                                            <MailCheck className="size-5" />{' '}
-                                            Payment verified
-                                        </p>
-                                        <p className="mt-2 leading-5">
-                                            {message}
-                                        </p>
-                                        {paymentReference && (
-                                            <p className="mt-2 text-xs">
-                                                Receipt: {paymentReference}
-                                            </p>
-                                        )}
-                                    </div>
                                 ) : (
-                                    <button
-                                        type="button"
-                                        onClick={pay}
-                                        disabled={
-                                            !selected ||
-                                            !paystack_ready ||
-                                            status === 'initializing' ||
-                                            status === 'waiting'
-                                        }
-                                        className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[var(--site-primary)] px-5 py-4 text-sm font-black text-[var(--site-primary-fg)] disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
-                                        {status === 'initializing' ||
-                                        status === 'waiting' ? (
-                                            <LoaderCircle className="size-4 animate-spin" />
-                                        ) : (
-                                            <CreditCard className="size-4" />
-                                        )}
-                                        {status === 'initializing'
-                                            ? 'Opening Paystack…'
-                                            : status === 'waiting'
-                                              ? 'Confirming payment…'
-                                              : 'Pay securely with Paystack'}
-                                    </button>
-                                )}
-                                {!paystack_ready && (
-                                    <p className="mt-3 text-xs leading-5 text-amber-300">
-                                        Online payment is temporarily
-                                        unavailable. Please contact the academy.
-                                    </p>
-                                )}
-                                {status === 'error' && (
-                                    <p
-                                        className="mt-4 flex gap-2 rounded-xl bg-red-400/10 p-3 text-xs leading-5 text-red-200"
-                                        role="alert"
-                                    >
-                                        <CircleAlert className="mt-0.5 size-4 shrink-0" />{' '}
-                                        {message}
+                                    <p className="mt-6 rounded-2xl bg-emerald-400/15 p-4 text-sm text-emerald-200">
+                                        Nothing is due for this application
+                                        right now.
                                     </p>
                                 )}
                                 <p className="mt-4 flex items-center justify-center gap-2 text-[11px] text-white/40">
@@ -871,6 +766,87 @@ export default function PublicApplicationFees({
                                 payment.
                             </div>
                         </aside>
+
+                        <div className="space-y-3 lg:col-start-1 lg:row-start-2">
+                            {status === 'verified' && (
+                                <div
+                                    className="rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-900"
+                                    role="status"
+                                >
+                                    <p className="flex items-center gap-2 font-black">
+                                        <MailCheck className="size-5" /> Payment
+                                        verified
+                                    </p>
+                                    <p className="mt-2 leading-5">{message}</p>
+                                    {paymentReference && (
+                                        <p className="mt-2 text-xs">
+                                            Receipt: {paymentReference}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                            {status === 'error' && (
+                                <p
+                                    className="flex gap-2 rounded-2xl bg-red-50 p-4 text-sm leading-5 text-red-700"
+                                    role="alert"
+                                >
+                                    <CircleAlert className="mt-0.5 size-4 shrink-0" />
+                                    {message}
+                                </p>
+                            )}
+                            {!paystack_ready && (
+                                <p className="rounded-2xl bg-amber-50 p-4 text-sm leading-5 text-amber-900">
+                                    Online payment is temporarily unavailable.
+                                    You can skip payment and the academy will
+                                    contact you.
+                                </p>
+                            )}
+                            <div className="flex flex-col-reverse gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                                <button
+                                    type="button"
+                                    onClick={skip}
+                                    disabled={busy}
+                                    className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-3.5 text-sm font-black text-slate-800 transition hover:border-slate-400 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {status === 'skipping' && (
+                                        <LoaderCircle className="size-4 animate-spin" />
+                                    )}
+                                    Skip payment for now
+                                </button>
+                                {status !== 'verified' && (
+                                    <button
+                                        type="button"
+                                        onClick={pay}
+                                        disabled={
+                                            busy ||
+                                            !paystack_ready ||
+                                            summary.totalMinor <= 0 ||
+                                            (payment_plans.length > 0 &&
+                                                selectedPlanId === '')
+                                        }
+                                        className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--site-primary)] px-6 py-3.5 text-sm font-black text-[var(--site-primary-fg)] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {status === 'initializing' ||
+                                        status === 'waiting' ? (
+                                            <LoaderCircle className="size-4 animate-spin" />
+                                        ) : (
+                                            <CreditCard className="size-4" />
+                                        )}
+                                        {status === 'initializing'
+                                            ? 'Opening Paystack…'
+                                            : status === 'waiting'
+                                              ? 'Confirming payment…'
+                                              : summary.totalMinor > 0
+                                                ? `Pay ${formatCurrency(currency, summary.totalMinor / 100)} securely with Paystack`
+                                                : 'Pay securely with Paystack'}
+                                    </button>
+                                )}
+                            </div>
+                            <p className="text-center text-xs text-slate-500 sm:text-left">
+                                Not ready to pay? Your application is already
+                                saved. Skipping keeps the choices above.
+                            </p>
+                        </div>
                     </div>
                 </section>
             </main>

@@ -53,6 +53,10 @@ describe('Programme fee payment plans', () => {
                     cohort_id: null,
                     cohort_name: null,
                 }}
+                scope_options={{
+                    terms: [{ id: 4, name: 'Term 1' }],
+                    cohorts: [],
+                }}
                 base_fee_items={[
                     {
                         name: 'Annual programme fee',
@@ -70,6 +74,7 @@ describe('Programme fee payment plans', () => {
                         total: '110000.00',
                         is_default: true,
                         is_active: true,
+                        is_public: false,
                         is_legacy: false,
                         items: [
                             {
@@ -109,6 +114,8 @@ describe('Programme fee payment plans', () => {
         expect(screen.getByText('₦110,000.00')).toBeInTheDocument();
         expect(screen.getByText('Number of repayments')).toBeInTheDocument();
         expect(screen.getByText('Two equal repayments.')).toBeInTheDocument();
+        expect(screen.getByText('Not on website')).toBeInTheDocument();
+        expect(screen.getByLabelText('Term')).toHaveValue('');
 
         fireEvent.click(
             screen.getByRole('button', { name: 'New payment plan' }),
@@ -127,5 +134,10 @@ describe('Programme fee payment plans', () => {
             'One annual payment',
         );
         expect(screen.getByLabelText('Display order')).toHaveValue(30);
+        expect(
+            screen.getByRole('checkbox', {
+                name: 'Show on the public website',
+            }),
+        ).toBeChecked();
     });
 });

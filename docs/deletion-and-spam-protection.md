@@ -11,20 +11,20 @@ There are two kinds of blocker:
 - **Removable:** records the user can delete or move first, such as a programme's fees or a branch's sessions.
 - **Permanent:** history that is never deleted: invoices, payments, enrolments, attendance, store orders, stock movements, referrals and scholarship awards. A record with permanent history cannot be deleted. Deactivate it instead.
 
-| Record | Who can delete | Blocked while it still has |
-|---|---|---|
-| Application | Owner/Admin | invoices, payments, online payment attempts, referrals, a converted student |
-| Branch | Owner/Admin | programmes offered there, sessions, applications, expenses, programme fees, cohorts, intakes, scholarship schemes, staff assigned, pending invitations, stock on hand · enrolments, invoices, store orders, stock movements, announcements |
-| Programme | Owner/Admin | programme fees, cycle fees, sessions, applications, scholarship schemes · enrolments, invoices, announcements |
-| Session | Owner/Admin | attendance records |
-| Cycle | Owner/Admin, Finance | programme fees, cycle fees, expenses, scholarship schemes, sponsor commitments · enrolments, invoices |
-| Cycle fee | Owner/Admin, Finance | invoices |
-| Programme fee | Owner/Admin, Finance | custom payment plans, applications, cohorts, intakes · enrolments, invoices. Its standard plan is removed with it. |
-| Payment plan | Owner/Admin, Finance | applications, invoices. The standard plan cannot be deleted on its own. |
-| Expense | Owner/Admin, Finance | a link to an invoice write-off or a referral payout |
-| Student/player | Owner/Admin | enrolments, cohort memberships, invoices, payments, attendance, scholarship awards, referrals |
-| Coach | Owner/Admin | assigned sessions. Removing a coach suspends and soft-deletes their membership and profile. Re-inviting them restores both. |
-| Store product | Owner/Admin | stock on hand · order lines |
+| Record         | Who can delete       | Blocked while it still has                                                                                                                                                                                                                 |
+| -------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Application    | Owner/Admin          | invoices, payments, online payment attempts, referrals, a converted student                                                                                                                                                                |
+| Branch         | Owner/Admin          | programmes offered there, sessions, applications, expenses, programme fees, cohorts, intakes, scholarship schemes, staff assigned, pending invitations, stock on hand · enrolments, invoices, store orders, stock movements, announcements |
+| Programme      | Owner/Admin          | programme fees, cycle fees, sessions, applications, scholarship schemes · enrolments, invoices, announcements                                                                                                                              |
+| Session        | Owner/Admin          | attendance records                                                                                                                                                                                                                         |
+| Cycle          | Owner/Admin, Finance | programme fees, cycle fees, expenses, scholarship schemes, sponsor commitments · enrolments, invoices                                                                                                                                      |
+| Cycle fee      | Owner/Admin, Finance | invoices                                                                                                                                                                                                                                   |
+| Programme fee  | Owner/Admin, Finance | payment plans, applications, cohorts, intakes · enrolments, invoices                                                                                                                                                                       |
+| Payment plan   | Owner/Admin, Finance | applications, invoices. Deleting the default plan makes the next active plan the default.                                                                                                                                                  |
+| Expense        | Owner/Admin, Finance | a link to an invoice write-off or a referral payout                                                                                                                                                                                        |
+| Student/player | Owner/Admin          | enrolments, cohort memberships, invoices, payments, attendance, scholarship awards, referrals                                                                                                                                              |
+| Coach          | Owner/Admin          | assigned sessions. Removing a coach suspends and soft-deletes their membership and profile. Re-inviting them restores both.                                                                                                                |
+| Store product  | Owner/Admin          | stock on hand · order lines                                                                                                                                                                                                                |
 
 In the table, items after "·" are permanent.
 

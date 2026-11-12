@@ -126,6 +126,21 @@ class ConfigurePublicApplicationFees
         });
     }
 
+    /** True once a programme or cycle fee invoice has a payment or adjustment, so the applicant can no longer change fees. */
+    public function selectionLocked(Application $application): bool
+    {
+        return $application->invoices()
+            ->where('purpose', '!=', AcademyInvoicePurpose::Application->value)
+            ->where('status', '!=', AcademyInvoiceStatus::Void->value)
+            ->where(fn ($query) => $query->where('paid_minor', '>', 0)
+                ->orWhere('written_off_minor', '>', 0)
+                ->orWhere('scholarship_concession_minor', '>', 0)
+                ->orWhere('sponsor_responsibility_minor', '>', 0)
+                ->orWhereHas('allocations')
+                ->orWhereNotIn('status', [AcademyInvoiceStatus::Issued->value]))
+            ->exists();
+    }
+
     /** @return Collection<int, AcademyCycleFee> */
     public function eligibleCycleFees(Application $application): Collection
     {

@@ -523,7 +523,13 @@ describe('Bootcademy public website', () => {
                     cycle_name: '2027 Cohort',
                     branch_name: 'All locations',
                     currency: 'NGN',
-                    fee_items: [{ name: 'Tuition', amount_minor: 12000000 }],
+                }}
+                application_due="5000.00"
+                online_fee={{
+                    basis_points: 150,
+                    fixed_minor: 10000,
+                    cap_minor: 200000,
+                    waiver_threshold_minor: 250000,
                 }}
                 submitted
                 payment_plans={[
@@ -592,27 +598,38 @@ describe('Bootcademy public website', () => {
         ).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Review my fees' }));
         expect(screen.getByText('Application saved')).toBeInTheDocument();
-        expect(
-            screen.getByText(
-                'Application fee + First payment + selected cycle fees',
-            ),
-        ).toBeInTheDocument();
         expect(screen.getByLabelText(/Two payments/)).toBeChecked();
         expect(
-            screen.getByText('Additional general cycle fees'),
+            screen.getByRole('heading', { name: 'Additional cycle fees' }),
         ).toBeInTheDocument();
         expect(screen.getByLabelText(/Insurance/)).toBeChecked();
         expect(screen.getByLabelText(/Training kit/)).not.toBeChecked();
+
+        // The summary follows the choices without a separate update step.
+        expect(
+            screen.queryByRole('button', { name: /Update fee selection/ }),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Amount due now')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Programme fee breakdown'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByText('Two payments · First payment'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Online payment fee')).toBeInTheDocument();
+        expect(screen.getByText('₦68,121.83')).toBeInTheDocument();
+
         fireEvent.click(screen.getByLabelText(/Training kit/));
         expect(screen.getByLabelText(/Training kit/)).toBeChecked();
+        expect(screen.getByText('₦71,167.52')).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Pay securely with Paystack' }),
+            screen.getByRole('button', {
+                name: 'Pay ₦71,167.52 securely with Paystack',
+            }),
         ).toBeEnabled();
         expect(
-            screen.getAllByRole('link', {
-                name: 'Skip payment and complete application',
-            }),
-        ).toHaveLength(2);
+            screen.getAllByRole('button', { name: 'Skip payment for now' }),
+        ).toHaveLength(1);
         expect(screen.getByText(/receipt will be sent to/i)).toHaveTextContent(
             'amara@example.com',
         );

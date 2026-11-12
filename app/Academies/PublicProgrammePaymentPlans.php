@@ -8,12 +8,17 @@ use Illuminate\Database\Eloquent\Collection;
 
 class PublicProgrammePaymentPlans
 {
-    /** @return Collection<int, ProgrammeCyclePaymentPlan> */
+    /**
+     * Active plans the academy has chosen to show on its public website and application form.
+     *
+     * @return Collection<int, ProgrammeCyclePaymentPlan>
+     */
     public function forOffering(ProgrammeCycle $offering, ?int $cohortId): Collection
     {
         $base = $offering->paymentPlans()
             ->where('term_scope_id', 0)
-            ->where('is_active', true);
+            ->where('is_active', true)
+            ->where('is_public', true);
 
         $cohortScopeId = (int) ($cohortId ?? 0);
         $scopeId = $cohortScopeId > 0 && (clone $base)->where('cohort_scope_id', $cohortScopeId)->exists()

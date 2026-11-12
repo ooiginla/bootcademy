@@ -68,7 +68,8 @@ export type PublicOffering = {
     fee_name: string;
     currency: string;
     application_fee: string;
-    total: string;
+    /** Price of the default public plan, or null when no plan is shown publicly. */
+    total: string | null;
     fee_items: Array<{
         name: string;
         description?: string | null;

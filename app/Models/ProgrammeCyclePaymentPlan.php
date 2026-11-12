@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $total_minor
  * @property bool $is_default
  * @property bool $is_active
+ * @property bool $is_public
  * @property bool $is_legacy
  * @property bool $is_standard
  * @property-read Collection<int, ProgrammeCyclePaymentPlanItem> $items
@@ -31,7 +32,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 #[Fillable([
     'academy_id', 'programme_cycle_id', 'academy_cycle_term_id', 'cohort_id', 'term_scope_id', 'cohort_scope_id',
-    'name', 'description', 'sort_order', 'currency', 'total_minor', 'is_default', 'is_active', 'is_legacy', 'is_standard',
+    'name', 'description', 'sort_order', 'currency', 'total_minor', 'is_default', 'is_active', 'is_public', 'is_legacy', 'is_standard',
     'created_by_user_id',
 ])]
 class ProgrammeCyclePaymentPlan extends Model
@@ -78,7 +79,7 @@ class ProgrammeCyclePaymentPlan extends Model
     {
         return [
             'total_minor' => 'integer', 'term_scope_id' => 'integer', 'cohort_scope_id' => 'integer', 'sort_order' => 'integer',
-            'is_default' => 'boolean', 'is_active' => 'boolean', 'is_legacy' => 'boolean', 'is_standard' => 'boolean',
+            'is_default' => 'boolean', 'is_active' => 'boolean', 'is_public' => 'boolean', 'is_legacy' => 'boolean', 'is_standard' => 'boolean',
         ];
     }
 }

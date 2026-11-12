@@ -12,8 +12,6 @@ use App\Models\Branch;
 use App\Models\Cohort;
 use App\Models\Programme;
 use App\Models\ProgrammeCycle;
-use App\Models\ProgrammeCycleFeeItem;
-use App\Models\ProgrammeCycleInstallment;
 use App\Models\ProgrammeCyclePaymentPlan;
 use App\Models\ProgrammeCyclePaymentPlanInstallment;
 use App\Models\ProgrammeCyclePaymentPlanItem;
@@ -57,18 +55,21 @@ class PublicAcademyWebsiteController extends Controller
         ]);
     }
 
-    public function programme(Request $request, string $subdomain, int $programme): Response
+    public function programme(Request $request, string $subdomain, int $programme, PublicProgrammePaymentPlans $publicPlans): Response
     {
         [$website, $common] = $this->common($request, $subdomain);
         $academy = $website->academy;
         $record = $academy->programmes()->where('is_active', true)->findOrFail($programme);
         $offerings = $academy->programmeCycles()->where('programme_id', $record->id)->where('is_active', true)
             ->whereHas('cycle', fn ($query) => $query->where('status', AcademyCycleStatus::Active->value))
-            ->with(['cycle', 'branch', 'feeItems', 'installments'])->get();
+            ->with(['cycle', 'branch'])->get();
 
         return Inertia::render('public/programme', $common + [
             'programme' => $this->programmeData($record, $common['base_url']) + [
-                'offerings' => $offerings->map(fn (ProgrammeCycle $offering): array => $this->offeringData($offering)),
+                'offerings' => $offerings->map(fn (ProgrammeCycle $offering): array => $this->offeringData(
+                    $offering,
+                    $publicPlans->forOffering($offering, null),
+                )),
             ],
         ]);
     }
@@ -82,7 +83,7 @@ class PublicAcademyWebsiteController extends Controller
         [$website, $common] = $this->common($request, $subdomain);
         $academy = $website->academy;
         $intakes = $availability->query($academy)
-            ->with(['programmeCycle.cycle', 'programmeCycle.programme', 'programmeCycle.branch', 'programmeCycle.feeItems', 'programmeCycle.installments', 'cohort', 'branch'])
+            ->with(['programmeCycle.cycle', 'programmeCycle.programme', 'programmeCycle.branch', 'cohort', 'branch'])
             ->orderBy('programme_cycle_id')->get();
 
         $plansByScope = [];
@@ -225,8 +226,10 @@ class PublicAcademyWebsiteController extends Controller
      */
     private function offeringData(ProgrammeCycle $offering, iterable $paymentPlans = []): array
     {
-        $publicFeeItems = $offering->feeItems->whereNull('cohort_id');
-        $totalMinor = (int) $publicFeeItems->sum('amount_minor');
+        // Show the price of a plan the academy made public, never a hidden plan's price.
+        $plans = collect($paymentPlans);
+        $headlinePlan = $plans->firstWhere('is_default', true) ?? $plans->first();
+        $headlineItems = $headlinePlan?->items->sortBy('sort_order')->values() ?? collect();
         $branch = $offering->getRelation('branch');
 
         return [
@@ -239,19 +242,19 @@ class PublicAcademyWebsiteController extends Controller
             'fee_name' => $offering->fee_name,
             'currency' => $offering->currency,
             'application_fee' => Money::fromMinor($offering->application_fee_minor),
-            'total' => Money::fromMinor($totalMinor),
-            'fee_items' => $publicFeeItems->map(fn (ProgrammeCycleFeeItem $item): array => [
+            'total' => $headlinePlan === null ? null : Money::fromMinor((int) $headlinePlan->total_minor),
+            'fee_items' => $headlineItems->map(fn (ProgrammeCyclePaymentPlanItem $item): array => [
                 'name' => $item->name,
                 'description' => $item->description,
                 'amount' => Money::fromMinor($item->amount_minor),
             ]),
-            'installments' => $offering->installments->sortBy('sequence')->values()->map(fn (ProgrammeCycleInstallment $installment): array => [
+            'installments' => ($headlinePlan?->installments->sortBy('sequence')->values() ?? collect())->map(fn (ProgrammeCyclePaymentPlanInstallment $installment): array => [
                 'name' => $installment->name,
                 'amount' => Money::fromMinor($installment->amount_minor),
                 'due_on' => $installment->due_on?->toDateString(),
                 'due_offset_days' => $installment->due_offset_days,
             ]),
-            'payment_plans' => collect($paymentPlans)->map(fn (ProgrammeCyclePaymentPlan $plan): array => [
+            'payment_plans' => $plans->map(fn (ProgrammeCyclePaymentPlan $plan): array => [
                 'id' => $plan->id,
                 'name' => $plan->name,
                 'description' => $plan->description,

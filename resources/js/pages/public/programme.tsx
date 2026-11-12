@@ -438,7 +438,11 @@ function OfferingCard({ offering }: { offering: PublicOffering }) {
             <div className="mt-5 grid grid-cols-2 gap-2">
                 <FeeStat
                     label="Programme fees"
-                    amount={formatCurrency(offering.currency, offering.total)}
+                    amount={
+                        offering.total === null
+                            ? 'Ask the academy'
+                            : formatCurrency(offering.currency, offering.total)
+                    }
                 />
                 <FeeStat
                     label="Application fee"
@@ -449,7 +453,7 @@ function OfferingCard({ offering }: { offering: PublicOffering }) {
                 />
             </div>
             {(offering.fee_items.length > 0 ||
-                offering.installments.length > 0) && (
+                offering.payment_plans.length > 1) && (
                 <details className="mt-5 rounded-2xl border border-slate-200 p-4">
                     <summary className="cursor-pointer list-none text-sm font-extrabold text-slate-900 marker:hidden">
                         <ReceiptText className="mr-2 inline size-4" />
@@ -475,11 +479,11 @@ function OfferingCard({ offering }: { offering: PublicOffering }) {
                             ))}
                         </div>
                     )}
-                    {offering.installments.length > 0 && (
+                    {offering.payment_plans.length > 1 && (
                         <p className="mt-3 flex items-center gap-2 text-xs text-slate-500">
                             <CheckCircle2 className="size-4 text-[var(--site-primary)]" />
-                            {offering.installments.length}-part installment
-                            option available
+                            {offering.payment_plans.length} payment plans
+                            available when you apply
                         </p>
                     )}
                 </details>

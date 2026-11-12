@@ -72,14 +72,6 @@ class CycleFeeManagementTest extends TestCase
             'name' => 'Term 1', 'sort_order' => 1, 'is_default' => false, 'is_active' => true,
         ])->assertSessionHasErrors('name');
 
-        $member->post(route('academy.cycles.offerings.store', $cycle), [
-            'programme_id' => $programme->id, 'application_fee' => '0', 'payment_mode' => 'one_off',
-            'is_active' => true, 'fee_items' => [[
-                'name' => 'Cycle tuition', 'amount' => '10000.00',
-                'academy_cycle_term_id' => $legacyTerm->id,
-            ]],
-        ])->assertSessionHasErrors('fee_items.0.academy_cycle_term_id');
-
         $member->post(route('academy.cycles.fees.store', $cycle), [
             'name' => 'Insurance', 'category' => 'insurance', 'amount' => '5000.00',
             'is_compulsory' => false, 'applies_to_all_programmes' => true, 'is_active' => true,
@@ -87,11 +79,17 @@ class CycleFeeManagementTest extends TestCase
         ])->assertSessionHasErrors('academy_cycle_term_id');
 
         $member->post(route('academy.cycles.offerings.store', $cycle), [
-            'programme_id' => $programme->id, 'application_fee' => '0', 'payment_mode' => 'one_off',
-            'is_active' => true, 'fee_items' => [['name' => 'Cycle tuition', 'amount' => '10000.00']],
+            'programme_id' => $programme->id, 'application_fee' => '0', 'is_active' => true,
         ])->assertRedirect();
-
         $offering = ProgrammeCycle::query()->where('academy_cycle_id', $cycle->id)->sole();
+
+        $member->post(route('academy.cycles.offerings.payment-plans.store', [$cycle, $offering]), $this->plan('Termly', '10000.00', [
+            'academy_cycle_term_id' => $legacyTerm->id, 'installments' => [['name' => 'Full', 'amount' => '10000.00', 'due_offset_days' => 0]],
+        ]))->assertSessionHasErrors('academy_cycle_term_id');
+        $member->post(route('academy.cycles.offerings.payment-plans.store', [$cycle, $offering]), $this->plan('Cycle tuition', '10000.00', [
+            'installments' => [['name' => 'Full', 'amount' => '10000.00', 'due_offset_days' => 0]],
+        ]))->assertSessionHasNoErrors();
+
         $this->assertNull($offering->feeItems()->sole()->academy_cycle_term_id);
 
         // Preserve legacy rows for auditability while presenting them at rolling-cycle scope.
@@ -104,7 +102,7 @@ class CycleFeeManagementTest extends TestCase
                 ->where('cycle.offerings.0.fee_items.0.academy_cycle_term_id', null));
     }
 
-    public function test_programme_cycle_creates_a_standard_one_off_payment_plan(): void
+    public function test_programme_fee_has_no_prices_until_payment_plans_are_added(): void
     {
         [$owner, $academy] = $this->member(AcademyRole::OwnerAdmin);
         $cycle = AcademyCycle::query()->create([
@@ -112,30 +110,53 @@ class CycleFeeManagementTest extends TestCase
             'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31', 'status' => 'active',
         ]);
         $programme = Programme::factory()->for($academy)->create();
-        $payload = [
+        $member = $this->actingAs($owner)->withSession(['active_academy_id' => $academy->id]);
+        $member->post(route('academy.cycles.offerings.store', $cycle), [
             'programme_id' => $programme->id, 'fee_name' => 'Annual tuition', 'application_fee' => '5000.00',
             'is_active' => true,
-            'fee_items' => [
-                ['name' => 'Tuition', 'description' => 'Core coaching programme', 'amount' => '100000.00'],
-                ['name' => 'Kit', 'description' => 'One academy kit', 'amount' => '50000.00'],
-            ],
-        ];
-        $this->actingAs($owner)->withSession(['active_academy_id' => $academy->id])
-            ->post(route('academy.cycles.offerings.store', $cycle), $payload)
-            ->assertRedirect()->assertInertiaFlash('toast.message', 'Programme fees added to cycle.');
+            // Old clients may still send fee items; they no longer create prices.
+            'fee_items' => [['name' => 'Tuition', 'amount' => '100000.00']],
+        ])->assertInertiaFlash('toast.message', 'Programme fee added. Now add its payment plans.');
 
-        $offering = ProgrammeCycle::query()->whereBelongsTo($academy)->firstOrFail();
+        $offering = ProgrammeCycle::query()->whereBelongsTo($academy)->sole();
+        $member->post(route('academy.cycles.offerings.store', $cycle))->assertSessionHasErrors('programme_id');
         $this->assertSame(500000, $offering->application_fee_minor);
-        $this->assertSame('Annual tuition', $offering->fee_name);
+        $this->assertSame(0, $offering->feeItems()->count());
+        $this->assertSame(0, $offering->paymentPlans()->count());
+        $member->get(route('academy.cycles.show', $cycle))->assertInertia(fn (Assert $page) => $page
+            ->where('cycle.offerings.0.scopes.0.academy_cycle_term_id', null)
+            ->where('cycle.offerings.0.scopes.0.plans_count', 0)
+            ->where('cycle.offerings.0.scopes.0.default_total', null));
+        $member->get(route('academy.cycles.offerings.show', [$cycle, $offering]))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->has('plans', 0)->has('base_fee_items', 0));
+
+        $plansUrl = route('academy.cycles.offerings.payment-plans.store', [$cycle, $offering]);
+        $member->post($plansUrl, $this->plan('Pay once', '150000.00'))->assertSessionHasNoErrors();
+        $first = $offering->paymentPlans()->where('name', 'Pay once')->sole();
+        $this->assertTrue($first->is_default);
         $this->assertSame(15000000, (int) $offering->feeItems()->sum('amount_minor'));
-        $this->assertNotNull($offering->feeItems()->firstOrFail()->academy_cycle_term_id);
-        $standard = $offering->paymentPlans()->where('is_standard', true)->sole();
-        $this->assertSame('Standard payment', $standard->name);
-        $this->assertSame(0, $standard->sort_order);
-        $this->assertSame(15000000, $standard->total_minor);
-        $this->assertSame('Core coaching programme', $standard->items()->orderBy('sort_order')->firstOrFail()->description);
-        $this->assertSame(1, $standard->installments()->count());
-        $this->assertSame(15000000, $standard->installments()->sole()->amount_minor);
+
+        // Making another plan the default copies its items onto the fee.
+        $member->post($plansUrl, $this->plan('Staff rate', '90000.00', ['is_default' => true, 'is_public' => false]))
+            ->assertSessionHasNoErrors();
+        $second = $offering->paymentPlans()->where('name', 'Staff rate')->sole();
+        $this->assertFalse($second->is_public);
+        $this->assertFalse($first->fresh()->is_default);
+        $this->assertSame(9000000, (int) $offering->feeItems()->sum('amount_minor'));
+        $member->get(route('academy.cycles.show', $cycle))->assertInertia(fn (Assert $page) => $page
+            ->where('cycle.offerings.0.scopes.0.plans_count', 2)
+            ->where('cycle.offerings.0.scopes.0.public_plans_count', 1)
+            ->where('cycle.offerings.0.scopes.0.default_plan_name', 'Staff rate'));
+
+        // A fee cannot be deleted while it has plans. Deleting the default promotes the next plan.
+        $member->delete(route('academy.cycles.offerings.destroy', [$cycle, $offering]))->assertSessionHasErrors('delete');
+        $member->delete(route('academy.cycles.offerings.payment-plans.destroy', [$cycle, $offering, $second]))->assertSessionHasNoErrors();
+        $this->assertTrue($first->fresh()->is_default);
+        $this->assertSame(15000000, (int) $offering->feeItems()->sum('amount_minor'));
+        $member->delete(route('academy.cycles.offerings.payment-plans.destroy', [$cycle, $offering, $first]))->assertSessionHasNoErrors();
+        $this->assertSame(0, $offering->feeItems()->count());
+        $member->delete(route('academy.cycles.offerings.destroy', [$cycle, $offering]))->assertSessionHasNoErrors();
+        $this->assertSoftDeleted($offering);
     }
 
     public function test_terms_and_cohorts_can_scope_programme_fee_items_without_cross_tenant_access(): void
@@ -148,8 +169,7 @@ class CycleFeeManagementTest extends TestCase
         $programme = Programme::factory()->for($academy)->create(['name' => 'Primary 1']);
         $member = $this->actingAs($owner)->withSession(['active_academy_id' => $academy->id]);
         $member->post(route('academy.cycles.offerings.store', $cycle), [
-            'programme_id' => $programme->id, 'application_fee' => '0', 'payment_mode' => 'one_off',
-            'is_active' => true, 'fee_items' => [['name' => 'Initial tuition', 'amount' => '1000.00']],
+            'programme_id' => $programme->id, 'application_fee' => '0', 'is_active' => true,
         ])->assertRedirect();
         $offering = ProgrammeCycle::query()->where('academy_id', $academy->id)->sole();
         $cohort = Cohort::query()->create([
@@ -163,20 +183,22 @@ class CycleFeeManagementTest extends TestCase
         ])->assertRedirect()->assertInertiaFlash('toast.message', 'Term created.');
         $term = AcademyCycleTerm::query()->where('name', 'Term 2')->sole();
 
-        $member->patch(route('academy.cycles.offerings.update', [$cycle, $offering]), [
-            'programme_id' => $programme->id, 'fee_name' => 'Tuition', 'application_fee' => '0',
-            'payment_mode' => 'one_off', 'is_active' => true,
-            'fee_items' => [
-                [
-                    'name' => 'Session registration', 'amount' => '10000.00',
-                    'academy_cycle_term_id' => null, 'cohort_id' => null,
-                ],
-                [
-                    'name' => 'Term 2 tuition', 'amount' => '50000.00',
-                    'academy_cycle_term_id' => $term->id, 'cohort_id' => $cohort->id,
-                ],
-            ],
-        ])->assertRedirect();
+        // Term and cohort pricing starts from an empty details page for that scope.
+        $member->get(route('academy.cycles.offerings.show', [$cycle, $offering, 'term_id' => $term->id, 'cohort_id' => $cohort->id]))
+            ->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('scope.term_name', 'Term 2')
+            ->where('scope.cohort_name', 'Primary 1A')
+            ->where('scope_options.cohorts.0.name', 'Primary 1A')
+            ->has('plans', 0));
+        $plansUrl = route('academy.cycles.offerings.payment-plans.store', [$cycle, $offering]);
+        $member->post($plansUrl, $this->plan('Session registration', '10000.00', [
+            'installments' => [['name' => 'Full', 'amount' => '10000.00', 'due_on' => '2028-01-15']],
+        ]))->assertSessionHasNoErrors();
+        $member->post($plansUrl, $this->plan('Term 2 tuition', '50000.00', [
+            'academy_cycle_term_id' => $term->id, 'cohort_id' => $cohort->id,
+            'installments' => [['name' => 'Full', 'amount' => '50000.00', 'due_on' => '2028-05-01']],
+        ]))->assertSessionHasNoErrors();
+
         $this->assertDatabaseHas('programme_cycle_fee_items', [
             'programme_cycle_id' => $offering->id, 'name' => 'Session registration',
             'academy_cycle_term_id' => null, 'cohort_id' => null, 'amount_minor' => 1000000,
@@ -185,6 +207,11 @@ class CycleFeeManagementTest extends TestCase
             'programme_cycle_id' => $offering->id, 'academy_cycle_term_id' => $term->id,
             'cohort_id' => $cohort->id, 'amount_minor' => 5000000,
         ]);
+        $member->get(route('academy.cycles.show', $cycle))->assertInertia(fn (Assert $page) => $page
+            ->has('cycle.offerings.0.scopes', 2)
+            ->where('cycle.offerings.0.scopes.1.term_name', 'Term 2')
+            ->where('cycle.offerings.0.scopes.1.cohort_name', 'Primary 1A')
+            ->where('cycle.offerings.0.scopes.1.default_total', '50000.00'));
 
         [$foreignOwner, $foreignAcademy] = $this->member(AcademyRole::OwnerAdmin);
         $this->actingAs($foreignOwner)->withSession(['active_academy_id' => $foreignAcademy->id])
@@ -299,7 +326,7 @@ class CycleFeeManagementTest extends TestCase
         $offering = ProgrammeCycle::query()->whereBelongsTo($academy)->sole();
         $this->assertSame('one_off', $offering->payment_mode->value);
         $this->assertDatabaseCount('programme_cycle_installments', 0);
-        $this->assertSame(1, $offering->paymentPlans()->where('is_standard', true)->count());
+        $this->assertSame(0, $offering->paymentPlans()->count());
     }
 
     public function test_cycle_and_offering_cannot_be_managed_across_tenants_or_by_coach(): void
@@ -315,6 +342,20 @@ class CycleFeeManagementTest extends TestCase
         [$coach, $coachAcademy] = $this->member(AcademyRole::Coach);
         $this->actingAs($coach)->withSession(['active_academy_id' => $coachAcademy->id])
             ->get(route('academy.cycles.index'))->assertForbidden();
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function plan(string $name, string $amount, array $overrides = []): array
+    {
+        return [
+            'name' => $name, 'sort_order' => 10, 'is_default' => false, 'is_active' => true, 'is_public' => true,
+            'fee_items' => [['name' => $name, 'amount' => $amount]],
+            'installments' => [['name' => 'Full payment', 'amount' => $amount, 'due_on' => '2026-02-01']],
+            ...$overrides,
+        ];
     }
 
     /** @return array{User, Academy} */

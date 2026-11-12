@@ -82,6 +82,7 @@ class AcademyCycleController extends Controller
             'programmeCycles.programme', 'programmeCycles.branch',
             'programmeCycles.feeItems.term', 'programmeCycles.feeItems.cohort',
             'programmeCycles.installments', 'programmeCycles.cohorts.branch',
+            'programmeCycles.paymentPlans' => fn ($query) => $query->orderBy('sort_order')->orderBy('name'),
         ])
             ->loadCount(['terms', 'programmeCycles', 'enrollments']);
 
@@ -110,6 +111,7 @@ class AcademyCycleController extends Controller
                         'name' => $item->name, 'amount' => Money::fromMinor($item->amount_minor),
                         'due_on' => $item->due_on?->toDateString(), 'due_offset_days' => $item->due_offset_days,
                     ]),
+                    'scopes' => $this->pricingScopes($cycle, $offering),
                 ]),
                 'terms' => ($cycle->supportsTerms() ? $cycle->terms : collect())->map(fn (AcademyCycleTerm $term): array => [
                     'id' => $term->id, 'name' => $term->name,
@@ -143,10 +145,10 @@ class AcademyCycleController extends Controller
         AcademyContext $context,
         SaveProgrammeCycle $save,
     ): RedirectResponse {
-        $save->handle($context->academy(), $cycle, $request->user(), $request->validated(), $request);
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Programme fees added to cycle.']);
+        $offering = $save->handle($context->academy(), $cycle, $request->user(), $request->validated(), $request);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Programme fee added. Now add its payment plans.']);
 
-        return back();
+        return to_route('academy.cycles.offerings.show', ['cycle' => $cycle, 'programmeCycle' => $offering]);
     }
 
     public function storeFee(SaveAcademyCycleFeeRequest $request, AcademyCycle $cycle, AcademyContext $context, SaveAcademyCycleFee $save): RedirectResponse
@@ -168,6 +170,39 @@ class AcademyCycleController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Programme cycle fees updated.']);
 
         return back();
+    }
+
+    /**
+     * One row per place a programme fee is priced: the whole cycle (always listed) plus any term or
+     * cohort that has its own payment plans.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function pricingScopes(AcademyCycle $cycle, ProgrammeCycle $offering): array
+    {
+        $plans = $offering->paymentPlans
+            ->when(! $cycle->supportsTerms(), fn ($plans) => $plans->where('term_scope_id', 0))
+            ->groupBy(fn ($plan): string => $plan->term_scope_id.':'.$plan->cohort_scope_id);
+        $plans->put('0:0', $plans->get('0:0', collect()));
+        $terms = $cycle->terms->keyBy('id');
+        $cohorts = $offering->cohorts->keyBy('id');
+
+        return array_values($plans->map(function ($scopePlans, string $key) use ($terms, $cohorts): array {
+            [$termId, $cohortId] = array_map('intval', explode(':', $key));
+            $default = $scopePlans->firstWhere('is_default', true) ?? $scopePlans->firstWhere('is_active', true);
+
+            return [
+                'academy_cycle_term_id' => $termId ?: null,
+                'term_name' => $termId ? $terms->get($termId)?->name : null,
+                'cohort_id' => $cohortId ?: null,
+                'cohort_name' => $cohortId ? $cohorts->get($cohortId)?->name : null,
+                'plans_count' => $scopePlans->count(),
+                'public_plans_count' => $scopePlans->where('is_active', true)->where('is_public', true)->count(),
+                'default_plan_name' => $default?->name,
+                'default_total' => $default === null ? null : Money::fromMinor((int) $default->total_minor),
+            ];
+        })->sortBy(fn (array $scope): string => sprintf('%010d:%010d', $scope['academy_cycle_term_id'] ?? 0, $scope['cohort_id'] ?? 0))
+            ->all());
     }
 
     /** @return array<string, mixed> */

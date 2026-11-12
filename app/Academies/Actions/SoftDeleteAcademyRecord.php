@@ -7,7 +7,7 @@ use App\Academies\Deletion\DeletionBlockers;
 use App\Enums\MembershipStatus;
 use App\Models\Academy;
 use App\Models\AcademyMembership;
-use App\Models\ProgrammeCycle;
+use App\Models\ProgrammeCyclePaymentPlan;
 use App\Models\User;
 use App\Platform\AuditLogger;
 use Illuminate\Database\Eloquent\Model;
@@ -27,6 +27,7 @@ class SoftDeleteAcademyRecord
     public function __construct(
         private readonly DeletionBlockers $blockers,
         private readonly AuditLogger $audit,
+        private readonly SyncProgrammeFeeItems $syncFeeItems,
     ) {}
 
     /** @param array<string, mixed> $snapshot what the audit log keeps about the deleted record */
@@ -62,15 +63,16 @@ class SoftDeleteAcademyRecord
             );
 
             $locked->delete();
+
+            if ($locked instanceof ProgrammeCyclePaymentPlan) {
+                // Promotes another plan to default if needed and refreshes the fee's own items.
+                $this->syncFeeItems->handle($locked->programmeCycle()->firstOrFail(), $locked->academy_cycle_term_id, $locked->cohort_id);
+            }
         });
     }
 
     private function deleteOwnedParts(Model $record): void
     {
-        if ($record instanceof ProgrammeCycle) {
-            $record->paymentPlans()->where('is_standard', true)->get()->each->delete();
-        }
-
         if ($record instanceof AcademyMembership) {
             $record->coachProfile?->delete();
             // A restored membership must be re-accepted before it grants access.

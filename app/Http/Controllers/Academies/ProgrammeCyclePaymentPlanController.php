@@ -16,7 +16,6 @@ use App\Models\ProgrammeCyclePaymentPlanItem;
 use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -41,9 +40,7 @@ class ProgrammeCyclePaymentPlanController extends Controller
             ->where('academy_cycle_term_id', $termId)
             ->where('cohort_id', $cohortId)
             ->orderBy('sort_order')->get();
-        abort_if($baseItems->isEmpty(), 404);
-
-        $programmeCycle->load(['programme', 'branch']);
+        $programmeCycle->load(['programme', 'branch', 'cohorts' => fn ($query) => $query->orderBy('name')]);
         $plans = $programmeCycle->paymentPlans()
             ->where('term_scope_id', (int) ($termId ?? 0))
             ->where('cohort_scope_id', (int) ($cohortId ?? 0))
@@ -72,6 +69,11 @@ class ProgrammeCyclePaymentPlanController extends Controller
                 'cohort_id' => $cohort?->id,
                 'cohort_name' => $cohort?->name,
             ],
+            'scope_options' => [
+                'terms' => ($cycle->supportsTerms() ? $cycle->terms()->orderBy('sort_order')->orderBy('starts_on')->get() : collect())
+                    ->map(fn ($item): array => ['id' => $item->id, 'name' => $item->name])->values(),
+                'cohorts' => $programmeCycle->cohorts->map(fn ($item): array => ['id' => $item->id, 'name' => $item->name])->values(),
+            ],
             'base_fee_items' => $baseItems->map(fn (ProgrammeCycleFeeItem $item): array => [
                 'name' => $item->name, 'description' => $item->description,
                 'amount' => Money::fromMinor((int) $item->amount_minor),
@@ -81,7 +83,7 @@ class ProgrammeCyclePaymentPlanController extends Controller
                 'sort_order' => $plan->sort_order,
                 'currency' => $plan->currency, 'total' => Money::fromMinor($plan->total_minor),
                 'is_default' => $plan->is_default, 'is_active' => $plan->is_active,
-                'is_legacy' => $plan->is_legacy, 'is_standard' => $plan->is_standard,
+                'is_public' => $plan->is_public, 'is_legacy' => $plan->is_legacy,
                 'items' => $plan->items->sortBy('sort_order')->values()->map(fn (ProgrammeCyclePaymentPlanItem $item): array => [
                     'name' => $item->name, 'description' => $item->description,
                     'amount' => Money::fromMinor($item->amount_minor),
@@ -134,9 +136,6 @@ class ProgrammeCyclePaymentPlanController extends Controller
         abort_unless($cycle->academy_id === $context->id()
             && $programmeCycle->academy_cycle_id === $cycle->id
             && $paymentPlan->programme_cycle_id === $programmeCycle->id, 404);
-        if ($paymentPlan->is_standard) {
-            throw ValidationException::withMessages(['delete' => 'The standard payment plan follows the programme fee. Delete the programme fee to remove it.']);
-        }
         $delete->handle($context->academy(), $request->user(), $paymentPlan, 'payment plan', $paymentPlan->name, [
             'programme_cycle_id' => $programmeCycle->id,
             'total_minor' => $paymentPlan->total_minor,

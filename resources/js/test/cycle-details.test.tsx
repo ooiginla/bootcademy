@@ -25,7 +25,7 @@ vi.mock('@inertiajs/react', () => ({
 }));
 
 describe('Programme cycle fees', () => {
-    it('shows currency-formatted application, programme and combined totals', () => {
+    it('lists each pricing scope and keeps prices out of the programme fee form', () => {
         render(
             <CycleDetailsPage
                 currency="NGN"
@@ -90,24 +90,27 @@ describe('Programme cycle fees', () => {
                             fee_total: '180000.00',
                             payment_mode: 'one_off',
                             is_active: true,
-                            fee_items: [
+                            fee_items: [],
+                            scopes: [
                                 {
-                                    id: 21,
-                                    name: 'Session registration',
-                                    amount: '30000.00',
                                     academy_cycle_term_id: null,
                                     term_name: null,
                                     cohort_id: null,
                                     cohort_name: null,
+                                    plans_count: 2,
+                                    public_plans_count: 1,
+                                    default_plan_name: 'Session registration',
+                                    default_total: '30000.00',
                                 },
                                 {
-                                    id: 22,
-                                    name: 'Term tuition',
-                                    amount: '150000.00',
                                     academy_cycle_term_id: 5,
                                     term_name: 'Term 1',
                                     cohort_id: null,
                                     cohort_name: null,
+                                    plans_count: 1,
+                                    public_plans_count: 1,
+                                    default_plan_name: 'Term tuition',
+                                    default_total: '150000.00',
                                 },
                             ],
                             installments: [],
@@ -137,23 +140,28 @@ describe('Programme cycle fees', () => {
                         '/app/finance/cycles/1/programmes/20?term_id=5',
                 ),
         ).toBe(true);
+        expect(screen.getByText('₦30,000.00')).toBeInTheDocument();
+        expect(screen.getByText('₦150,000.00')).toBeInTheDocument();
+        expect(screen.getAllByText('1 on website')).toHaveLength(2);
+
         fireEvent.click(
             screen.getByRole('button', { name: 'Add programme fees' }),
         );
         expect(screen.getByDisplayValue('Programme fee')).toBeInTheDocument();
         const amountInputs = screen.getAllByPlaceholderText('0.00');
         fireEvent.change(amountInputs[0], { target: { value: '5000' } });
-        fireEvent.change(amountInputs[1], { target: { value: '150000' } });
-
         expect(amountInputs[0]).toHaveValue('5,000');
-        expect(amountInputs[1]).toHaveValue('150,000');
-        expect(screen.getAllByText('₦5,000.00').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('₦150,000.00').length).toBeGreaterThan(0);
-        expect(screen.getByText('₦155,000.00')).toBeInTheDocument();
         expect(
-            screen.getByText('Standard one-off payment plan'),
+            screen.queryByText('Standard one-off payment plan'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByLabelText('Fee 1 description'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'After saving, you will add the payment plans that set this fee’s prices.',
+            ),
         ).toBeInTheDocument();
-        expect(screen.getByLabelText('Fee 1 description')).toBeInTheDocument();
         expect(
             screen.getByRole('option', { name: 'All branches (default)' }),
         ).toBeInTheDocument();
@@ -168,6 +176,7 @@ describe('Programme cycle fees', () => {
         expect(screen.getByText('Term materials')).toBeInTheDocument();
         expect(screen.getByText('Medical fee')).toBeInTheDocument();
         expect(screen.getByText('₦25,000.00')).toBeInTheDocument();
+        expect(screen.queryByText('₦155,000.00')).not.toBeInTheDocument();
         expect(screen.getByText('Optional')).toBeInTheDocument();
     });
 

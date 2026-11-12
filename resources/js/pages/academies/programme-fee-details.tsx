@@ -1,8 +1,9 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
     ArrowLeft,
     CalendarClock,
     CheckCircle2,
+    EyeOff,
     Pencil,
     Plus,
     Trash2,
@@ -48,8 +49,8 @@ type PaymentPlan = {
     total: string;
     is_default: boolean;
     is_active: boolean;
+    is_public: boolean;
     is_legacy: boolean;
-    is_standard?: boolean;
     items: MoneyRow[];
     installments: InstallmentRow[];
 };
@@ -79,6 +80,10 @@ type Props = {
         cohort_id: number | null;
         cohort_name: string | null;
     };
+    scope_options: {
+        terms: Array<{ id: number; name: string }>;
+        cohorts: Array<{ id: number; name: string }>;
+    };
     base_fee_items: MoneyRow[];
     plans: PaymentPlan[];
 };
@@ -96,7 +101,15 @@ function PaymentPlanDialog({
     nextSortOrder?: number;
 }) {
     const [open, setOpen] = useState(false);
-    const baseTotal = sumMoney(baseFeeItems.map((item) => item.amount));
+    // A new plan starts from the scope's current default plan, or one empty row.
+    const startingItems: MoneyRow[] =
+        baseFeeItems.length > 0
+            ? baseFeeItems.map((item) => ({ ...item }))
+            : [{ name: 'Tuition', description: '', amount: '' }];
+    const baseTotal =
+        baseFeeItems.length > 0
+            ? sumMoney(baseFeeItems.map((item) => item.amount))
+            : '';
     const form = useForm({
         name: plan?.name ?? '',
         description: plan?.description ?? '',
@@ -105,9 +118,8 @@ function PaymentPlanDialog({
         cohort_id: scope.cohort_id,
         is_default: plan?.is_default ?? false,
         is_active: plan?.is_active ?? true,
-        fee_items:
-            plan?.items.map((item) => ({ ...item })) ??
-            baseFeeItems.map((item) => ({ ...item })),
+        is_public: plan?.is_public ?? true,
+        fee_items: plan?.items.map((item) => ({ ...item })) ?? startingItems,
         installments: plan?.installments.map((item) => ({
             ...item,
             due_on: item.due_on ?? '',
@@ -351,11 +363,9 @@ function PaymentPlanDialog({
                                 Repayment schedule
                             </legend>
                             <p className="text-sm text-muted-foreground">
-                                {plan?.is_standard
-                                    ? 'The standard plan is always collected as one full payment.'
-                                    : cycle.type === 'fixed'
-                                      ? 'Set the amount and due date for every repayment.'
-                                      : 'Set each amount and the number of days after activation when it becomes due.'}
+                                {cycle.type === 'fixed'
+                                    ? 'Set the amount and due date for every repayment.'
+                                    : 'Set each amount and the number of days after activation when it becomes due.'}
                             </p>
                         </div>
                         {form.data.installments.map((item, index) => (
@@ -460,26 +470,24 @@ function PaymentPlanDialog({
                                 />
                             </div>
                         ))}
-                        {!plan?.is_standard && (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                    form.setData('installments', [
-                                        ...form.data.installments,
-                                        {
-                                            name: `Payment ${form.data.installments.length + 1}`,
-                                            amount: '',
-                                            due_on: '',
-                                            due_offset_days: '',
-                                        },
-                                    ])
-                                }
-                            >
-                                <Plus className="size-4" /> Add repayment
-                            </Button>
-                        )}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                                form.setData('installments', [
+                                    ...form.data.installments,
+                                    {
+                                        name: `Payment ${form.data.installments.length + 1}`,
+                                        amount: '',
+                                        due_on: '',
+                                        due_offset_days: '',
+                                    },
+                                ])
+                            }
+                        >
+                            <Plus className="size-4" /> Add repayment
+                        </Button>
                         <InputError message={form.errors.installments} />
                     </fieldset>
 
@@ -549,7 +557,25 @@ function PaymentPlanDialog({
                             />
                             Available for selection
                         </label>
+                        <label className="flex items-center gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                checked={form.data.is_public}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'is_public',
+                                        event.target.checked,
+                                    )
+                                }
+                            />
+                            Show on the public website
+                        </label>
                     </div>
+                    <p className="-mt-3 text-xs text-muted-foreground">
+                        Plans not shown on the website can still be given to a
+                        student by your team.
+                    </p>
+                    <InputError message={form.errors.is_public} />
 
                     <DialogFooter>
                         <DialogClose asChild>
@@ -571,10 +597,94 @@ function PaymentPlanDialog({
     );
 }
 
+function ScopePicker({
+    offering,
+    cycle,
+    scope,
+    options,
+}: Pick<Props, 'offering' | 'cycle' | 'scope'> & {
+    options: Props['scope_options'];
+}) {
+    if (options.terms.length === 0 && options.cohorts.length === 0) return null;
+
+    function go(termId: number | null, cohortId: number | null) {
+        const query: Record<string, number> = {};
+        if (termId) query.term_id = termId;
+        if (cohortId) query.cohort_id = cohortId;
+        router.get(
+            `/app/finance/cycles/${cycle.id}/programmes/${offering.id}`,
+            query,
+        );
+    }
+
+    return (
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border bg-muted/30 p-4 sm:flex-row sm:items-end">
+            <p className="text-sm text-muted-foreground sm:mr-auto">
+                Plans apply to the scope chosen here. A term or cohort with its
+                own plans uses those instead of the whole-cycle plans.
+            </p>
+            {options.terms.length > 0 && (
+                <div className="grid gap-1.5">
+                    <Label htmlFor="scope-term">Term</Label>
+                    <select
+                        id="scope-term"
+                        className={selectClass}
+                        value={scope.academy_cycle_term_id ?? ''}
+                        onChange={(event) =>
+                            go(
+                                event.target.value
+                                    ? Number(event.target.value)
+                                    : null,
+                                scope.cohort_id,
+                            )
+                        }
+                    >
+                        <option value="">Whole cycle</option>
+                        {options.terms.map((term) => (
+                            <option key={term.id} value={term.id}>
+                                {term.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
+            {options.cohorts.length > 0 && (
+                <div className="grid gap-1.5">
+                    <Label htmlFor="scope-cohort">Cohort</Label>
+                    <select
+                        id="scope-cohort"
+                        className={selectClass}
+                        value={scope.cohort_id ?? ''}
+                        onChange={(event) =>
+                            go(
+                                scope.academy_cycle_term_id,
+                                event.target.value
+                                    ? Number(event.target.value)
+                                    : null,
+                            )
+                        }
+                    >
+                        <option value="">All cohorts</option>
+                        {options.cohorts.map((cohort) => (
+                            <option key={cohort.id} value={cohort.id}>
+                                {cohort.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
+        </div>
+    );
+}
+
+const selectClass =
+    'h-9 w-full min-w-44 rounded-md border border-input bg-transparent px-3 text-sm';
+
 export default function ProgrammeFeeDetails({
     offering,
     cycle,
     scope,
+    scope_options,
     base_fee_items,
     plans,
 }: Props) {
@@ -618,10 +728,17 @@ export default function ProgrammeFeeDetails({
                             action={`/app/finance/cycles/${cycle.id}/programmes/${offering.id}`}
                             label="programme fee"
                             name={offering.fee_name}
-                            description="Its standard payment plan is removed with it. Custom payment plans must be deleted first."
+                            description="Delete its payment plans first."
                         />
                     </div>
                 </div>
+
+                <ScopePicker
+                    offering={offering}
+                    cycle={cycle}
+                    scope={scope}
+                    options={scope_options}
+                />
 
                 <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
@@ -678,9 +795,10 @@ export default function ProgrammeFeeDetails({
                                                         Existing schedule
                                                     </Badge>
                                                 )}
-                                                {plan.is_standard && (
+                                                {!plan.is_public && (
                                                     <Badge variant="outline">
-                                                        Standard one-off
+                                                        <EyeOff className="size-3" />
+                                                        Not on website
                                                     </Badge>
                                                 )}
                                             </div>
@@ -698,13 +816,11 @@ export default function ProgrammeFeeDetails({
                                                 baseFeeItems={base_fee_items}
                                                 plan={plan}
                                             />
-                                            {!plan.is_standard && (
-                                                <DeleteRecordButton
-                                                    action={`/app/finance/cycles/${cycle.id}/programmes/${offering.id}/payment-plans/${plan.id}`}
-                                                    label="payment plan"
-                                                    name={plan.name}
-                                                />
-                                            )}
+                                            <DeleteRecordButton
+                                                action={`/app/finance/cycles/${cycle.id}/programmes/${offering.id}/payment-plans/${plan.id}`}
+                                                label="payment plan"
+                                                name={plan.name}
+                                            />
                                         </div>
                                     </div>
                                 </CardHeader>

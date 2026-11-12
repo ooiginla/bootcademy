@@ -13,7 +13,10 @@ use Illuminate\Support\Facades\DB;
 
 class SaveProgrammeCyclePaymentPlan
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly SyncProgrammeFeeItems $syncFeeItems,
+    ) {}
 
     /** @param array<string, mixed> $data */
     public function handle(
@@ -71,6 +74,7 @@ class SaveProgrammeCyclePaymentPlan
                 'total_minor' => $totalMinor,
                 'is_default' => $isDefault,
                 'is_active' => (bool) $data['is_active'],
+                'is_public' => (bool) $data['is_public'],
                 'is_legacy' => false,
             ])->save();
 
@@ -101,26 +105,7 @@ class SaveProgrammeCyclePaymentPlan
                 ]);
             }
 
-            if ($plan->is_standard) {
-                $offering->feeItems()
-                    ->where('academy_cycle_term_id', $termId)
-                    ->where('cohort_id', $cohortId)
-                    ->delete();
-                foreach (array_values($feeItems) as $index => $item) {
-                    if (! is_array($item)) {
-                        continue;
-                    }
-                    $offering->feeItems()->create([
-                        'academy_id' => $academy->id,
-                        'academy_cycle_term_id' => $termId,
-                        'cohort_id' => $cohortId,
-                        'name' => trim((string) $item['name']),
-                        'description' => filled($item['description'] ?? null) ? trim((string) $item['description']) : null,
-                        'amount_minor' => Money::toMinor((string) $item['amount']),
-                        'sort_order' => $index,
-                    ]);
-                }
-            }
+            $this->syncFeeItems->handle($offering, $termId === null ? null : (int) $termId, $cohortId === null ? null : (int) $cohortId);
 
             $this->audit->record(
                 $wasExisting ? 'academy.programme_payment_plan.updated' : 'academy.programme_payment_plan.created',
@@ -134,6 +119,7 @@ class SaveProgrammeCyclePaymentPlan
                     'total_minor' => $totalMinor,
                     'payment_count' => count($data['installments']),
                     'sort_order' => (int) $data['sort_order'],
+                    'is_public' => (bool) $data['is_public'],
                 ],
                 $request,
             );

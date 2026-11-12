@@ -125,23 +125,20 @@ class SoftDeleteAcademyRecordsTest extends TestCase
 
         $this->signedIn($owner, $academy)
             ->delete(route('academy.cycles.offerings.destroy', [$cycle, $offering]))
-            ->assertSessionHasErrors(['delete' => 'Programme fee "Annual tuition" still has 1 payment plan. Delete or move those first.']);
+            ->assertSessionHasErrors(['delete' => 'Programme fee "Annual tuition" still has 2 payment plans. Delete or move those first.']);
 
-        $this->signedIn($owner, $academy)
-            ->delete(route('academy.cycles.offerings.payment-plans.destroy', [$cycle, $offering, $standard]))
-            ->assertSessionHasErrors('delete');
-        $this->assertNotSoftDeleted($standard);
-
-        $this->signedIn($owner, $academy)
-            ->delete(route('academy.cycles.offerings.payment-plans.destroy', [$cycle, $offering, $custom]))
-            ->assertSessionHasNoErrors();
-        $this->assertSoftDeleted($custom);
+        // Every plan, including the one first created with the fee, is deleted on its own.
+        foreach ([$custom, $standard] as $plan) {
+            $this->signedIn($owner, $academy)
+                ->delete(route('academy.cycles.offerings.payment-plans.destroy', [$cycle, $offering, $plan]))
+                ->assertSessionHasNoErrors();
+            $this->assertSoftDeleted($plan);
+        }
 
         $this->signedIn($owner, $academy)
             ->delete(route('academy.cycles.offerings.destroy', [$cycle, $offering]))
             ->assertRedirect(route('academy.cycles.show', $cycle));
         $this->assertSoftDeleted($offering);
-        $this->assertSoftDeleted($standard);
 
         $this->signedIn($owner, $academy)
             ->delete(route('academy.cycles.destroy', $cycle))

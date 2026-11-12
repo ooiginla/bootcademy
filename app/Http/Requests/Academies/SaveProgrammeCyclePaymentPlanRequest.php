@@ -28,6 +28,7 @@ class SaveProgrammeCyclePaymentPlanRequest extends FormRequest
             'cohort_id' => $this->input('cohort_id') ?: null,
             'is_default' => $this->boolean('is_default'),
             'is_active' => $this->boolean('is_active', true),
+            'is_public' => $this->boolean('is_public', true),
             'fee_items' => is_array($this->input('fee_items')) ? $this->input('fee_items') : [],
             'installments' => is_array($this->input('installments')) ? $this->input('installments') : [],
         ]);
@@ -76,6 +77,7 @@ class SaveProgrammeCyclePaymentPlanRequest extends FormRequest
             'cohort_id' => ['nullable', 'integer', Rule::exists('cohorts', 'id')->where($forAcademy)],
             'is_default' => ['required', 'boolean'],
             'is_active' => ['required', 'boolean'],
+            'is_public' => ['required', 'boolean'],
             'fee_items' => ['required', 'array', 'min:1', 'max:30'],
             'fee_items.*.name' => ['required', 'string', 'max:120'],
             'fee_items.*.description' => ['nullable', 'string', 'max:500'],
@@ -123,11 +125,6 @@ class SaveProgrammeCyclePaymentPlanRequest extends FormRequest
             }
             if ($this->boolean('is_default') && ! $this->boolean('is_active')) {
                 $validator->errors()->add('is_active', 'The default payment plan must remain active.');
-            }
-
-            if ($plan instanceof ProgrammeCyclePaymentPlan && $plan->is_standard
-                && count($this->input('installments', [])) !== 1) {
-                $validator->errors()->add('installments', 'The standard payment plan must contain one full payment.');
             }
 
             $feeTotal = $this->sumAmounts($this->input('fee_items', []));

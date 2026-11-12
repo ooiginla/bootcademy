@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Banknote, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Banknote, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import DeleteRecordButton from '@/components/delete-record-button';
@@ -25,7 +25,6 @@ import {
     formatCurrency,
     formatMoneyInput,
     normalizeMoneyInput,
-    sumMoney,
 } from '@/lib/money';
 import type { AcademyCycle } from './cycles';
 
@@ -75,8 +74,20 @@ type Offering = {
         due_on: string | null;
         due_offset_days: number | null;
     }>;
+    scopes: PricingScope[];
 };
 type CycleDetails = AcademyCycle & { offerings: Offering[]; terms: Term[] };
+type PricingScope = {
+    academy_cycle_term_id: number | null;
+    term_name: string | null;
+    cohort_id: number | null;
+    cohort_name: string | null;
+    plans_count: number;
+    public_plans_count: number;
+    default_plan_name: string | null;
+    default_total: string | null;
+};
+type ScopeRow = { offering: Offering; scope: PricingScope };
 type CycleFee = {
     id: number;
     name: string;
@@ -99,12 +110,12 @@ const selectClass =
 function feeDetailsUrl(
     cycleId: number,
     offeringId: number,
-    item: FeeRow,
+    scope: Pick<PricingScope, 'academy_cycle_term_id' | 'cohort_id'>,
 ): string {
     const query = new URLSearchParams();
-    if (item.academy_cycle_term_id)
-        query.set('term_id', String(item.academy_cycle_term_id));
-    if (item.cohort_id) query.set('cohort_id', String(item.cohort_id));
+    if (scope.academy_cycle_term_id)
+        query.set('term_id', String(scope.academy_cycle_term_id));
+    if (scope.cohort_id) query.set('cohort_id', String(scope.cohort_id));
     const suffix = query.toString();
 
     return `/app/finance/cycles/${cycleId}/programmes/${offeringId}${suffix ? `?${suffix}` : ''}`;
@@ -344,16 +355,12 @@ function OfferingDialog({
     programmes,
     branches,
     currency,
-    terms,
-    cohorts,
     offering,
 }: {
     cycle: CycleDetails;
     programmes: Option[];
     branches: Option[];
     currency: string;
-    terms: Term[];
-    cohorts: CohortOption[];
     offering?: Offering;
 }) {
     const [open, setOpen] = useState(false);
@@ -364,36 +371,7 @@ function OfferingDialog({
         branch_id: String(offering?.branch_id ?? ''),
         application_fee: offering?.application_fee ?? '0.00',
         is_active: offering?.is_active ?? true,
-        fee_items: offering?.fee_items ?? [
-            {
-                name: 'Tuition',
-                description: '',
-                amount: '',
-                academy_cycle_term_id:
-                    terms.find((term) => term.is_default)?.id ??
-                    terms[0]?.id ??
-                    null,
-                cohort_id: null,
-            },
-        ],
     });
-    const programmeTotal = sumMoney(
-        form.data.fee_items.map((item) => item.amount),
-    );
-    const totalPayable = sumMoney([form.data.application_fee, programmeTotal]);
-
-    function updateFee(
-        index: number,
-        key: keyof FeeRow,
-        value: string | number | null,
-    ) {
-        form.setData(
-            'fee_items',
-            form.data.fee_items.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, [key]: value } : item,
-            ),
-        );
-    }
     function submit(event: FormEvent) {
         event.preventDefault();
         const options = {
@@ -433,7 +411,7 @@ function OfferingDialog({
                     <DialogDescription>
                         Leave the branch blank for academy-wide default fees, or
                         select a branch to override that default. Issued
-                        invoices retain their original snapshots.
+                        invoices keep their original amounts.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={submit} className="space-y-6">
@@ -524,227 +502,11 @@ function OfferingDialog({
                         </div>
                     </div>
 
-                    <fieldset className="space-y-3">
-                        <legend className="font-medium">
-                            Standard one-off payment plan
-                        </legend>
-                        <p className="text-xs text-muted-foreground">
-                            {`This becomes the first payment plan. Enter all amounts in ${currencySymbol(currency)}; descriptions are shown to applicants instead of the total price.`}
-                            {!editing &&
-                                ' Save the programme offering first, then edit it to target an existing cohort.'}
-                        </p>
-                        {form.data.fee_items.map((item, index) => (
-                            <div
-                                key={index}
-                                className="grid gap-2 rounded-lg border p-3 sm:grid-cols-2 lg:grid-cols-[1fr_1.5fr_11rem_12rem_12rem_auto]"
-                            >
-                                <Input
-                                    aria-label={`Fee ${index + 1} name`}
-                                    value={item.name}
-                                    onChange={(event) =>
-                                        updateFee(
-                                            index,
-                                            'name',
-                                            event.target.value,
-                                        )
-                                    }
-                                    placeholder="Tuition"
-                                    required
-                                />
-                                <Input
-                                    aria-label={`Fee ${index + 1} description`}
-                                    value={item.description ?? ''}
-                                    onChange={(event) =>
-                                        updateFee(
-                                            index,
-                                            'description',
-                                            event.target.value,
-                                        )
-                                    }
-                                    placeholder="e.g. $3/month"
-                                    maxLength={500}
-                                />
-                                <Input
-                                    aria-label={`Fee ${index + 1} amount`}
-                                    value={formatMoneyInput(item.amount)}
-                                    onChange={(event) =>
-                                        updateFee(
-                                            index,
-                                            'amount',
-                                            normalizeMoneyInput(
-                                                event.target.value,
-                                            ),
-                                        )
-                                    }
-                                    inputMode="decimal"
-                                    placeholder="0.00"
-                                    required
-                                />
-                                {cycle.type === 'fixed' && (
-                                    <select
-                                        aria-label={`Fee ${index + 1} term`}
-                                        className={selectClass}
-                                        value={item.academy_cycle_term_id ?? ''}
-                                        onChange={(event) =>
-                                            updateFee(
-                                                index,
-                                                'academy_cycle_term_id',
-                                                event.target.value
-                                                    ? Number(event.target.value)
-                                                    : null,
-                                            )
-                                        }
-                                    >
-                                        <option value="">
-                                            General cycle / all terms
-                                        </option>
-                                        {terms.map((term) => (
-                                            <option
-                                                key={term.id}
-                                                value={term.id}
-                                            >
-                                                {term.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                )}
-                                <select
-                                    aria-label={`Fee ${index + 1} cohort`}
-                                    className={selectClass}
-                                    value={item.cohort_id ?? ''}
-                                    onChange={(event) =>
-                                        updateFee(
-                                            index,
-                                            'cohort_id',
-                                            event.target.value
-                                                ? Number(event.target.value)
-                                                : null,
-                                        )
-                                    }
-                                    disabled={!editing}
-                                >
-                                    <option value="">All cohorts</option>
-                                    {cohorts
-                                        .filter(
-                                            (cohort) =>
-                                                cohort.programme_cycle_id ===
-                                                offering?.id,
-                                        )
-                                        .map((cohort) => (
-                                            <option
-                                                key={cohort.id}
-                                                value={cohort.id}
-                                            >
-                                                {cohort.name}
-                                            </option>
-                                        ))}
-                                </select>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    aria-label={`Remove fee ${index + 1}`}
-                                    disabled={form.data.fee_items.length === 1}
-                                    onClick={() =>
-                                        form.setData(
-                                            'fee_items',
-                                            form.data.fee_items.filter(
-                                                (_, row) => row !== index,
-                                            ),
-                                        )
-                                    }
-                                >
-                                    <Trash2 className="size-4" />
-                                </Button>
-                                <InputError
-                                    message={
-                                        form.errors[`fee_items.${index}.name`]
-                                    }
-                                />
-                                <InputError
-                                    message={
-                                        form.errors[
-                                            `fee_items.${index}.description`
-                                        ]
-                                    }
-                                />
-                                <InputError
-                                    message={
-                                        form.errors[
-                                            `fee_items.${index}.academy_cycle_term_id`
-                                        ]
-                                    }
-                                />
-                                <InputError
-                                    message={
-                                        form.errors[
-                                            `fee_items.${index}.cohort_id`
-                                        ]
-                                    }
-                                />
-                                <InputError
-                                    message={
-                                        form.errors[`fee_items.${index}.amount`]
-                                    }
-                                />
-                            </div>
-                        ))}
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                                form.setData('fee_items', [
-                                    ...form.data.fee_items,
-                                    {
-                                        name: '',
-                                        description: '',
-                                        amount: '',
-                                        academy_cycle_term_id:
-                                            terms.find(
-                                                (term) => term.is_default,
-                                            )?.id ??
-                                            terms[0]?.id ??
-                                            null,
-                                        cohort_id: null,
-                                    },
-                                ])
-                            }
-                        >
-                            <Plus className="size-4" />
-                            Add fee item
-                        </Button>
-                    </fieldset>
-
-                    <div className="grid gap-3 rounded-lg border bg-muted/30 p-4 sm:grid-cols-3">
-                        <p className="text-sm">
-                            <span className="block text-muted-foreground">
-                                Application fee
-                            </span>
-                            <span className="font-semibold">
-                                {formatCurrency(
-                                    currency,
-                                    form.data.application_fee,
-                                )}
-                            </span>
-                        </p>
-                        <p className="text-sm">
-                            <span className="block text-muted-foreground">
-                                Programme fees
-                            </span>
-                            <span className="font-semibold">
-                                {formatCurrency(currency, programmeTotal)}
-                            </span>
-                        </p>
-                        <p className="text-sm">
-                            <span className="block text-muted-foreground">
-                                Total payable
-                            </span>
-                            <span className="font-semibold text-primary">
-                                {formatCurrency(currency, totalPayable)}
-                            </span>
-                        </p>
-                    </div>
+                    <p className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
+                        {editing
+                            ? 'Prices are set on this fee’s payment plans. Open Details to add or change them.'
+                            : 'After saving, you will add the payment plans that set this fee’s prices.'}
+                    </p>
 
                     <label className="flex items-center gap-2 text-sm">
                         <input
@@ -996,49 +758,54 @@ function CycleFeesTable({
 }
 
 function ProgrammeFeesTable({
-    offerings,
+    rows,
     cycle,
     programmes,
     branches,
     currency,
-    terms,
-    cohorts,
+    emptyText,
 }: {
-    offerings: Array<Offering & { scoped_items: FeeRow[] }>;
+    rows: ScopeRow[];
     cycle: CycleDetails;
     programmes: Option[];
     branches: Option[];
     currency: string;
-    terms: Term[];
-    cohorts: CohortOption[];
+    emptyText: string;
 }) {
-    if (offerings.length === 0) {
+    if (rows.length === 0) {
         return (
-            <p className="p-8 text-center text-sm text-muted-foreground">
-                No programme fees in this scope.
-            </p>
+            <div className="px-6 py-12 text-center">
+                <Banknote className="mx-auto size-8 text-muted-foreground" />
+                <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
+                    {emptyText}
+                </p>
+            </div>
         );
     }
 
     return (
         <div className="overflow-x-auto">
-            <table className="w-full min-w-[880px] text-left text-sm">
+            <table className="w-full min-w-[900px] text-left text-sm">
                 <thead className="border-b bg-muted/50 text-xs text-muted-foreground uppercase">
                     <tr>
                         <th className="px-4 py-3">Programme</th>
-                        <th className="px-4 py-3">Fee</th>
                         <th className="px-4 py-3">Branch</th>
                         <th className="px-4 py-3">Cohort</th>
-                        <th className="px-4 py-3">Amount</th>
+                        <th className="px-4 py-3">Default price</th>
+                        <th className="px-4 py-3">Plans</th>
                         <th className="px-4 py-3">Status</th>
                         <th className="px-4 py-3 text-right">Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {offerings.flatMap((offering) =>
-                        offering.scoped_items.map((item, index) => (
+                    {rows.map(({ offering, scope }) => {
+                        const wholeCycle =
+                            scope.academy_cycle_term_id === null &&
+                            scope.cohort_id === null;
+
+                        return (
                             <tr
-                                key={item.id ?? `${offering.id}-${index}`}
+                                key={`${offering.id}-${scope.academy_cycle_term_id ?? 0}-${scope.cohort_id ?? 0}`}
                                 className="border-b last:border-0"
                             >
                                 <td className="px-4 py-3">
@@ -1046,26 +813,45 @@ function ProgrammeFeesTable({
                                         {offering.programme_name}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                        Application:{' '}
+                                        {offering.fee_name} · Application{' '}
                                         {formatCurrency(
                                             offering.currency,
                                             offering.application_fee,
                                         )}
                                     </p>
                                 </td>
-                                <td className="px-4 py-3 font-medium">
-                                    {item.name}
-                                </td>
                                 <td className="px-4 py-3">
                                     {offering.branch_name ?? 'All branches'}
                                 </td>
                                 <td className="px-4 py-3">
-                                    {item.cohort_name ?? 'All cohorts'}
+                                    {scope.cohort_name ?? 'All cohorts'}
                                 </td>
-                                <td className="px-4 py-3 font-semibold">
-                                    {formatCurrency(
-                                        offering.currency,
-                                        item.amount,
+                                <td className="px-4 py-3">
+                                    {scope.default_total === null ? (
+                                        <span className="text-muted-foreground">
+                                            No plans yet
+                                        </span>
+                                    ) : (
+                                        <>
+                                            <p className="font-semibold">
+                                                {formatCurrency(
+                                                    offering.currency,
+                                                    scope.default_total,
+                                                )}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {scope.default_plan_name}
+                                            </p>
+                                        </>
+                                    )}
+                                </td>
+                                <td className="px-4 py-3">
+                                    <p>{scope.plans_count}</p>
+                                    {scope.plans_count > 0 && (
+                                        <p className="text-xs text-muted-foreground">
+                                            {scope.public_plans_count} on
+                                            website
+                                        </p>
                                     )}
                                 </td>
                                 <td className="px-4 py-3">
@@ -1092,10 +878,12 @@ function ProgrammeFeesTable({
                                                 href={feeDetailsUrl(
                                                     cycle.id,
                                                     offering.id,
-                                                    item,
+                                                    scope,
                                                 )}
                                             >
-                                                Details
+                                                {scope.plans_count === 0
+                                                    ? 'Add plans'
+                                                    : 'Details'}
                                             </Link>
                                         </Button>
                                         <OfferingDialog
@@ -1103,24 +891,24 @@ function ProgrammeFeesTable({
                                             programmes={programmes}
                                             branches={branches}
                                             currency={currency}
-                                            terms={terms}
-                                            cohorts={cohorts}
                                             offering={offering}
                                         />
-                                        <DeleteRecordButton
-                                            action={`/app/finance/cycles/${cycle.id}/programmes/${offering.id}`}
-                                            label="programme fee"
-                                            name={
-                                                offering.fee_name ||
-                                                offering.programme_name
-                                            }
-                                            description="Its standard payment plan is removed with it. Custom payment plans must be deleted first."
-                                        />
+                                        {wholeCycle && (
+                                            <DeleteRecordButton
+                                                action={`/app/finance/cycles/${cycle.id}/programmes/${offering.id}`}
+                                                label="programme fee"
+                                                name={
+                                                    offering.fee_name ||
+                                                    offering.programme_name
+                                                }
+                                                description="Delete its payment plans first."
+                                            />
+                                        )}
                                     </div>
                                 </td>
                             </tr>
-                        )),
-                    )}
+                        );
+                    })}
                 </tbody>
             </table>
         </div>
@@ -1149,28 +937,21 @@ export default function CycleDetailsPage({
     );
     const selectedTerm =
         cycle.terms.find((term) => term.id === selectedTermId) ?? defaultTerm;
-    const termOfferings = cycle.offerings
-        .map((offering) => ({
-            ...offering,
-            scoped_items: offering.fee_items.filter(
-                (item) => item.academy_cycle_term_id === selectedTerm?.id,
-            ),
-        }))
-        .filter((offering) => offering.scoped_items.length > 0);
+    const scopeRows = cycle.offerings.flatMap((offering) =>
+        offering.scopes.map((scope) => ({ offering, scope })),
+    );
+    const termRows = scopeRows.filter(
+        ({ scope }) => scope.academy_cycle_term_id === selectedTerm?.id,
+    );
     const termCycleFees = cycle_fees.filter(
         (fee) => fee.academy_cycle_term_id === selectedTerm?.id,
     );
     const generalCycleFees = cycle_fees.filter(
         (fee) => fee.academy_cycle_term_id === null,
     );
-    const generalProgrammeOfferings = cycle.offerings
-        .map((offering) => ({
-            ...offering,
-            scoped_items: offering.fee_items.filter(
-                (item) => item.academy_cycle_term_id === null,
-            ),
-        }))
-        .filter((offering) => offering.scoped_items.length > 0);
+    const generalRows = scopeRows.filter(
+        ({ scope }) => scope.academy_cycle_term_id === null,
+    );
 
     return (
         <>
@@ -1214,8 +995,6 @@ export default function CycleDetailsPage({
                             programmes={programmes}
                             branches={branches}
                             currency={currency}
-                            terms={cycle.terms}
-                            cohorts={cohorts}
                         />
                         <CycleFeeDialog
                             cycle={cycle}
@@ -1284,153 +1063,14 @@ export default function CycleDetailsPage({
                                     </h3>
                                     <Card className="overflow-hidden py-0">
                                         <CardContent className="p-0">
-                                            {termOfferings.length === 0 ? (
-                                                <div className="py-12 text-center">
-                                                    <Banknote className="mx-auto size-8 text-muted-foreground" />
-                                                    <p className="mt-3 font-medium">
-                                                        No programme fees in
-                                                        this term
-                                                    </p>
-                                                </div>
-                                            ) : (
-                                                <div className="overflow-x-auto">
-                                                    <table className="w-full min-w-[880px] text-left text-sm">
-                                                        <thead className="border-b bg-muted/50 text-xs text-muted-foreground uppercase">
-                                                            <tr>
-                                                                <th className="px-4 py-3">
-                                                                    Programme
-                                                                </th>
-                                                                <th className="px-4 py-3">
-                                                                    Fee
-                                                                </th>
-                                                                <th className="px-4 py-3">
-                                                                    Branch
-                                                                </th>
-                                                                <th className="px-4 py-3">
-                                                                    Cohort
-                                                                </th>
-                                                                <th className="px-4 py-3">
-                                                                    Amount
-                                                                </th>
-                                                                <th className="px-4 py-3">
-                                                                    Status
-                                                                </th>
-                                                                <th className="px-4 py-3 text-right">
-                                                                    Action
-                                                                </th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {termOfferings.flatMap(
-                                                                (offering) =>
-                                                                    offering.scoped_items.map(
-                                                                        (
-                                                                            item,
-                                                                            index,
-                                                                        ) => (
-                                                                            <tr
-                                                                                key={
-                                                                                    item.id ??
-                                                                                    `${offering.id}-${index}`
-                                                                                }
-                                                                                className="border-b last:border-0"
-                                                                            >
-                                                                                <td className="px-4 py-3">
-                                                                                    <p className="font-medium">
-                                                                                        {
-                                                                                            offering.programme_name
-                                                                                        }
-                                                                                    </p>
-                                                                                    <p className="text-xs text-muted-foreground">
-                                                                                        Application:{' '}
-                                                                                        {formatCurrency(
-                                                                                            offering.currency,
-                                                                                            offering.application_fee,
-                                                                                        )}
-                                                                                    </p>
-                                                                                </td>
-                                                                                <td className="px-4 py-3 font-medium">
-                                                                                    {
-                                                                                        item.name
-                                                                                    }
-                                                                                </td>
-                                                                                <td className="px-4 py-3">
-                                                                                    {offering.branch_name ??
-                                                                                        'All branches'}
-                                                                                </td>
-                                                                                <td className="px-4 py-3">
-                                                                                    {item.cohort_name ??
-                                                                                        'All cohorts'}
-                                                                                </td>
-                                                                                <td className="px-4 py-3 font-semibold">
-                                                                                    {formatCurrency(
-                                                                                        offering.currency,
-                                                                                        item.amount,
-                                                                                    )}
-                                                                                </td>
-                                                                                <td className="px-4 py-3">
-                                                                                    <Badge
-                                                                                        variant={
-                                                                                            offering.is_active
-                                                                                                ? 'secondary'
-                                                                                                : 'outline'
-                                                                                        }
-                                                                                    >
-                                                                                        {offering.is_active
-                                                                                            ? 'Available'
-                                                                                            : 'Inactive'}
-                                                                                    </Badge>
-                                                                                </td>
-                                                                                <td className="px-4 py-3 text-right">
-                                                                                    <div className="flex justify-end gap-2">
-                                                                                        <Button
-                                                                                            asChild
-                                                                                            variant="outline"
-                                                                                            size="sm"
-                                                                                        >
-                                                                                            <Link
-                                                                                                href={feeDetailsUrl(
-                                                                                                    cycle.id,
-                                                                                                    offering.id,
-                                                                                                    item,
-                                                                                                )}
-                                                                                            >
-                                                                                                Details
-                                                                                            </Link>
-                                                                                        </Button>
-                                                                                        <OfferingDialog
-                                                                                            cycle={
-                                                                                                cycle
-                                                                                            }
-                                                                                            programmes={
-                                                                                                programmes
-                                                                                            }
-                                                                                            branches={
-                                                                                                branches
-                                                                                            }
-                                                                                            currency={
-                                                                                                currency
-                                                                                            }
-                                                                                            terms={
-                                                                                                cycle.terms
-                                                                                            }
-                                                                                            cohorts={
-                                                                                                cohorts
-                                                                                            }
-                                                                                            offering={
-                                                                                                offering
-                                                                                            }
-                                                                                        />
-                                                                                    </div>
-                                                                                </td>
-                                                                            </tr>
-                                                                        ),
-                                                                    ),
-                                                            )}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            )}
+                                            <ProgrammeFeesTable
+                                                rows={termRows}
+                                                cycle={cycle}
+                                                programmes={programmes}
+                                                branches={branches}
+                                                currency={currency}
+                                                emptyText="No programme fee has its own pricing for this term. Open a programme fee’s details and choose this term to add term plans."
+                                            />
                                         </CardContent>
                                     </Card>
                                     <h3 className="font-semibold">
@@ -1475,13 +1115,12 @@ export default function CycleDetailsPage({
                 <Card className="mb-6 overflow-hidden py-0">
                     <CardContent className="p-0">
                         <ProgrammeFeesTable
-                            offerings={generalProgrammeOfferings}
+                            rows={generalRows}
                             cycle={cycle}
                             programmes={programmes}
                             branches={branches}
                             currency={currency}
-                            terms={cycle.terms}
-                            cohorts={cohorts}
+                            emptyText="No programme fees yet. Add programme fees to start."
                         />
                     </CardContent>
                 </Card>

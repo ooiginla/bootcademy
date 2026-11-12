@@ -164,7 +164,7 @@ class DeletionBlockers
         $planIds = $offering->paymentPlans()->pluck('id');
 
         return [
-            new DeletionBlocker($offering->paymentPlans()->where('is_standard', false)->count(), 'payment plan', 'payment plans'),
+            new DeletionBlocker($offering->paymentPlans()->count(), 'payment plan', 'payment plans'),
             new DeletionBlocker(Application::query()->where('academy_id', $offering->academy_id)
                 ->where(fn ($query) => $query->where('programme_cycle_id', $id)->orWhereIn('programme_cycle_payment_plan_id', $planIds))
                 ->count(), 'application', 'applications'),

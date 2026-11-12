@@ -9,13 +9,11 @@ use App\Academies\PublicProgrammePaymentPlans;
 use App\Enums\AcademyInvoicePurpose;
 use App\Http\Requests\Public\StorePublicApplicationRequest;
 use App\Models\AcademyInvoice;
-use App\Models\AcademyInvoiceItem;
 use App\Models\AcademyPayment;
 use App\Models\AcademyWebsite;
 use App\Models\Application;
 use App\Models\Branch;
 use App\Models\OnlinePaymentIntent;
-use App\Models\ProgrammeCycleFeeItem;
 use App\Notifications\ApplicationSubmittedNotification;
 use App\Payments\ApplicationPaymentPlan;
 use App\Payments\Contracts\PaymentProvider;
@@ -97,21 +95,13 @@ class PublicApplicationController extends Controller
         ConfigurePublicApplicationFees $feeSelection,
     ): Response {
         [$website, $application] = $this->authorizedApplication($request, $subdomain, $reference);
-        $application->load(['programmeCycle.programme', 'programmeCycle.cycle', 'programmeCycle.branch', 'programmeCycle.feeItems', 'invoices.items']);
+        $application->load(['programmeCycle.programme', 'programmeCycle.cycle', 'programmeCycle.branch', 'invoices']);
         $offering = $application->programmeCycle;
-        $programmeInvoice = $application->invoices->first(
-            fn (AcademyInvoice $invoice): bool => $invoice->purpose === AcademyInvoicePurpose::Programme
+        $applicationInvoice = $application->invoices->first(
+            fn (AcademyInvoice $invoice): bool => $invoice->purpose === AcademyInvoicePurpose::Application
                 && $invoice->status->value !== 'void',
         );
-        $applicableFeeItems = $programmeInvoice !== null
-            ? $programmeInvoice->items->sortBy('sort_order')->values()->map(fn (AcademyInvoiceItem $item): array => [
-                'name' => $item->description, 'amount_minor' => (int) $item->amount_minor,
-            ])
-            : $offering->feeItems
-                ->filter(fn (ProgrammeCycleFeeItem $item): bool => $item->cohort_id === null || $item->cohort_id === $application->cohort_id)
-                ->sortBy('sort_order')->values()->map(fn (ProgrammeCycleFeeItem $item): array => [
-                    'name' => $item->name, 'amount_minor' => (int) $item->amount_minor,
-                ]);
+        $academy = $website->academy;
         $branch = $offering->getRelation('branch');
         $baseUrl = $request->routeIs('public.tenant.*') ? '' : '/sites/'.$website->subdomain;
         $availablePlans = $paymentPlans->forOffering($offering, $application->cohort_id);
@@ -135,7 +125,16 @@ class PublicApplicationController extends Controller
                 'branch_name' => $branch instanceof Branch ? $branch->name : 'All locations',
                 'currency' => $offering->currency,
                 'fee_name' => $offering->fee_name,
-                'fee_items' => $applicableFeeItems,
+            ],
+            'application_due' => Money::fromMinor($applicationInvoice?->balanceMinor() ?? 0),
+            // Fees already paid or adjusted cannot be changed, so the page shows what is owed as-is.
+            'selection_locked' => $feeSelection->selectionLocked($application),
+            // Lets the page preview Paystack's charge; the server recalculates it before charging.
+            'online_fee' => [
+                'basis_points' => (int) $academy->paystack_fee_basis_points,
+                'fixed_minor' => (int) $academy->paystack_fee_fixed_minor,
+                'cap_minor' => $academy->paystack_fee_cap_minor,
+                'waiver_threshold_minor' => $academy->paystack_fee_waiver_threshold_minor,
             ],
             'payment_plans' => $availablePlans->map(fn ($plan): array => [
                 'id' => $plan->id,
@@ -190,6 +189,9 @@ class PublicApplicationController extends Controller
             array_values(array_map('intval', $validated['cycle_fee_ids'] ?? [])),
             $request,
         );
+        if ($request->boolean('complete')) {
+            return redirect()->to($this->completionUrl($request, $subdomain, $application, (string) $request->input('token')));
+        }
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Your fee selection has been updated.']);
         $route = $request->routeIs('public.tenant.*') ? 'public.tenant.application-fees' : 'public.academy.application-fees';
 
@@ -238,9 +240,27 @@ class PublicApplicationController extends Controller
         ApplicationPaymentPlan $plans,
         PaymentProvider $provider,
         PaystackFeeCalculator $feeCalculator,
+        ConfigurePublicApplicationFees $configure,
     ): JsonResponse {
         [, $application] = $this->authorizedApplication($request, $subdomain, $reference);
-        $validated = $request->validate(['selection' => ['required', 'string', 'max:80']]);
+        $validated = $request->validate([
+            'selection' => ['required', 'string', 'max:80'],
+            'apply_selection' => ['sometimes', 'boolean'],
+            'programme_cycle_payment_plan_id' => ['nullable', 'integer'],
+            'cycle_fee_ids' => ['array'],
+            'cycle_fee_ids.*' => ['integer', 'distinct'],
+        ]);
+        // The fee page has no separate save step: the plan and optional fees picked on screen are
+        // saved here, then the amount is worked out from the resulting invoices.
+        if ($request->boolean('apply_selection')) {
+            $application = $configure->handle(
+                $application->academy,
+                $application,
+                isset($validated['programme_cycle_payment_plan_id']) ? (int) $validated['programme_cycle_payment_plan_id'] : null,
+                array_values(array_map('intval', $validated['cycle_fee_ids'] ?? [])),
+                $request,
+            );
+        }
         $allocations = $plans->allocations($application->academy, $application, $validated['selection']);
         $base = (int) collect($allocations)->sum('amount_minor');
         abort_if($base <= 0, 422, 'There is no outstanding amount for this option.');
