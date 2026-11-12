@@ -24,7 +24,8 @@ class SettleStoreOrderPayment
 
         $status = (string) ($providerData['status'] ?? '');
         if ($status !== 'success') {
-            if (in_array($status, ['failed', 'abandoned', 'reversed'], true)) {
+            // "abandoned" only means the customer has not finished paying yet; it can still succeed.
+            if (in_array($status, ['failed', 'reversed'], true)) {
                 $payment->update([
                     'status' => 'failed',
                     'failure_reason' => (string) ($providerData['gateway_response'] ?? $status),

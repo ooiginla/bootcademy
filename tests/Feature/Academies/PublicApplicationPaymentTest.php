@@ -489,9 +489,18 @@ class PublicApplicationPaymentTest extends TestCase
         $kit = $this->optionalFee($academy, $offering);
         [$application, $token] = $this->submit($website, $offering);
         Http::preventStrayRequests();
-        Http::fake(fn ($request) => Http::response(['status' => true, 'data' => [
-            'access_code' => 'access-code', 'reference' => $request['reference'],
-        ]]));
+        $paystackStatus = 'ongoing';
+        Http::fake(function ($request) use (&$paystackStatus) {
+            if ($request->method() === 'GET') {
+                return Http::response(['status' => true, 'data' => [
+                    'status' => $paystackStatus, 'gateway_response' => 'The transaction was not completed',
+                ]]);
+            }
+
+            return Http::response(['status' => true, 'data' => [
+                'access_code' => 'access-code', 'reference' => $request['reference'],
+            ]]);
+        });
 
         $this->postJson(route('public.academy.payment-initialize', [$website->subdomain, $application->reference]), [
             'token' => $token, 'selection' => 'initial', 'apply_selection' => true,
@@ -504,13 +513,48 @@ class PublicApplicationPaymentTest extends TestCase
         $this->assertSame(4800000, $intent->base_amount_minor);
         $this->assertSame(app(PaystackFeeCalculator::class)->surcharge($academy->fresh(), 4800000), $intent->surcharge_minor);
 
-        // Once a payment has started, the selection cannot be switched behind it.
-        $this->postJson(route('public.academy.payment-initialize', [$website->subdomain, $application->reference]), [
+        $defaultPlanId = $offering->paymentPlans()->where('is_default', true)->value('id');
+        $switch = fn () => $this->postJson(route('public.academy.payment-initialize', [$website->subdomain, $application->reference]), [
             'token' => $token, 'selection' => 'initial', 'apply_selection' => true,
-            'programme_cycle_payment_plan_id' => $offering->paymentPlans()->where('is_default', true)->value('id'),
-            'cycle_fee_ids' => [],
-        ])->assertUnprocessable()->assertJsonValidationErrors('programme_cycle_payment_plan_id');
-        $this->assertSame(1, OnlinePaymentIntent::query()->count());
+            'programme_cycle_payment_plan_id' => $defaultPlanId, 'cycle_fee_ids' => [],
+        ]);
+
+        // While Paystack still has the payment open, the selection cannot be switched behind it.
+        $switch()->assertUnprocessable()->assertJsonValidationErrors('programme_cycle_payment_plan_id');
+        $this->assertSame('pending', $intent->fresh()->status);
+
+        // After the popup is closed unpaid, Paystack reports "abandoned": that attempt is cancelled and a new one starts.
+        $paystackStatus = 'abandoned';
+        $switch()->assertOk();
+        $this->assertSame('cancelled', $intent->fresh()->status);
+        $this->assertSame($defaultPlanId, $application->fresh()->programme_cycle_payment_plan_id);
+        $this->assertSame('pending', OnlinePaymentIntent::query()->latest('id')->firstOrFail()->status);
+        $this->assertSame(2, OnlinePaymentIntent::query()->count());
+    }
+
+    public function test_an_unfinished_paystack_payment_is_not_marked_failed(): void
+    {
+        Notification::fake();
+        config(['services.paystack.secret_key' => 'sk_test_secret']);
+        [, $website, $offering] = $this->offering();
+        [$application, $token] = $this->submit($website, $offering);
+        Http::fake(function ($request) {
+            if ($request->method() === 'GET') {
+                return Http::response(['status' => true, 'data' => [
+                    'status' => 'abandoned', 'gateway_response' => 'The transaction was not completed',
+                ]]);
+            }
+
+            return Http::response(['status' => true, 'data' => ['access_code' => 'access-code', 'reference' => $request['reference']]]);
+        });
+        $initialize = $this->postJson(route('public.academy.payment-initialize', [$website->subdomain, $application->reference]), [
+            'token' => $token, 'selection' => 'initial',
+        ])->assertOk();
+
+        // Paystack calls a just-opened, unpaid transaction "abandoned". It must stay open for the customer.
+        $this->postJson($initialize->json('verify_url'), ['token' => $token])
+            ->assertStatus(202)->assertJson(['status' => 'pending']);
+        $this->assertSame('pending', OnlinePaymentIntent::query()->sole()->status);
     }
 
     public function test_skipping_payment_saves_the_selection_and_finishes_the_application(): void

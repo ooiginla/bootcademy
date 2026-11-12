@@ -13,17 +13,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatCurrency } from '@/lib/money';
+import { loadPaystack, openPaystack } from '@/lib/paystack';
 import type { PublicAcademy, PublicSite } from '@/types/public-site';
 
 type PaymentStatus = 'idle' | 'initializing' | 'waiting' | 'verified' | 'error';
-
-declare global {
-    interface Window {
-        PaystackPop?: new () => {
-            resumeTransaction: (accessCode: string) => void;
-        };
-    }
-}
 
 function csrfToken(): string {
     return (
@@ -49,32 +42,6 @@ async function jsonPost(url: string, body: Record<string, string> = {}) {
     >;
 
     return { response, payload };
-}
-
-function loadPaystack(): Promise<void> {
-    if (window.PaystackPop) return Promise.resolve();
-
-    return new Promise((resolve, reject) => {
-        const existing = document.querySelector<HTMLScriptElement>(
-            'script[data-bootcademy-paystack]',
-        );
-        if (existing) {
-            existing.addEventListener('load', () => resolve(), { once: true });
-            existing.addEventListener(
-                'error',
-                () => reject(new Error('Unable to load Paystack.')),
-                { once: true },
-            );
-            return;
-        }
-        const script = document.createElement('script');
-        script.src = 'https://js.paystack.co/v2/inline.js';
-        script.async = true;
-        script.dataset.bootcademyPaystack = 'true';
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error('Unable to load Paystack.'));
-        document.head.appendChild(script);
-    });
 }
 
 export default function StoreOrder({
@@ -155,15 +122,15 @@ export default function StoreOrder({
                         'Payment could not be initialized.',
                 );
             }
-            if (!window.PaystackPop) {
-                throw new Error(
-                    'Paystack did not load correctly. Please retry.',
-                );
-            }
-            new window.PaystackPop().resumeTransaction(
-                initialized.payload.access_code,
-            );
             setPaymentStatus('waiting');
+            const outcome = await openPaystack(initialized.payload.access_code);
+            if (outcome === 'closed') {
+                setPaymentStatus('idle');
+                toast.info(
+                    'The Paystack window was closed before payment, so nothing was charged.',
+                );
+                return;
+            }
             for (let attempt = 0; attempt < 40; attempt += 1) {
                 const verified = await jsonPost(initialized.payload.verify_url);
                 if (

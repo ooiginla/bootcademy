@@ -9,12 +9,16 @@ use App\Models\Academy;
 use App\Models\AcademyCycleFee;
 use App\Models\AcademyInvoice;
 use App\Models\Application;
+use App\Models\OnlinePaymentIntent;
+use App\Payments\Contracts\PaymentProvider;
+use App\Payments\SettleOnlinePayment;
 use App\Platform\AuditLogger;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 class ConfigurePublicApplicationFees
 {
@@ -22,6 +26,8 @@ class ConfigurePublicApplicationFees
         private readonly PublicProgrammePaymentPlans $paymentPlans,
         private readonly IssueApplicationInvoice $issueInvoice,
         private readonly AuditLogger $audit,
+        private readonly PaymentProvider $provider,
+        private readonly SettleOnlinePayment $settle,
     ) {}
 
     /**
@@ -34,6 +40,8 @@ class ConfigurePublicApplicationFees
         array $cycleFeeIds,
         Request $request,
     ): Application {
+        $this->resolveUnfinishedPayments($application, $request);
+
         return DB::transaction(function () use ($academy, $application, $paymentPlanId, $cycleFeeIds, $request): Application {
             $application = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
             abort_unless($application->academy_id === $academy->id, 404);
@@ -124,6 +132,32 @@ class ConfigurePublicApplicationFees
 
             return $application->fresh();
         });
+    }
+
+    /**
+     * Checks earlier Paystack attempts before the fees change. A paid attempt is recorded, which then
+     * locks the fees. An attempt the applicant never finished is cancelled so they can choose again.
+     * Runs before the database transaction so no rows stay locked during the Paystack call.
+     */
+    private function resolveUnfinishedPayments(Application $application, Request $request): void
+    {
+        $pending = $application->onlinePaymentIntents()->where('status', 'pending')->get();
+        foreach ($pending as $intent) {
+            /** @var OnlinePaymentIntent $intent */
+            try {
+                $providerData = $this->provider->verify($intent->reference);
+                $intent = $this->settle->handle($intent, $providerData, $request);
+            } catch (RuntimeException) {
+                // Paystack could not be reached; the attempt stays pending and keeps blocking changes.
+                continue;
+            }
+            if ($intent->status === 'pending' && ($providerData['status'] ?? null) === 'abandoned') {
+                $intent->update([
+                    'status' => 'cancelled',
+                    'failure_reason' => 'Not completed; replaced by a new fee selection or payment attempt.',
+                ]);
+            }
+        }
     }
 
     /** True once a programme or cycle fee invoice has a payment or adjustment, so the applicant can no longer change fees. */

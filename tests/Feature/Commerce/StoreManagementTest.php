@@ -189,7 +189,8 @@ class StoreManagementTest extends TestCase
         ]);
         [$website, $variant] = $this->sellable($academy, 5, 250000);
 
-        Http::fake(function (ClientRequest $request) {
+        $paystackStatus = 'abandoned';
+        Http::fake(function (ClientRequest $request) use (&$paystackStatus) {
             if (str_ends_with($request->url(), '/transaction/initialize')) {
                 return Http::response(['status' => true, 'data' => [
                     'access_code' => 'access-store-123',
@@ -201,7 +202,7 @@ class StoreManagementTest extends TestCase
             $payment = StoreOrderPayment::query()->where('reference', $reference)->sole();
 
             return Http::response(['status' => true, 'data' => [
-                'status' => 'success', 'reference' => $reference,
+                'status' => $paystackStatus, 'reference' => $reference,
                 'amount' => $payment->charged_amount_minor, 'currency' => $payment->currency,
                 'fees' => 5000,
             ]]);
@@ -237,6 +238,11 @@ class StoreManagementTest extends TestCase
         $this->assertSame('pending', $payment->status);
         $this->assertGreaterThan($payment->amount_minor, $payment->charged_amount_minor);
 
+        // Paystack calls a transaction "abandoned" until the customer finishes paying; it must stay open.
+        $this->postJson($initialized->json('verify_url'));
+        $this->assertSame('pending', $payment->fresh()->status);
+
+        $paystackStatus = 'success';
         $this->postJson($initialized->json('verify_url'))->assertOk()->assertJsonPath('status', 'verified');
         $this->assertSame('verified', $payment->fresh()->status);
         $this->assertSame('paid', $order->fresh()->payment_status);

@@ -20,6 +20,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { formatCurrency } from '@/lib/money';
+import { loadPaystack, openPaystack } from '@/lib/paystack';
 import type { PublicAcademy, PublicSite } from '@/types/public-site';
 
 type PaymentOption = {
@@ -42,6 +43,7 @@ type PaymentStatus =
     | 'waiting'
     | 'verified'
     | 'skipping'
+    | 'closed'
     | 'error';
 type OnlineFeeRule = {
     basis_points: number;
@@ -74,14 +76,6 @@ function onlinePaymentFee(rule: OnlineFeeRule, baseMinor: number): number {
     return Math.max(0, fee);
 }
 
-declare global {
-    interface Window {
-        PaystackPop?: new () => {
-            resumeTransaction: (accessCode: string) => void;
-        };
-    }
-}
-
 function csrfToken(): string {
     return (
         document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
@@ -106,32 +100,6 @@ async function jsonPost(url: string, body: Record<string, unknown>) {
     >;
 
     return { response, payload };
-}
-
-function loadPaystack(): Promise<void> {
-    if (window.PaystackPop) return Promise.resolve();
-
-    return new Promise((resolve, reject) => {
-        const existing = document.querySelector<HTMLScriptElement>(
-            'script[data-bootcademy-paystack]',
-        );
-        if (existing) {
-            existing.addEventListener('load', () => resolve(), { once: true });
-            existing.addEventListener(
-                'error',
-                () => reject(new Error('Unable to load Paystack.')),
-                { once: true },
-            );
-            return;
-        }
-        const script = document.createElement('script');
-        script.src = 'https://js.paystack.co/v2/inline.js';
-        script.async = true;
-        script.dataset.bootcademyPaystack = 'true';
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error('Unable to load Paystack.'));
-        document.head.appendChild(script);
-    });
 }
 
 export default function PublicApplicationFees({
@@ -360,7 +328,6 @@ export default function PublicApplicationFees({
         stopped.current = false;
         setStatus('initializing');
         setMessage('');
-        let paymentCompletionUrl = '';
         try {
             await loadPaystack();
             const { response, payload } = await jsonPost(
@@ -371,26 +338,28 @@ export default function PublicApplicationFees({
                     apply_selection: !selection_locked,
                 },
             );
-            paymentCompletionUrl = payload.completion_url ?? '';
             if (!response.ok || !payload.access_code || !payload.verify_url) {
+                // The server has recorded the failed attempt; show the submitted application.
+                if (payload.completion_url) {
+                    window.location.assign(payload.completion_url);
+                    return;
+                }
                 throw new Error(
                     payload.message ?? 'Payment could not be initialized.',
                 );
             }
-            if (!window.PaystackPop)
-                throw new Error(
-                    'Paystack did not load correctly. Please retry.',
-                );
-            new window.PaystackPop().resumeTransaction(payload.access_code);
-            await pollVerification(
-                payload.verify_url,
-                paymentCompletionUrl || completion_url,
-            );
-        } catch (error) {
-            if (paymentCompletionUrl) {
-                window.location.assign(paymentCompletionUrl);
+            setStatus('waiting');
+            const outcome = await openPaystack(payload.access_code);
+            if (outcome === 'closed') {
+                // Nothing was charged. Paying again reuses the same Paystack transaction.
+                setStatus('closed');
                 return;
             }
+            await pollVerification(
+                payload.verify_url,
+                payload.completion_url || completion_url,
+            );
+        } catch (error) {
             setStatus('error');
             setMessage(
                 error instanceof Error
@@ -792,6 +761,16 @@ export default function PublicApplicationFees({
                                 >
                                     <CircleAlert className="mt-0.5 size-4 shrink-0" />
                                     {message}
+                                </p>
+                            )}
+                            {status === 'closed' && (
+                                <p
+                                    className="rounded-2xl bg-slate-100 p-4 text-sm leading-5 text-slate-700"
+                                    role="status"
+                                >
+                                    The Paystack window was closed before
+                                    payment, so nothing was charged. You can pay
+                                    now or skip payment for now.
                                 </p>
                             )}
                             {!paystack_ready && (
