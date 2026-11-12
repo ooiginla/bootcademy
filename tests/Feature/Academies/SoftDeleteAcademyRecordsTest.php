@@ -218,18 +218,40 @@ class SoftDeleteAcademyRecordsTest extends TestCase
         $this->assertSame(1, Player::query()->where('internal_identifier', 'KC-001')->count());
     }
 
-    public function test_application_with_payments_is_kept_and_an_unpaid_one_is_deleted(): void
+    public function test_application_with_unpaid_invoices_is_deleted_but_one_with_money_received_is_kept(): void
     {
         [$owner, $academy] = $this->member(AcademyRole::OwnerAdmin);
-        $application = $this->application($academy, 'APP-1');
+        $cycle = $this->cycle($academy);
+        $plain = $this->application($academy, 'APP-1');
         $invoiced = $this->application($academy, 'APP-2');
-        $this->invoice($academy, $this->cycle($academy), ['application_id' => $invoiced->id]);
+        $paid = $this->application($academy, 'APP-3');
+        $this->invoice($academy, $cycle, ['application_id' => $invoiced->id, 'status' => 'issued']);
+        DB::table('online_payment_intents')->insert([
+            'academy_id' => $academy->id, 'application_id' => $invoiced->id, 'provider' => 'paystack',
+            'reference' => 'BCM-UNPAID', 'selection_key' => 'initial', 'status' => 'pending', 'currency' => 'NGN',
+            'base_amount_minor' => 500000, 'surcharge_minor' => 8000, 'charged_amount_minor' => 508000,
+            'allocation_plan' => '[]', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->invoice($academy, $cycle, ['application_id' => $paid->id, 'status' => 'partially_paid', 'paid_minor' => 100000]);
 
-        $this->signedIn($owner, $academy)->delete(route('academy.applications.destroy', $application))->assertRedirect(route('academy.applications.index'));
-        $this->assertSoftDeleted($application);
+        $this->signedIn($owner, $academy)->delete(route('academy.applications.destroy', $plain))->assertRedirect(route('academy.applications.index'));
+        $this->assertSoftDeleted($plain);
 
-        $this->signedIn($owner, $academy)->delete(route('academy.applications.destroy', $invoiced))->assertSessionHasErrors('delete');
-        $this->assertNotSoftDeleted($invoiced);
+        // Unpaid invoices and payment attempts no longer block; the open invoice is voided and kept.
+        $this->signedIn($owner, $academy)->delete(route('academy.applications.destroy', $invoiced))->assertSessionHasNoErrors();
+        $this->assertSoftDeleted($invoiced);
+        $this->assertDatabaseHas('academy_invoices', [
+            'application_id' => $invoiced->id, 'status' => 'void', 'cancellation_reason' => 'Application deleted.',
+            'cancelled_by_user_id' => $owner->id,
+        ]);
+        $this->assertDatabaseHas('online_payment_intents', ['application_id' => $invoiced->id, 'reference' => 'BCM-UNPAID']);
+        $this->assertDatabaseHas('audit_logs', ['academy_id' => $academy->id, 'action' => 'academy.invoice.cancelled']);
+
+        // Money already received keeps the application.
+        $this->signedIn($owner, $academy)->delete(route('academy.applications.destroy', $paid))
+            ->assertSessionHasErrors(['delete' => 'Application "Kemi Bello" has 1 invoice with payments or adjustments that must be kept, so it cannot be deleted.']);
+        $this->assertNotSoftDeleted($paid);
+        $this->assertDatabaseHas('academy_invoices', ['application_id' => $paid->id, 'status' => 'partially_paid']);
     }
 
     public function test_removed_coach_loses_access_and_reinvite_restores_the_membership(): void

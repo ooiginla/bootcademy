@@ -4,9 +4,12 @@ namespace App\Academies\Actions;
 
 use App\Academies\Deletion\DeletionBlocker;
 use App\Academies\Deletion\DeletionBlockers;
+use App\Enums\AcademyInvoiceStatus;
 use App\Enums\MembershipStatus;
 use App\Models\Academy;
+use App\Models\AcademyInvoice;
 use App\Models\AcademyMembership;
+use App\Models\Application;
 use App\Models\ProgrammeCyclePaymentPlan;
 use App\Models\User;
 use App\Platform\AuditLogger;
@@ -51,7 +54,7 @@ class SoftDeleteAcademyRecord
                 throw ValidationException::withMessages(['delete' => $this->message($label, $name, $blockers)]);
             }
 
-            $this->deleteOwnedParts($locked);
+            $this->deleteOwnedParts($locked, $actor, $request);
 
             $this->audit->record(
                 'academy.'.str_replace(' ', '-', $label).'.deleted',
@@ -71,8 +74,25 @@ class SoftDeleteAcademyRecord
         });
     }
 
-    private function deleteOwnedParts(Model $record): void
+    private function deleteOwnedParts(Model $record, User $actor, Request $request): void
     {
+        if ($record instanceof Application) {
+            // Open invoices stop counting as money owed; the rows stay for history.
+            $record->invoices()->where('status', '!=', AcademyInvoiceStatus::Void->value)->lockForUpdate()->get()
+                ->each(function (AcademyInvoice $invoice) use ($record, $actor, $request): void {
+                    $invoice->update([
+                        'status' => AcademyInvoiceStatus::Void,
+                        'cancellation_reason' => 'Application deleted.',
+                        'cancelled_at' => now(),
+                        'cancelled_by_user_id' => $actor->id,
+                    ]);
+                    $this->audit->record('academy.invoice.cancelled', $actor, $record->academy, $invoice, [
+                        'reason' => 'Application deleted.',
+                        'application_id' => $record->id,
+                    ], $request);
+                });
+        }
+
         if ($record instanceof AcademyMembership) {
             $record->coachProfile?->delete();
             // A restored membership must be re-accepted before it grants access.

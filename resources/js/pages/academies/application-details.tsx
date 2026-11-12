@@ -116,6 +116,7 @@ export default function ApplicationDetailsPage({
                             action={`/app/applications/${application.id}`}
                             label="application"
                             name={fullName}
+                            description="Its unpaid invoices are cancelled and kept for your records. An application with money already received cannot be deleted."
                         />
                     </div>
                 </div>

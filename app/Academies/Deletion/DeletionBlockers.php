@@ -7,6 +7,7 @@ use App\Models\Academy;
 use App\Models\AcademyCycle;
 use App\Models\AcademyCycleFee;
 use App\Models\AcademyExpense;
+use App\Models\AcademyInvoice;
 use App\Models\AcademyMembership;
 use App\Models\Application;
 use App\Models\Branch;
@@ -55,9 +56,16 @@ class DeletionBlockers
         $id = $application->id;
 
         return [
-            $this->history($this->rows($application, 'academy_invoices', 'application_id', $id), 'invoice', 'invoices'),
+            // Unpaid invoices and payment attempts do not block: deleting voids the open invoices.
+            // Money already received or adjusted must stay attached, so those still block.
             $this->history($this->rows($application, 'academy_payments', 'application_id', $id), 'payment', 'payments'),
-            $this->history($this->rows($application, 'online_payment_intents', 'application_id', $id), 'online payment attempt', 'online payment attempts'),
+            $this->history(AcademyInvoice::query()->where('academy_id', $application->academy_id)->where('application_id', $id)
+                ->where(fn ($query) => $query->where('paid_minor', '>', 0)
+                    ->orWhere('written_off_minor', '>', 0)
+                    ->orWhere('scholarship_concession_minor', '>', 0)
+                    ->orWhere('sponsor_responsibility_minor', '>', 0)
+                    ->orWhereHas('allocations'))
+                ->count(), 'invoice with payments or adjustments', 'invoices with payments or adjustments'),
             $this->history($this->rows($application, 'referrals', 'referred_application_id', $id), 'referral', 'referrals'),
             new DeletionBlocker($application->converted_player_id !== null && Player::query()->whereKey($application->converted_player_id)->exists() ? 1 : 0, 'converted profile', 'converted profiles'),
         ];
