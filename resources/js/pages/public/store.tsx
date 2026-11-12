@@ -1,4 +1,6 @@
 import { useForm } from '@inertiajs/react';
+import { useRecaptchaToken } from '@/lib/recaptcha';
+import RecaptchaField from '@/components/recaptcha-field';
 import {
     ArrowLeft,
     Check,
@@ -85,6 +87,7 @@ export default function Store({
     const [step, setStep] = useState<CheckoutStep>(1);
     const [stepError, setStepError] = useState('');
     const [submissionError, setSubmissionError] = useState('');
+    const recaptcha = useRecaptchaToken('store_order');
     const checkout = useForm({
         customer_name: '',
         customer_email: '',
@@ -151,6 +154,7 @@ export default function Store({
         setSubmissionError('');
         checkout.transform((data) => ({
             ...data,
+            recaptcha_token: recaptcha.token,
             branch_id: data.branch_id || null,
             items: cart.map((line) => ({
                 variant_id: line.variant.id,
@@ -158,6 +162,7 @@ export default function Store({
             })),
         }));
         checkout.post(`${base_url}/store/orders`, {
+            onFinish: () => void recaptcha.refresh(),
             onSuccess: () => {
                 setCart([]);
                 setCartOpen(false);
@@ -841,6 +846,11 @@ export default function Store({
                             </div>
 
                             <div className="border-t bg-white p-5 sm:p-6">
+                                <RecaptchaField
+                                    enabled={recaptcha.enabled}
+                                    failed={recaptcha.failed}
+                                    token={recaptcha.token}
+                                />
                                 {submissionError && (
                                     <p
                                         role="alert"

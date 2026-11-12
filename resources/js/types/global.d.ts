@@ -21,6 +21,7 @@ declare module '@inertiajs/core' {
                 academy_name: string;
             } | null;
             sidebarOpen: boolean;
+            recaptcha_site_key: string | null;
             [key: string]: unknown;
         };
     }

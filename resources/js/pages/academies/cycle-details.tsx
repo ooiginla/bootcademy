@@ -2,6 +2,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, Banknote, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import DeleteRecordButton from '@/components/delete-record-button';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -914,7 +915,13 @@ function TermDialog({ cycle, term }: { cycle: CycleDetails; term?: Term }) {
     );
 }
 
-function CycleFeesTable({ fees }: { fees: CycleFee[] }) {
+function CycleFeesTable({
+    cycleId,
+    fees,
+}: {
+    cycleId: number;
+    fees: CycleFee[];
+}) {
     if (fees.length === 0)
         return (
             <p className="p-8 text-center text-sm text-muted-foreground">
@@ -932,6 +939,7 @@ function CycleFeesTable({ fees }: { fees: CycleFee[] }) {
                         <th className="px-4 py-3">Cohort</th>
                         <th className="px-4 py-3">Requirement</th>
                         <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3 text-right">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -971,6 +979,13 @@ function CycleFeesTable({ fees }: { fees: CycleFee[] }) {
                             </td>
                             <td className="px-4 py-3">
                                 {fee.is_active ? 'Active' : 'Inactive'}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                                <DeleteRecordButton
+                                    action={`/app/finance/cycles/${cycleId}/fees/${fee.id}`}
+                                    label="cycle fee"
+                                    name={fee.name}
+                                />
                             </td>
                         </tr>
                     ))}
@@ -1092,6 +1107,15 @@ function ProgrammeFeesTable({
                                             cohorts={cohorts}
                                             offering={offering}
                                         />
+                                        <DeleteRecordButton
+                                            action={`/app/finance/cycles/${cycle.id}/programmes/${offering.id}`}
+                                            label="programme fee"
+                                            name={
+                                                offering.fee_name ||
+                                                offering.programme_name
+                                            }
+                                            description="Its standard payment plan is removed with it. Custom payment plans must be deleted first."
+                                        />
                                     </div>
                                 </td>
                             </tr>
@@ -1199,6 +1223,11 @@ export default function CycleDetailsPage({
                             currency={currency}
                             terms={cycle.terms}
                             cohorts={cohorts}
+                        />
+                        <DeleteRecordButton
+                            action={`/app/finance/cycles/${cycle.id}`}
+                            label="cycle"
+                            name={cycle.name}
                         />
                     </div>
                 </div>
@@ -1410,6 +1439,7 @@ export default function CycleDetailsPage({
                                     <Card className="overflow-hidden py-0">
                                         <CardContent className="p-0">
                                             <CycleFeesTable
+                                                cycleId={cycle.id}
                                                 fees={termCycleFees}
                                             />
                                         </CardContent>
@@ -1458,7 +1488,10 @@ export default function CycleDetailsPage({
                 <h3 className="mb-3 font-semibold">Additional cycle fees</h3>
                 <Card className="overflow-hidden py-0">
                     <CardContent className="p-0">
-                        <CycleFeesTable fees={generalCycleFees} />
+                        <CycleFeesTable
+                            cycleId={cycle.id}
+                            fees={generalCycleFees}
+                        />
                     </CardContent>
                 </Card>
             </main>

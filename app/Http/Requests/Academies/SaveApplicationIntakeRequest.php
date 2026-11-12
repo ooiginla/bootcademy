@@ -39,9 +39,9 @@ class SaveApplicationIntakeRequest extends FormRequest
         $academy = fn (Builder $query): Builder => $query->where('academy_id', $academyId);
 
         return [
-            'programme_cycle_id' => ['required', 'integer', Rule::exists('programme_cycles', 'id')->where($academy)],
+            'programme_cycle_id' => ['required', 'integer', Rule::exists('programme_cycles', 'id')->withoutTrashed()->where($academy)],
             'cohort_id' => ['nullable', 'integer', Rule::exists('cohorts', 'id')->where($academy)],
-            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where($academy)],
+            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->withoutTrashed()->where($academy)],
             'opens_on' => ['nullable', 'date'],
             'closes_on' => ['nullable', 'date', 'after_or_equal:opens_on'],
             'is_enabled' => ['required', 'boolean'],

@@ -157,7 +157,7 @@ class ScholarshipController extends Controller
         $forAcademy = fn (Builder $query): Builder => $query->where('academy_id', $academy->id);
         $data = $request->validate([
             'sponsor_id' => ['required', 'integer', Rule::exists('sponsors', 'id')->where($forAcademy)],
-            'academy_cycle_id' => ['nullable', 'integer', Rule::exists('academy_cycles', 'id')->where($forAcademy)],
+            'academy_cycle_id' => ['nullable', 'integer', Rule::exists('academy_cycles', 'id')->withoutTrashed()->where($forAcademy)],
             'name' => ['required', 'string', 'max:160'], 'amount' => ['required', 'regex:/^\d{1,12}(?:\.\d{1,2})?$/', 'not_in:0,0.00'],
             'agreement_reference' => ['nullable', 'string', 'max:160'], 'benefits' => ['nullable', 'string', 'max:2000'],
             'starts_on' => ['nullable', 'date'], 'ends_on' => ['nullable', 'date', 'after_or_equal:starts_on'],
@@ -182,7 +182,7 @@ class ScholarshipController extends Controller
         $forAcademy = fn (Builder $query): Builder => $query->where('academy_id', $academy->id);
         $data = $request->validate([
             'sponsor_id' => ['required', 'integer', Rule::exists('sponsors', 'id')->where($forAcademy)],
-            'academy_cycle_id' => ['nullable', 'integer', Rule::exists('academy_cycles', 'id')->where($forAcademy)],
+            'academy_cycle_id' => ['nullable', 'integer', Rule::exists('academy_cycles', 'id')->withoutTrashed()->where($forAcademy)],
             'name' => ['required', 'string', 'max:160'], 'amount' => ['required', 'regex:/^\d{1,12}(?:\.\d{1,2})?$/', 'not_in:0,0.00'],
             'agreement_reference' => ['nullable', 'string', 'max:160'], 'benefits' => ['nullable', 'string', 'max:2000'],
             'starts_on' => ['nullable', 'date'], 'ends_on' => ['nullable', 'date', 'after_or_equal:starts_on'],
@@ -235,7 +235,7 @@ class ScholarshipController extends Controller
         $forAcademy = fn (Builder $query): Builder => $query->where('academy_id', $academy->id);
         $data = $request->validate([
             'scholarship_scheme_id' => ['required', 'integer', Rule::exists('scholarship_schemes', 'id')->where($forAcademy)],
-            'player_id' => ['required', 'integer', Rule::exists('players', 'id')->where($forAcademy)],
+            'player_id' => ['required', 'integer', Rule::exists('players', 'id')->withoutTrashed()->where($forAcademy)],
             'enrollment_id' => ['nullable', 'integer', Rule::exists('enrollments', 'id')->where($forAcademy)],
             'sponsor_commitment_id' => ['nullable', 'integer', Rule::exists('sponsor_commitments', 'id')->where($forAcademy)],
             'starts_on' => ['nullable', 'date'], 'ends_on' => ['nullable', 'date', 'after_or_equal:starts_on'],
@@ -299,10 +299,10 @@ class ScholarshipController extends Controller
             'coverage_type' => ['required', Rule::in(['full', 'percentage', 'fixed'])],
             'percentage' => ['nullable', 'numeric', 'gt:0', 'lte:100'],
             'fixed_amount' => ['nullable', 'regex:/^\d{1,12}(?:\.\d{1,2})?$/', 'not_in:0,0.00'],
-            'academy_cycle_id' => ['nullable', 'integer', Rule::exists('academy_cycles', 'id')->where($forAcademy)],
+            'academy_cycle_id' => ['nullable', 'integer', Rule::exists('academy_cycles', 'id')->withoutTrashed()->where($forAcademy)],
             'academy_cycle_term_id' => ['nullable', 'integer', Rule::exists('academy_cycle_terms', 'id')->where($forAcademy)],
-            'programme_id' => ['nullable', 'integer', Rule::exists('programmes', 'id')->where($forAcademy)],
-            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where($forAcademy)],
+            'programme_id' => ['nullable', 'integer', Rule::exists('programmes', 'id')->withoutTrashed()->where($forAcademy)],
+            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->withoutTrashed()->where($forAcademy)],
             'starts_on' => ['nullable', 'date'], 'ends_on' => ['nullable', 'date', 'after_or_equal:starts_on'],
             'description' => ['nullable', 'string', 'max:3000'], 'is_active' => ['required', 'boolean'],
         ]);

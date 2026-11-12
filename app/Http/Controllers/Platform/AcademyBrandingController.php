@@ -20,7 +20,7 @@ class AcademyBrandingController extends Controller
     public function index(Request $request): Response
     {
         $search = trim((string) $request->query('search'));
-        $academies = Academy::query()->withCount('memberships');
+        $academies = Academy::query()->withCount(['memberships', 'players', 'applications']);
 
         if ($search !== '') {
             $academies->where('name', 'like', '%'.$search.'%');
@@ -36,6 +36,8 @@ class AcademyBrandingController extends Controller
                     'name' => $academy->name,
                     'academy_type' => $academy->academy_type,
                     'memberships_count' => $academy->memberships_count,
+                    'players_count' => $academy->players_count,
+                    'applications_count' => $academy->applications_count,
                     'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color),
                 ]),
             'filters' => ['search' => $search],

@@ -63,7 +63,7 @@ class SaveProgrammeCyclePaymentPlanRequest extends FormRequest
         $forAcademy = fn (Builder $query): Builder => $query->where('academy_id', $academyId);
 
         return [
-            'name' => ['required', 'string', 'max:120', Rule::unique('programme_cycle_payment_plans', 'name')
+            'name' => ['required', 'string', 'max:120', Rule::unique('programme_cycle_payment_plans', 'name')->withoutTrashed()
                 ->where(fn (Builder $query): Builder => $query
                     ->where('academy_id', $academyId)
                     ->where('programme_cycle_id', $offering->id)

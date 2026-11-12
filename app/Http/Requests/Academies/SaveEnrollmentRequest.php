@@ -38,8 +38,8 @@ class SaveEnrollmentRequest extends FormRequest
         $forAcademy = fn (Builder $query): Builder => $query->where('academy_id', $academyId);
 
         return [
-            'programme_id' => ['required', 'integer', Rule::exists('programmes', 'id')->where($forAcademy)],
-            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where($forAcademy)],
+            'programme_id' => ['required', 'integer', Rule::exists('programmes', 'id')->withoutTrashed()->where($forAcademy)],
+            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->withoutTrashed()->where($forAcademy)],
             'status' => ['required', Rule::enum(EnrollmentStatus::class)],
             'starts_on' => ['required', 'date'],
             'ends_on' => ['nullable', 'date', 'after_or_equal:starts_on'],

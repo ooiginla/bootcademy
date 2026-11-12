@@ -86,11 +86,17 @@ class AcceptAcademyInvitationController extends Controller
                 $user->save();
             }
 
-            $membership = AcademyMembership::query()
+            // A removed member keeps their membership row; re-inviting restores it.
+            $membership = AcademyMembership::withTrashed()
                 ->where('academy_id', $lockedInvitation->academy_id)
                 ->where('user_id', $user->id)
                 ->lockForUpdate()
                 ->first();
+
+            if ($membership?->trashed()) {
+                $membership->restore();
+                $membership->coachProfile()->withTrashed()->first()?->restore();
+            }
 
             if ($membership?->status === MembershipStatus::Active) {
                 throw ValidationException::withMessages(['invitation' => 'This account already belongs to the academy.']);

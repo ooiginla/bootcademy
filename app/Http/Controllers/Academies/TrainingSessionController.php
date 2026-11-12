@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Academies;
 
 use App\Academies\AcademyContext;
 use App\Academies\Actions\SaveTrainingSession;
+use App\Academies\Actions\SoftDeleteAcademyRecord;
 use App\Enums\AcademyRole;
 use App\Enums\MembershipStatus;
 use App\Http\Controllers\Controller;
@@ -106,5 +107,17 @@ class TrainingSessionController extends Controller
             'location' => $session->location, 'delivery_mode' => $session->delivery_mode,
             'meeting_link' => $session->meeting_link, 'notes' => $session->notes, 'status' => $session->status,
         ];
+    }
+
+    public function destroy(Request $request, TrainingSession $trainingSession, AcademyContext $context, SoftDeleteAcademyRecord $delete): RedirectResponse
+    {
+        abort_unless($context->canManageAcademy(), 403);
+        $delete->handle($context->academy(), $request->user(), $trainingSession, 'session', $trainingSession->title ?: 'Session', [
+            'starts_at' => $trainingSession->starts_at->toAtomString(),
+            'programme_id' => $trainingSession->programme_id,
+        ], $request);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Session deleted.']);
+
+        return back();
     }
 }

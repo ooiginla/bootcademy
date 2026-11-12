@@ -57,7 +57,7 @@ class CommunicationController extends Controller
     {
         abort_unless($context->canManageAcademy(), 403);
         $academy = $context->academy();
-        $data = $request->validate(['title' => ['required', 'string', 'max:160'], 'body' => ['required', 'string', 'max:10000'], 'audience_type' => ['required', Rule::in(['all', 'branch', 'programme'])], 'branch_id' => ['nullable', Rule::exists('branches', 'id')->where('academy_id', $academy->id)], 'programme_id' => ['nullable', Rule::exists('programmes', 'id')->where('academy_id', $academy->id)], 'publish_now' => ['required', 'boolean'], 'expires_at' => ['nullable', 'date', 'after:now']]);
+        $data = $request->validate(['title' => ['required', 'string', 'max:160'], 'body' => ['required', 'string', 'max:10000'], 'audience_type' => ['required', Rule::in(['all', 'branch', 'programme'])], 'branch_id' => ['nullable', Rule::exists('branches', 'id')->withoutTrashed()->where('academy_id', $academy->id)], 'programme_id' => ['nullable', Rule::exists('programmes', 'id')->withoutTrashed()->where('academy_id', $academy->id)], 'publish_now' => ['required', 'boolean'], 'expires_at' => ['nullable', 'date', 'after:now']]);
         if ($data['audience_type'] === 'branch' && empty($data['branch_id'])) {
             return back()->withErrors(['branch_id' => 'Select a branch.']);
         }

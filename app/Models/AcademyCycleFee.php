@@ -7,10 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable(['academy_id', 'academy_cycle_id', 'academy_cycle_term_id', 'cohort_id', 'term_scope_id', 'cohort_scope_id', 'name', 'category', 'currency', 'amount_minor', 'is_compulsory', 'applies_to_all_programmes', 'is_active', 'created_by_user_id'])]
 class AcademyCycleFee extends Model
 {
+    use SoftDeletes;
+
     /** @return BelongsTo<Academy, $this> */
     public function academy(): BelongsTo
     {

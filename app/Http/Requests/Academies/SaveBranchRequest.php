@@ -50,8 +50,8 @@ class SaveBranchRequest extends FormRequest
         $forAcademy = fn (Builder $query): Builder => $query->where('academy_id', $context->id());
 
         return [
-            'name' => ['required', 'string', 'max:160', Rule::unique('branches')->where($forAcademy)->ignore($branchId)],
-            'code' => ['nullable', 'string', 'max:32', 'regex:/^[A-Z0-9_-]+$/', Rule::unique('branches')->where($forAcademy)->ignore($branchId)],
+            'name' => ['required', 'string', 'max:160', Rule::unique('branches')->withoutTrashed()->where($forAcademy)->ignore($branchId)],
+            'code' => ['nullable', 'string', 'max:32', 'regex:/^[A-Z0-9_-]+$/', Rule::unique('branches')->withoutTrashed()->where($forAcademy)->ignore($branchId)],
             'address_line' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:120'],
             'state_region' => ['nullable', 'string', 'max:120'],

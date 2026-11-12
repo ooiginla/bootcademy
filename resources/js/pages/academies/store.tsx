@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import DeleteRecordButton from '@/components/delete-record-button';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
@@ -469,6 +470,15 @@ export default function Store({
                                                     >
                                                         Add option
                                                     </Button>
+                                                    {can_manage_catalog && (
+                                                        <DeleteRecordButton
+                                                            action={`/app/store/products/${p.id}`}
+                                                            label="product"
+                                                            name={p.name}
+                                                            variant="ghost"
+                                                            description="Products that have been ordered or still have stock on hand cannot be deleted."
+                                                        />
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>

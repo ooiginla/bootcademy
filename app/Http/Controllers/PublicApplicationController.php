@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Academies\Actions\ConfigurePublicApplicationFees;
 use App\Academies\Actions\SaveApplication;
 use App\Academies\ApplicationIntakeAvailability;
+use App\Academies\PublicProgrammePaymentPlans;
 use App\Enums\AcademyInvoicePurpose;
 use App\Http\Requests\Public\StorePublicApplicationRequest;
 use App\Models\AcademyInvoice;
@@ -25,6 +27,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -38,6 +41,7 @@ class PublicApplicationController extends Controller
         StorePublicApplicationRequest $request,
         string $subdomain,
         SaveApplication $save,
+        ConfigurePublicApplicationFees $configureFees,
         ApplicationIntakeAvailability $availability,
     ): RedirectResponse {
         $academy = $request->academyOrFail();
@@ -50,7 +54,7 @@ class PublicApplicationController extends Controller
             throw ValidationException::withMessages(['email' => 'A matching active application already exists. Contact the academy if you need help.']);
         }
         $token = Str::random(64);
-        $data = Arr::except($data, ['consent_accepted']);
+        $data = Arr::except($data, ['consent_accepted', 'recaptcha_token']);
         $data['programme_id'] = $offering->programme_id;
         $data['programme_cycle_id'] = $offering->id;
         $data['cohort_id'] = $intake->cohort_id;
@@ -60,22 +64,44 @@ class PublicApplicationController extends Controller
         $data['public_access_token_hash'] = hash('sha256', $token);
         $data['guardian_consent_at'] = $academy->collect_guardian_information ? now() : null;
         $data['privacy_policy_version'] = 'public-application-v1';
-        $application = $save->handle($academy, null, $data, $request, issueProgrammeInvoice: true);
+        $application = DB::transaction(function () use ($academy, $data, $request, $save, $configureFees): Application {
+            $application = $save->handle($academy, null, $data, $request);
+
+            return $configureFees->handle(
+                $academy,
+                $application,
+                isset($data['programme_cycle_payment_plan_id']) ? (int) $data['programme_cycle_payment_plan_id'] : null,
+                [],
+                $request,
+            );
+        });
         Notification::route('mail', $application->email)
             ->notify(new ApplicationSubmittedNotification($application));
 
         $route = $request->routeIs('public.tenant.*') ? 'public.tenant.application-fees' : 'public.academy.application-fees';
 
-        return redirect()->route($route, ['subdomain' => $subdomain, 'reference' => $application->reference, 'token' => $token]);
+        return redirect()->route($route, [
+            'subdomain' => $subdomain,
+            'reference' => $application->reference,
+            'token' => $token,
+            'submitted' => 1,
+        ]);
     }
 
-    public function fees(Request $request, string $subdomain, string $reference, ApplicationPaymentPlan $plans): Response
-    {
+    public function fees(
+        Request $request,
+        string $subdomain,
+        string $reference,
+        ApplicationPaymentPlan $plans,
+        PublicProgrammePaymentPlans $paymentPlans,
+        ConfigurePublicApplicationFees $feeSelection,
+    ): Response {
         [$website, $application] = $this->authorizedApplication($request, $subdomain, $reference);
         $application->load(['programmeCycle.programme', 'programmeCycle.cycle', 'programmeCycle.branch', 'programmeCycle.feeItems', 'invoices.items']);
         $offering = $application->programmeCycle;
         $programmeInvoice = $application->invoices->first(
-            fn (AcademyInvoice $invoice): bool => $invoice->purpose === AcademyInvoicePurpose::Programme,
+            fn (AcademyInvoice $invoice): bool => $invoice->purpose === AcademyInvoicePurpose::Programme
+                && $invoice->status->value !== 'void',
         );
         $applicableFeeItems = $programmeInvoice !== null
             ? $programmeInvoice->items->sortBy('sort_order')->values()->map(fn (AcademyInvoiceItem $item): array => [
@@ -88,8 +114,15 @@ class PublicApplicationController extends Controller
                 ]);
         $branch = $offering->getRelation('branch');
         $baseUrl = $request->routeIs('public.tenant.*') ? '' : '/sites/'.$website->subdomain;
+        $availablePlans = $paymentPlans->forOffering($offering, $application->cohort_id);
+        $eligibleCycleFees = $feeSelection->eligibleCycleFees($application);
+        $selectedCycleFeeIds = $application->invoices()
+            ->whereNotNull('academy_cycle_fee_id')
+            ->where('status', '!=', 'void')
+            ->pluck('academy_cycle_fee_id');
 
         return Inertia::render('public/application-fees', $this->common($website, $baseUrl) + [
+            'submitted' => $request->boolean('submitted'),
             'application' => [
                 'reference' => $application->reference,
                 'name' => trim($application->first_name.' '.$application->middle_name.' '.$application->last_name),
@@ -104,9 +137,66 @@ class PublicApplicationController extends Controller
                 'fee_name' => $offering->fee_name,
                 'fee_items' => $applicableFeeItems,
             ],
+            'payment_plans' => $availablePlans->map(fn ($plan): array => [
+                'id' => $plan->id,
+                'name' => $plan->name,
+                'description' => $plan->description,
+                'is_selected' => $application->programme_cycle_payment_plan_id === $plan->id,
+                'items' => $plan->items->sortBy('sort_order')->values()->map(fn ($item): array => [
+                    'name' => $item->name,
+                    'description' => $item->description,
+                    'amount' => Money::fromMinor($item->amount_minor),
+                ]),
+                'first_payment' => $plan->installments->sortBy('sequence')->values()->map(fn ($installment): array => [
+                    'name' => $installment->name,
+                    'amount' => Money::fromMinor($installment->amount_minor),
+                    'due_on' => $installment->due_on?->toDateString(),
+                    'due_offset_days' => $installment->due_offset_days,
+                ])->first(),
+                'payment_count' => $plan->installments->count(),
+            ])->values(),
+            'cycle_fees' => $eligibleCycleFees->map(fn ($fee): array => [
+                'id' => $fee->id,
+                'name' => $fee->name,
+                'category' => $fee->category,
+                'amount' => Money::fromMinor($fee->amount_minor),
+                'is_compulsory' => $fee->is_compulsory,
+                'is_selected' => $fee->is_compulsory || $selectedCycleFeeIds->contains($fee->id),
+            ])->values(),
             'payment_options' => $plans->options($website->academy, $application),
             'paystack_ready' => filled(config('services.paystack.secret_key')),
             'completion_url' => $this->completionUrl($request, $subdomain, $application, (string) $request->query('token')),
+        ]);
+    }
+
+    public function configureFees(
+        Request $request,
+        string $subdomain,
+        string $reference,
+        ConfigurePublicApplicationFees $configure,
+    ): RedirectResponse {
+        [$website, $application] = $this->authorizedApplication($request, $subdomain, $reference);
+        $validated = $request->validate([
+            'programme_cycle_payment_plan_id' => ['nullable', 'integer'],
+            'cycle_fee_ids' => ['array'],
+            'cycle_fee_ids.*' => ['integer', 'distinct'],
+        ]);
+        $configure->handle(
+            $website->academy,
+            $application,
+            isset($validated['programme_cycle_payment_plan_id'])
+                ? (int) $validated['programme_cycle_payment_plan_id']
+                : null,
+            array_values(array_map('intval', $validated['cycle_fee_ids'] ?? [])),
+            $request,
+        );
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Your fee selection has been updated.']);
+        $route = $request->routeIs('public.tenant.*') ? 'public.tenant.application-fees' : 'public.academy.application-fees';
+
+        return redirect()->route($route, [
+            'subdomain' => $subdomain,
+            'reference' => $application->reference,
+            'token' => (string) $request->input('token'),
         ]);
     }
 

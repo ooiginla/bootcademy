@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Academies;
 
 use App\Academies\AcademyContext;
 use App\Academies\Actions\RecordAcademyExpense;
+use App\Academies\Actions\SoftDeleteAcademyRecord;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Academies\SaveAcademyExpenseRequest;
 use App\Http\Requests\Academies\SaveExpenseCategoryRequest;
@@ -174,5 +175,14 @@ class AcademyExpenseController extends Controller
             ->when($cycleId, fn (Builder $query) => $query->where('academy_cycle_id', $cycleId))
             ->when($dateFrom, fn (Builder $query) => $query->whereDate('incurred_on', '>=', $dateFrom))
             ->when($dateTo, fn (Builder $query) => $query->whereDate('incurred_on', '<=', $dateTo));
+    }
+
+    public function destroy(Request $request, AcademyExpense $expense, AcademyContext $context, SoftDeleteAcademyRecord $delete): RedirectResponse
+    {
+        abort_unless($context->canManageFinance(), 403);
+        $delete->handle($context->academy(), $request->user(), $expense, 'expense', $expense->description ?: $expense->category, $expense->only(['amount_minor', 'currency', 'incurred_on', 'reference']), $request);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Expense deleted.']);
+
+        return back();
     }
 }

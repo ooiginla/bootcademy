@@ -39,8 +39,8 @@ class ReviewApplicationRequest extends FormRequest
         return [
             'decision' => ['required', Rule::in(['review', 'accept', 'reject', 'enrol'])],
             'review_notes' => ['nullable', 'string', 'max:2000'],
-            'programme_id' => ['nullable', 'integer', Rule::exists('programmes', 'id')->where($forAcademy)],
-            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where($forAcademy)],
+            'programme_id' => ['nullable', 'integer', Rule::exists('programmes', 'id')->withoutTrashed()->where($forAcademy)],
+            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->withoutTrashed()->where($forAcademy)],
         ];
     }
 

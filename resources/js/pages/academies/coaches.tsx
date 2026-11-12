@@ -1,6 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { Pencil, Plus, UserRoundCog, UsersRound } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
+import DeleteRecordButton from '@/components/delete-record-button';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -623,15 +624,31 @@ export default function Coaches({
                                                             </Badge>
                                                         </td>
                                                         <td className="px-4 py-3 text-right">
-                                                            <CoachDialog
-                                                                coach={coach}
-                                                                customFields={
-                                                                    custom_fields
-                                                                }
-                                                                countries={
-                                                                    countries
-                                                                }
-                                                            />
+                                                            <div className="flex justify-end gap-1">
+                                                                <CoachDialog
+                                                                    coach={
+                                                                        coach
+                                                                    }
+                                                                    customFields={
+                                                                        custom_fields
+                                                                    }
+                                                                    countries={
+                                                                        countries
+                                                                    }
+                                                                />
+                                                                <DeleteRecordButton
+                                                                    action={`/app/coaches/${coach.membership_id}`}
+                                                                    label={
+                                                                        terminology.singularLower
+                                                                    }
+                                                                    name={
+                                                                        coach.name
+                                                                    }
+                                                                    verb="Remove"
+                                                                    variant="ghost"
+                                                                    description="They lose access to this academy. Re-inviting them later restores their profile."
+                                                                />
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))}

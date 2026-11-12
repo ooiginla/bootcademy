@@ -46,7 +46,7 @@ class UpdateAcademyMemberRequest extends FormRequest
                 MembershipStatus::Suspended,
             ])],
             'branch_ids' => ['array'],
-            'branch_ids.*' => ['integer', 'distinct', Rule::exists('branches', 'id')->where($forAcademy)],
+            'branch_ids.*' => ['integer', 'distinct', Rule::exists('branches', 'id')->withoutTrashed()->where($forAcademy)],
         ];
     }
 }

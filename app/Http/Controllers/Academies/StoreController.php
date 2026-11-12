@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Academies;
 
 use App\Academies\AcademyContext;
+use App\Academies\Actions\SoftDeleteAcademyRecord;
 use App\Commerce\ManageStoreOrder;
 use App\Commerce\PlaceStoreOrder;
 use App\Http\Controllers\Controller;
@@ -185,7 +186,7 @@ class StoreController extends Controller
     {
         $this->authorizeAccess($context);
         $this->tenant($variant, $context);
-        $data = $request->validate(['branch_id' => ['required', 'integer', Rule::exists('branches', 'id')->where(fn (Builder $q) => $q->where('academy_id', $context->id())->where('is_active', true))],
+        $data = $request->validate(['branch_id' => ['required', 'integer', Rule::exists('branches', 'id')->withoutTrashed()->where(fn (Builder $q) => $q->where('academy_id', $context->id())->where('is_active', true))],
             'direction' => ['required', Rule::in(['add', 'remove'])], 'quantity' => ['required', 'integer', 'between:1,1000000'],
             'reason_code' => ['required', Rule::in(array_keys($this->adjustmentReasons()))],
             'reason_details' => ['nullable', 'required_if:reason_code,other', 'string', 'max:500']]);
@@ -215,10 +216,10 @@ class StoreController extends Controller
     {
         $this->authorizeAccess($context);
         $this->tenant($variant, $context);
-        $branchRule = Rule::exists('branches', 'id')->where(fn (Builder $q) => $q->where('academy_id', $context->id()));
+        $branchRule = Rule::exists('branches', 'id')->withoutTrashed()->where(fn (Builder $q) => $q->where('academy_id', $context->id()));
         $data = $request->validate([
             'from_branch_id' => ['required', 'integer', $branchRule],
-            'to_branch_id' => ['required', 'integer', Rule::exists('branches', 'id')->where(fn (Builder $q) => $q->where('academy_id', $context->id())->where('is_active', true))],
+            'to_branch_id' => ['required', 'integer', Rule::exists('branches', 'id')->withoutTrashed()->where(fn (Builder $q) => $q->where('academy_id', $context->id())->where('is_active', true))],
             'quantity' => ['required', 'integer', 'between:1,1000000'],
             'reason_code' => ['required', Rule::in(['branch_restock', 'event_allocation', 'stock_rebalancing', 'other'])],
             'reason_details' => ['nullable', 'required_if:reason_code,other', 'string', 'max:500'],
@@ -433,7 +434,7 @@ class StoreController extends Controller
     /** @return array<string, mixed> */
     private function productData(Request $request, AcademyContext $context, ?int $ignore = null): array
     {
-        return $request->validate(['name' => ['required', 'string', 'max:160'], 'sku' => ['nullable', 'string', 'max:80', Rule::unique('products', 'sku')->where('academy_id', $context->id())->ignore($ignore)],
+        return $request->validate(['name' => ['required', 'string', 'max:160'], 'sku' => ['nullable', 'string', 'max:80', Rule::unique('products', 'sku')->withoutTrashed()->where('academy_id', $context->id())->ignore($ignore)],
             'description' => ['nullable', 'string', 'max:5000'], 'product_category_id' => ['nullable', 'integer', Rule::exists('product_categories', 'id')->where(fn (Builder $q) => $q->where('academy_id', $context->id()))],
             'price' => ['required', 'regex:/^\d{1,12}(?:\.\d{1,2})?$/'], 'status' => ['required', Rule::in(['draft', 'active', 'archived'])],
             'track_inventory' => ['required', 'boolean'], 'allow_backorder' => ['required', 'boolean'], 'image' => ['nullable', File::image()->max(5 * 1024)], 'tag_ids' => ['nullable', 'array'],
@@ -445,7 +446,7 @@ class StoreController extends Controller
     private function orderData(Request $request, AcademyContext $context): array
     {
         return $request->validate(['customer_name' => ['required', 'string', 'max:160'], 'customer_email' => ['nullable', 'email:rfc', 'max:254'], 'customer_phone' => ['nullable', 'string', 'max:40'], 'member_name' => ['nullable', 'string', 'max:160'],
-            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where(fn (Builder $q) => $q->where('academy_id', $context->id()))], 'delivery_method' => ['required', Rule::in(['pickup', 'delivery'])],
+            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->withoutTrashed()->where(fn (Builder $q) => $q->where('academy_id', $context->id()))], 'delivery_method' => ['required', Rule::in(['pickup', 'delivery'])],
             'delivery_address' => ['nullable', 'required_if:delivery_method,delivery', 'string', 'max:1000'], 'notes' => ['nullable', 'string', 'max:1000'],
             'items' => ['required', 'array', 'min:1', 'max:50'], 'items.*.variant_id' => ['required', 'integer'], 'items.*.quantity' => ['required', 'integer', 'min:1', 'max:1000'],
             'amount_paid' => ['nullable', 'regex:/^\d{1,12}(?:\.\d{1,2})?$/'], 'payment_method' => ['nullable', 'required_with:amount_paid', Rule::in(['cash', 'transfer', 'card', 'cheque', 'other'])],
@@ -496,5 +497,15 @@ class StoreController extends Controller
         if ($old !== null) {
             Storage::disk('local')->delete($old);
         }
+    }
+
+    public function destroyProduct(Request $request, Product $product, AcademyContext $context, SoftDeleteAcademyRecord $delete): RedirectResponse
+    {
+        abort_unless($context->canManageAcademy(), 403);
+        $this->tenant($product, $context);
+        $delete->handle($context->academy(), $request->user(), $product, 'product', $product->name, $product->only(['sku', 'status']), $request);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Product deleted.']);
+
+        return back();
     }
 }

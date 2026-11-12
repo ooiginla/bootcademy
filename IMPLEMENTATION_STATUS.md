@@ -1,6 +1,6 @@
 # Academy SaaS implementation status
 
-Last updated: 2026-11-05
+Last updated: 2026-11-12
 
 This is the live execution checklist. It complements `SPORTS_ACADEMY_SAAS_PRD.md`, which contains the full product requirements, and `AGENTS.md`, which contains engineering rules. Update this file whenever a feature starts, completes, is reordered by the product owner, or becomes blocked by a business decision.
 
@@ -22,6 +22,7 @@ This is the live execution checklist. It complements `SPORTS_ACADEMY_SAAS_PRD.md
 - `[x]` **M3 finance foundation:** fixed/rolling cycles, cycle-specific programme fees, immutable invoices, installments, verified offline payments, cycle enrollment and player ledgers.
 - `[x]` **M3 attendance foundation:** tenant-scoped session rosters, mobile marking and immutable correction history.
 - `[x]` **M3 complete:** sessions, attendance, offline finance, receipts, reversals, expenses, operational dashboard and tenant-safe CSV reporting.
+- `[x]` **Soft deletes and spam cleanup:** dependency-guarded soft deletes for applications, branches, programmes, sessions, cycles, cycle fees, programme fees, payment plans, expenses, players, coaches and store products; Platform Super Admin permanent academy purge with typed-name confirmation; Google reCAPTCHA v3 on signup, public applications and store checkout. See `docs/deletion-and-spam-protection.md`.
 - `[!]` **Current decision:** how online academy fee payments settle through Paystack.
 
 ## Immediate execution queue

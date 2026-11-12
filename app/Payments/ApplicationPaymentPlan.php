@@ -17,34 +17,58 @@ class ApplicationPaymentPlan
     /** @return list<array<string, mixed>> */
     public function options(Academy $academy, Application $application): array
     {
-        $invoices = $application->invoices()->where('status', '!=', AcademyInvoiceStatus::Void->value)
-            ->with('installments')->get()->keyBy(fn (AcademyInvoice $invoice) => $invoice->purpose->value);
-        $applicationInvoice = $invoices->get(AcademyInvoicePurpose::Application->value);
-        $programmeInvoice = $invoices->get(AcademyInvoicePurpose::Programme->value);
+        $invoices = $application->invoices()
+            ->where('status', '!=', AcademyInvoiceStatus::Void->value)
+            ->with(['installments', 'cycleFee'])
+            ->get();
+        $applicationInvoice = $invoices->firstWhere('purpose', AcademyInvoicePurpose::Application);
+        $programmeInvoice = $invoices->firstWhere('purpose', AcademyInvoicePurpose::Programme);
+        $cycleFeeInvoices = $invoices->whereNotNull('academy_cycle_fee_id')->values();
         $applicationBalance = $applicationInvoice?->balanceMinor() ?? 0;
-        $options = [];
-        if ($applicationBalance > 0) {
-            $options[] = $this->option($academy, $application->programmeCycle->currency, 'application_only', 'Pay application fee only', $applicationBalance, $applicationBalance, 0);
-        }
-        if ($programmeInvoice !== null && $programmeInvoice->balanceMinor() > 0) {
-            $options[] = $this->option(
-                $academy, $application->programmeCycle->currency, 'full', $applicationBalance > 0 ? 'Application fee + full programme fee' : 'Pay full programme fee',
-                $applicationBalance + $programmeInvoice->balanceMinor(), $applicationBalance, $programmeInvoice->balanceMinor(),
-            );
-            foreach ($programmeInvoice->installments->sortBy('sequence') as $installment) {
-                $balance = $installment->amount_minor - $installment->paid_minor - $installment->written_off_minor;
-                if ($balance > 0) {
-                    $options[] = $this->option(
-                        $academy, $application->programmeCycle->currency, 'installment:'.$installment->sequence,
-                        ($applicationBalance > 0 ? 'Application fee + ' : '').$installment->name,
-                        $applicationBalance + $balance, $applicationBalance, $balance,
-                        ['installment_name' => $installment->name, 'installment_sequence' => $installment->sequence],
-                    );
-                }
-            }
+        $programmeInstallment = $programmeInvoice?->installments->sortBy('sequence')->first(
+            fn ($installment): bool => $installment->amount_minor - $installment->paid_minor - $installment->written_off_minor > 0,
+        );
+        $programmeBalance = $programmeInstallment === null
+            ? 0
+            : $programmeInstallment->amount_minor - $programmeInstallment->paid_minor - $programmeInstallment->written_off_minor;
+        $cycleFeeBalances = $cycleFeeInvoices->map(function (AcademyInvoice $invoice): array {
+            return [
+                'invoice' => $invoice,
+                'balance' => $invoice->balanceMinor(),
+            ];
+        })->filter(fn (array $item): bool => $item['balance'] > 0)->values();
+        $cycleFeeBalance = (int) $cycleFeeBalances->sum('balance');
+        $base = $applicationBalance + $programmeBalance + $cycleFeeBalance;
+        if ($base === 0) {
+            return [];
         }
 
-        return $options;
+        $planName = $programmeInvoice?->programmeCyclePaymentPlan?->name;
+        $programmeLabel = $programmeInstallment?->name;
+        $labelParts = array_values(array_filter([
+            $applicationBalance > 0 ? 'Application fee' : null,
+            $programmeLabel,
+            $cycleFeeBalance > 0 ? 'selected cycle fees' : null,
+        ]));
+
+        return [$this->option(
+            $academy,
+            $application->programmeCycle->currency,
+            'initial',
+            implode(' + ', $labelParts),
+            $base,
+            $applicationBalance,
+            $programmeBalance,
+            [
+                'payment_plan_name' => $planName,
+                'programme_label' => $programmeLabel,
+                'cycle_fee_amount' => Money::fromMinor($cycleFeeBalance),
+                'cycle_fees' => $cycleFeeBalances->map(fn (array $item): array => [
+                    'name' => $item['invoice']->fee_name ?? $item['invoice']->cycleFee->name,
+                    'amount' => Money::fromMinor($item['balance']),
+                ])->all(),
+            ],
+        )];
     }
 
     /** @return list<array{invoice_id:int, installment_id:int, amount_minor:int, label:string}> */
@@ -54,29 +78,43 @@ class ApplicationPaymentPlan
         if ($valid === null) {
             throw ValidationException::withMessages(['selection' => 'This payment option is no longer available. Refresh and try again.']);
         }
-        $applicationInvoice = $application->invoices()->where('purpose', AcademyInvoicePurpose::Application->value)
-            ->where('status', '!=', AcademyInvoiceStatus::Void->value)->with('installments')->first();
-        $programmeInvoice = $application->invoices()->where('purpose', AcademyInvoicePurpose::Programme->value)
-            ->where('status', '!=', AcademyInvoiceStatus::Void->value)->with('installments')->first();
+        $invoices = $application->invoices()
+            ->where('status', '!=', AcademyInvoiceStatus::Void->value)
+            ->with('installments')
+            ->get();
+        $applicationInvoice = $invoices->firstWhere('purpose', AcademyInvoicePurpose::Application);
+        $programmeInvoice = $invoices->firstWhere('purpose', AcademyInvoicePurpose::Programme);
         $allocations = [];
         $applicationBalance = $applicationInvoice?->balanceMinor() ?? 0;
         if ($applicationBalance > 0) {
             $installment = $applicationInvoice->installments->firstOrFail();
             $allocations[] = ['invoice_id' => $applicationInvoice->id, 'installment_id' => $installment->id, 'amount_minor' => $applicationBalance, 'label' => 'Application fee'];
         }
-        if ($selectionKey === 'application_only') {
-            return $allocations;
+        $programmeInstallment = $programmeInvoice?->installments->sortBy('sequence')->first(
+            fn ($installment): bool => $installment->amount_minor - $installment->paid_minor - $installment->written_off_minor > 0,
+        );
+        if ($programmeInvoice !== null && $programmeInstallment !== null) {
+            $balance = $programmeInstallment->amount_minor - $programmeInstallment->paid_minor - $programmeInstallment->written_off_minor;
+            $allocations[] = [
+                'invoice_id' => $programmeInvoice->id,
+                'installment_id' => $programmeInstallment->id,
+                'amount_minor' => $balance,
+                'label' => $programmeInstallment->name,
+            ];
         }
-        if ($programmeInvoice === null) {
-            throw ValidationException::withMessages(['selection' => 'Programme fees are unavailable.']);
-        }
-        $installments = $selectionKey === 'full'
-            ? $programmeInvoice->installments->sortBy('sequence')
-            : $programmeInvoice->installments->where('sequence', (int) str($selectionKey)->after(':')->toString());
-        foreach ($installments as $installment) {
+        foreach ($invoices->whereNotNull('academy_cycle_fee_id') as $invoice) {
+            $installment = $invoice->installments->first();
+            if ($installment === null) {
+                continue;
+            }
             $balance = $installment->amount_minor - $installment->paid_minor - $installment->written_off_minor;
             if ($balance > 0) {
-                $allocations[] = ['invoice_id' => $programmeInvoice->id, 'installment_id' => $installment->id, 'amount_minor' => $balance, 'label' => $installment->name];
+                $allocations[] = [
+                    'invoice_id' => $invoice->id,
+                    'installment_id' => $installment->id,
+                    'amount_minor' => $balance,
+                    'label' => $installment->name,
+                ];
             }
         }
 

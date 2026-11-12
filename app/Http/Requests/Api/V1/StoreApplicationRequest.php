@@ -53,7 +53,7 @@ class StoreApplicationRequest extends FormRequest
             'external_reference' => ['required', 'string', 'max:120'],
             'consent_accepted' => ['required', 'accepted'],
             'privacy_policy_version' => ['required', 'string', 'max:60'],
-            'internal_identifier' => ['nullable', 'string', 'max:64', Rule::unique('players')->where($forAcademy)],
+            'internal_identifier' => ['nullable', 'string', 'max:64', Rule::unique('players')->withoutTrashed()->where($forAcademy)],
             'first_name' => ['required', 'string', 'max:100'], 'middle_name' => ['nullable', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'], 'date_of_birth' => ['nullable', 'date', 'before_or_equal:today'],
             'gender' => ['nullable', Rule::in(['Male', 'Female'])], 'phone' => ['nullable', 'string', 'max:32'],
@@ -68,7 +68,7 @@ class StoreApplicationRequest extends FormRequest
             'guardian_relationship' => $collectGuardian ? ['nullable', 'string', 'max:80'] : ['prohibited'],
             'guardian_signature' => $collectGuardian ? ['nullable', File::image()->types(['jpg', 'jpeg', 'png', 'webp'])->max(2 * 1024)] : ['prohibited'],
             'application_intake_id' => ['required', 'integer', Rule::exists('application_intakes', 'id')->where($forAcademy)],
-            'preferred_branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where(fn ($query) => $query
+            'preferred_branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->withoutTrashed()->where(fn ($query) => $query
                 ->where('academy_id', $academy->id)->where('is_active', true))],
         ];
         $fields = $this->fields();

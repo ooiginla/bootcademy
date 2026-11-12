@@ -50,7 +50,7 @@ class SaveAcademyCycleRequest extends FormRequest
         };
 
         return [
-            'name' => ['required', 'string', 'max:120', Rule::unique('academy_cycles')->where($forAcademy)->ignore($cycleId)],
+            'name' => ['required', 'string', 'max:120', Rule::unique('academy_cycles')->withoutTrashed()->where($forAcademy)->ignore($cycleId)],
             'type' => ['required', Rule::enum(AcademyCycleType::class)],
             'starts_on' => ['nullable', 'required_if:type,fixed', 'date'],
             'ends_on' => ['nullable', 'required_if:type,fixed', 'date', 'after:starts_on'],

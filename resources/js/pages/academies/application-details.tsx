@@ -1,5 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, ReceiptText, UserRound } from 'lucide-react';
+import DeleteRecordButton from '@/components/delete-record-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -110,6 +111,11 @@ export default function ApplicationDetailsPage({
                             programmes={programmes}
                             branches={branches}
                             customFields={custom_fields}
+                        />
+                        <DeleteRecordButton
+                            action={`/app/applications/${application.id}`}
+                            label="application"
+                            name={fullName}
                         />
                     </div>
                 </div>

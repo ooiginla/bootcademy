@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Academies;
 
 use App\Academies\AcademyContext;
 use App\Academies\Actions\SaveBranch;
+use App\Academies\Actions\SoftDeleteAcademyRecord;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Academies\SaveBranchRequest;
 use App\Models\Branch;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -57,6 +59,19 @@ class BranchController extends Controller
     ): RedirectResponse {
         $saveBranch->handle($context->academy(), $request->user(), $request->validated(), $request, $branch);
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Branch updated.']);
+
+        return back();
+    }
+
+    public function destroy(
+        Request $request,
+        Branch $branch,
+        AcademyContext $context,
+        SoftDeleteAcademyRecord $delete,
+    ): RedirectResponse {
+        abort_unless($request->user()?->can('manage', $context->academy()) === true, 403);
+        $delete->handle($context->academy(), $request->user(), $branch, 'branch', $branch->name, $branch->only(['code', 'is_active']), $request);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Branch deleted.']);
 
         return back();
     }

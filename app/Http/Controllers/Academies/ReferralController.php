@@ -40,7 +40,7 @@ class ReferralController extends Controller
     {
         abort_unless($context->canManageAcademy(), 403);
         $academy = $context->academy();
-        $data = $request->validate(['referrer_player_id' => ['required', Rule::exists('players', 'id')->where('academy_id', $academy->id)], 'referred_type' => ['required', Rule::in(['application', 'player'])], 'referred_id' => ['required', 'integer'], 'notes' => ['nullable', 'string', 'max:2000']]);
+        $data = $request->validate(['referrer_player_id' => ['required', Rule::exists('players', 'id')->withoutTrashed()->where('academy_id', $academy->id)], 'referred_type' => ['required', Rule::in(['application', 'player'])], 'referred_id' => ['required', 'integer'], 'notes' => ['nullable', 'string', 'max:2000']]);
         $applicationId = $data['referred_type'] === 'application' ? (int) $data['referred_id'] : null;
         $playerId = $data['referred_type'] === 'player' ? (int) $data['referred_id'] : null;
         if ($applicationId !== null && ! $academy->applications()->whereKey($applicationId)->exists()) {

@@ -7,6 +7,7 @@ import {
     Plus,
 } from 'lucide-react';
 import { useState } from 'react';
+import DeleteRecordButton from '@/components/delete-record-button';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -747,6 +748,17 @@ export default function Sessions({
                                                                     coaches={
                                                                         coaches
                                                                     }
+                                                                />
+                                                            )}
+                                                            {can_manage && (
+                                                                <DeleteRecordButton
+                                                                    action={`/app/sessions/${s.id}`}
+                                                                    label="session"
+                                                                    name={
+                                                                        s.title
+                                                                    }
+                                                                    size="icon"
+                                                                    variant="ghost"
                                                                 />
                                                             )}
                                                         </div>

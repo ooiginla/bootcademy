@@ -1,4 +1,6 @@
 import { Form, usePage } from '@inertiajs/react';
+import { useRecaptchaToken } from '@/lib/recaptcha';
+import RecaptchaField from '@/components/recaptcha-field';
 import {
     CheckCircle2,
     ChevronRight,
@@ -85,6 +87,7 @@ export default function PublicApplication({
     const [intakeId, setIntakeId] = useState('');
     const [paymentPlanId, setPaymentPlanId] = useState('');
     const { errors } = usePage<{ errors: Record<string, string> }>().props;
+    const recaptcha = useRecaptchaToken('apply');
     const programmes = useMemo(
         () =>
             Array.from(
@@ -223,6 +226,7 @@ export default function PublicApplication({
                             <Form
                                 action={`${base_url}/apply`}
                                 method="post"
+                                onFinish={() => void recaptcha.refresh()}
                                 className="grid items-start gap-8 lg:grid-cols-[1fr_360px]"
                             >
                                 <div className="space-y-6">
@@ -754,6 +758,11 @@ export default function PublicApplication({
                                         </label>
                                     </section>
 
+                                    <RecaptchaField
+                                        {...recaptcha}
+                                        error={errors.recaptcha_token}
+                                    />
+
                                     <button
                                         type="submit"
                                         disabled={
@@ -914,7 +923,7 @@ export default function PublicApplication({
                                                                                 item.name
                                                                             }
                                                                         </span>
-                                                                        <span className="text-right text-white/75">
+                                                                        <span className="text-right font-bold text-white/90">
                                                                             {item.description ||
                                                                                 'Included'}
                                                                         </span>

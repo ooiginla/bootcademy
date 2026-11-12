@@ -1,6 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { CalendarRange, Eye, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
+import DeleteRecordButton from '@/components/delete-record-button';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -351,6 +352,11 @@ export default function Cycles({ cycles }: { cycles: AcademyCycle[] }) {
                                                         </Button>
                                                         <CycleDialog
                                                             cycle={cycle}
+                                                        />
+                                                        <DeleteRecordButton
+                                                            action={`/app/finance/cycles/${cycle.id}`}
+                                                            label="cycle"
+                                                            name={cycle.name}
                                                         />
                                                     </div>
                                                 </td>

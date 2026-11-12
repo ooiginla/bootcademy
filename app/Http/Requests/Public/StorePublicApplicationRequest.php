@@ -8,6 +8,7 @@ use App\Enums\CustomFieldType;
 use App\Models\Academy;
 use App\Models\AcademyCustomField;
 use App\Models\AcademyWebsite;
+use App\Rules\PassesRecaptcha;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -50,6 +51,7 @@ class StorePublicApplicationRequest extends FormRequest
         $collectGuardian = $academy->collect_guardian_information;
         $forAcademy = fn ($query) => $query->where('academy_id', $academy->id);
         $rules = [
+            'recaptcha_token' => [new PassesRecaptcha('apply', $this->ip())],
             'first_name' => ['required', 'string', 'max:100'], 'middle_name' => ['nullable', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'], 'email' => ['required', 'email:rfc', 'max:254'],
             'date_of_birth' => ['nullable', 'date', 'before_or_equal:today'],
@@ -66,11 +68,11 @@ class StorePublicApplicationRequest extends FormRequest
             'guardian_signature' => $collectGuardian ? ['nullable', File::image()->types(['jpg', 'jpeg', 'png', 'webp'])->max(2 * 1024)] : ['prohibited'],
             'application_intake_id' => ['required', 'integer', Rule::exists('application_intakes', 'id')->where($forAcademy)],
             'programme_cycle_payment_plan_id' => [
-                'nullable', 'integer', Rule::exists('programme_cycle_payment_plans', 'id')->where($forAcademy),
+                'nullable', 'integer', Rule::exists('programme_cycle_payment_plans', 'id')->withoutTrashed()->where($forAcademy),
             ],
             'preferred_branch_id' => [
                 $academy->branches()->where('is_active', true)->exists() ? 'required' : 'nullable',
-                'integer', Rule::exists('branches', 'id')->where(fn ($query) => $query
+                'integer', Rule::exists('branches', 'id')->withoutTrashed()->where(fn ($query) => $query
                     ->where('academy_id', $academy->id)->where('is_active', true)),
             ],
             'consent_accepted' => ['required', 'accepted'],

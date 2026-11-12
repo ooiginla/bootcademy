@@ -1,6 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { BookOpenText, MapPin, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
+import DeleteRecordButton from '@/components/delete-record-button';
 import InputError from '@/components/input-error';
 import { ListSearch } from '@/components/list-search';
 import {
@@ -402,14 +403,23 @@ export default function AcademyProgrammes({
                                                             </Link>
                                                         </Button>
                                                         {can_manage && (
-                                                            <ProgrammeDialog
-                                                                programme={
-                                                                    programme
-                                                                }
-                                                                branches={
-                                                                    branches
-                                                                }
-                                                            />
+                                                            <>
+                                                                <ProgrammeDialog
+                                                                    programme={
+                                                                        programme
+                                                                    }
+                                                                    branches={
+                                                                        branches
+                                                                    }
+                                                                />
+                                                                <DeleteRecordButton
+                                                                    action={`/app/programmes/${programme.id}`}
+                                                                    label="programme"
+                                                                    name={
+                                                                        programme.name
+                                                                    }
+                                                                />
+                                                            </>
                                                         )}
                                                     </div>
                                                 </td>

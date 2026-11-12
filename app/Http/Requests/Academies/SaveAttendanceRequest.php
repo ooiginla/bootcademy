@@ -33,7 +33,7 @@ class SaveAttendanceRequest extends FormRequest
 
         return [
             'attendance' => ['required', 'array', 'max:2000'],
-            'attendance.*.player_id' => ['required', 'integer', 'distinct', Rule::exists('players', 'id')->where(fn (Builder $query) => $query->where('academy_id', $academyId))],
+            'attendance.*.player_id' => ['required', 'integer', 'distinct', Rule::exists('players', 'id')->withoutTrashed()->where(fn (Builder $query) => $query->where('academy_id', $academyId))],
             'attendance.*.status' => ['nullable', Rule::in(['present', 'absent', 'late', 'excused'])],
             'attendance.*.notes' => ['nullable', 'string', 'max:1000'],
         ];

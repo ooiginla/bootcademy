@@ -42,7 +42,7 @@ class SaveAcademyCycleFeeRequest extends FormRequest
         $forAcademy = fn (Builder $query): Builder => $query->where('academy_id', $academyId);
 
         return [
-            'name' => ['required', 'string', 'max:160', Rule::unique('academy_cycle_fees', 'name')->where(
+            'name' => ['required', 'string', 'max:160', Rule::unique('academy_cycle_fees', 'name')->withoutTrashed()->where(
                 fn (Builder $query): Builder => $query
                     ->where('academy_id', $academyId)
                     ->where('academy_cycle_id', $cycle->id)
@@ -52,7 +52,7 @@ class SaveAcademyCycleFeeRequest extends FormRequest
             'amount' => ['required', 'regex:/^\d{1,12}(?:\.\d{1,2})?$/', 'not_in:0,0.00'],
             'is_compulsory' => ['boolean'], 'applies_to_all_programmes' => ['boolean'], 'is_active' => ['boolean'],
             'programme_ids' => ['exclude_if:applies_to_all_programmes,true', 'required_if:applies_to_all_programmes,false', 'array', 'min:1'],
-            'programme_ids.*' => ['integer', 'distinct', Rule::exists('programmes', 'id')->where($forAcademy)],
+            'programme_ids.*' => ['integer', 'distinct', Rule::exists('programmes', 'id')->withoutTrashed()->where($forAcademy)],
             'academy_cycle_term_id' => ['nullable', 'integer', Rule::exists('academy_cycle_terms', 'id')->where($forAcademy)],
             'cohort_id' => ['nullable', 'integer', Rule::exists('cohorts', 'id')->where($forAcademy)],
         ];

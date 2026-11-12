@@ -7,16 +7,19 @@ use App\Academies\Actions\SaveAcademyCycle;
 use App\Academies\Actions\SaveAcademyCycleFee;
 use App\Academies\Actions\SaveAcademyCycleTerm;
 use App\Academies\Actions\SaveProgrammeCycle;
+use App\Academies\Actions\SoftDeleteAcademyRecord;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Academies\SaveAcademyCycleFeeRequest;
 use App\Http\Requests\Academies\SaveAcademyCycleRequest;
 use App\Http\Requests\Academies\SaveAcademyCycleTermRequest;
 use App\Http\Requests\Academies\SaveProgrammeCycleRequest;
 use App\Models\AcademyCycle;
+use App\Models\AcademyCycleFee;
 use App\Models\AcademyCycleTerm;
 use App\Models\ProgrammeCycle;
 use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -179,5 +182,40 @@ class AcademyCycleController extends Controller
             'enrollments_count' => $cycle->enrollments_count ?? 0,
             'terms_count' => $cycle->supportsTerms() ? ($cycle->terms_count ?? 0) : 0,
         ];
+    }
+
+    public function destroy(Request $request, AcademyCycle $cycle, AcademyContext $context, SoftDeleteAcademyRecord $delete): RedirectResponse
+    {
+        abort_unless($context->canManageFinance(), 403);
+        $delete->handle($context->academy(), $request->user(), $cycle, 'cycle', $cycle->name, $cycle->only(['type', 'status']), $request);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Cycle deleted.']);
+
+        return to_route('academy.cycles.index');
+    }
+
+    public function destroyFee(Request $request, AcademyCycle $cycle, AcademyCycleFee $fee, AcademyContext $context, SoftDeleteAcademyRecord $delete): RedirectResponse
+    {
+        abort_unless($context->canManageFinance(), 403);
+        abort_unless($cycle->academy_id === $context->id() && $fee->academy_cycle_id === $cycle->id, 404);
+        $delete->handle($context->academy(), $request->user(), $fee, 'cycle fee', $fee->name, ['academy_cycle_id' => $cycle->id, 'amount_minor' => $fee->amount_minor, 'currency' => $fee->currency], $request);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Cycle fee deleted.']);
+
+        return back();
+    }
+
+    public function destroyOffering(Request $request, AcademyCycle $cycle, ProgrammeCycle $programmeCycle, AcademyContext $context, SoftDeleteAcademyRecord $delete): RedirectResponse
+    {
+        abort_unless($context->canManageFinance(), 403);
+        abort_unless($cycle->academy_id === $context->id() && $programmeCycle->academy_cycle_id === $cycle->id, 404);
+        $programmeCycle->loadMissing('programme');
+        $name = $programmeCycle->fee_name ?: ($programmeCycle->programme->name ?? 'Programme fee');
+        $delete->handle($context->academy(), $request->user(), $programmeCycle, 'programme fee', $name, [
+            'academy_cycle_id' => $cycle->id,
+            'programme_id' => $programmeCycle->programme_id,
+            'branch_id' => $programmeCycle->branch_id,
+        ], $request);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Programme fee deleted.']);
+
+        return to_route('academy.cycles.show', $cycle);
     }
 }

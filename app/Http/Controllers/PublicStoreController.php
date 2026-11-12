@@ -13,6 +13,7 @@ use App\Models\StoreOrderPayment;
 use App\Payments\Contracts\PaymentProvider;
 use App\Payments\PaystackFeeCalculator;
 use App\Platform\AuditLogger;
+use App\Rules\PassesRecaptcha;
 use App\Support\AccessibleColor;
 use App\Support\Money;
 use Illuminate\Database\Query\Builder;
@@ -42,12 +43,13 @@ class PublicStoreController extends Controller
     {
         [$website, $common] = $this->resolve($request, $subdomain);
         $academy = $website->academy;
-        $data = $request->validate(['customer_name' => ['required', 'string', 'max:160'], 'customer_email' => ['required', 'email:rfc', 'max:254'],
+        $data = $request->validate(['recaptcha_token' => [new PassesRecaptcha('store_order', $request->ip())], 'customer_name' => ['required', 'string', 'max:160'], 'customer_email' => ['required', 'email:rfc', 'max:254'],
             'customer_phone' => ['required', 'string', 'max:40'], 'member_name' => ['nullable', 'string', 'max:160'],
             'payment_option' => ['nullable', Rule::in(['paystack', 'bank_transfer', 'pay_later'])],
-            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where(fn (Builder $q) => $q->where('academy_id', $academy->id)->where('is_active', true))],
+            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->withoutTrashed()->where(fn (Builder $q) => $q->where('academy_id', $academy->id)->where('is_active', true))],
             'delivery_method' => ['required', Rule::in(['pickup', 'delivery'])], 'delivery_address' => ['nullable', 'required_if:delivery_method,delivery', 'string', 'max:1000'], 'notes' => ['nullable', 'string', 'max:1000'],
             'items' => ['required', 'array', 'min:1', 'max:50'], 'items.*.variant_id' => ['required', 'integer'], 'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100']]);
+        unset($data['recaptcha_token']);
         $data['payment_option'] ??= 'pay_later';
         if ($data['payment_option'] === 'paystack' && blank(config('services.paystack.secret_key'))) {
             throw ValidationException::withMessages(['payment_option' => 'Online payment is temporarily unavailable. Choose another payment option.']);

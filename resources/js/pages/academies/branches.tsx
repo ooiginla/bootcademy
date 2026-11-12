@@ -9,6 +9,7 @@ import {
     Plus,
 } from 'lucide-react';
 import { useState } from 'react';
+import DeleteRecordButton from '@/components/delete-record-button';
 import InputError from '@/components/input-error';
 import { ListSearch } from '@/components/list-search';
 import { Badge } from '@/components/ui/badge';
@@ -425,12 +426,17 @@ export default function AcademyBranches({
                                                     )}
                                                 </div>
                                                 {can_manage && (
-                                                    <div className="mt-5">
+                                                    <div className="mt-5 flex flex-wrap gap-2">
                                                         <EditBranchDialog
                                                             branch={branch}
                                                             academyTimezone={
                                                                 academy_timezone
                                                             }
+                                                        />
+                                                        <DeleteRecordButton
+                                                            action={`/app/branches/${branch.id}`}
+                                                            label="branch"
+                                                            name={branch.name}
                                                         />
                                                     </div>
                                                 )}

@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Academies\AcademyContext;
 use App\Platform\SupportAccess;
 use App\Support\AccessibleColor;
+use App\Support\Recaptcha;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -41,6 +42,7 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            'recaptcha_site_key' => app(Recaptcha::class)->siteKey(),
             'auth' => [
                 'user' => $request->user(),
             ],

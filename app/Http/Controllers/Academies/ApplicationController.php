@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Academies;
 use App\Academies\AcademyContext;
 use App\Academies\Actions\ReviewApplication;
 use App\Academies\Actions\SaveApplication;
+use App\Academies\Actions\SoftDeleteAcademyRecord;
 use App\Academies\ApplicationIntakeAvailability;
 use App\Enums\ApplicationStatus;
 use App\Http\Controllers\Controller;
@@ -279,5 +280,17 @@ class ApplicationController extends Controller
                 'status' => $payment->status->value, 'received_on' => $payment->received_on->toDateString(),
             ])->values(),
         ];
+    }
+
+    public function destroy(Request $request, Application $application, AcademyContext $context, SoftDeleteAcademyRecord $delete): RedirectResponse
+    {
+        abort_unless($context->canManageAcademy(), 403);
+        $delete->handle($context->academy(), $request->user(), $application, 'application', trim($application->first_name.' '.$application->last_name), [
+            'reference' => $application->reference,
+            'status' => $application->status,
+        ], $request);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Application deleted.']);
+
+        return to_route('academy.applications.index');
     }
 }

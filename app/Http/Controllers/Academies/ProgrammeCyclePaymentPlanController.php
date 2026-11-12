@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Academies;
 
 use App\Academies\AcademyContext;
 use App\Academies\Actions\SaveProgrammeCyclePaymentPlan;
+use App\Academies\Actions\SoftDeleteAcademyRecord;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Academies\SaveProgrammeCyclePaymentPlanRequest;
 use App\Models\AcademyCycle;
@@ -15,6 +16,7 @@ use App\Models\ProgrammeCyclePaymentPlanItem;
 use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -116,6 +118,31 @@ class ProgrammeCyclePaymentPlanController extends Controller
     ): RedirectResponse {
         $save->handle($context->academy(), $programmeCycle, $request->user(), $request->validated(), $request, $paymentPlan);
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Payment plan updated.']);
+
+        return back();
+    }
+
+    public function destroy(
+        Request $request,
+        AcademyCycle $cycle,
+        ProgrammeCycle $programmeCycle,
+        ProgrammeCyclePaymentPlan $paymentPlan,
+        AcademyContext $context,
+        SoftDeleteAcademyRecord $delete,
+    ): RedirectResponse {
+        abort_unless($context->canManageFinance(), 403);
+        abort_unless($cycle->academy_id === $context->id()
+            && $programmeCycle->academy_cycle_id === $cycle->id
+            && $paymentPlan->programme_cycle_id === $programmeCycle->id, 404);
+        if ($paymentPlan->is_standard) {
+            throw ValidationException::withMessages(['delete' => 'The standard payment plan follows the programme fee. Delete the programme fee to remove it.']);
+        }
+        $delete->handle($context->academy(), $request->user(), $paymentPlan, 'payment plan', $paymentPlan->name, [
+            'programme_cycle_id' => $programmeCycle->id,
+            'total_minor' => $paymentPlan->total_minor,
+            'currency' => $paymentPlan->currency,
+        ], $request);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Payment plan deleted.']);
 
         return back();
     }

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import DeleteRecordButton from '@/components/delete-record-button';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -605,13 +606,21 @@ export default function ProgrammeFeeDetails({
                             {scope.cohort_name ?? 'All cohorts'}
                         </p>
                     </div>
-                    <PaymentPlanDialog
-                        offering={offering}
-                        cycle={cycle}
-                        scope={scope}
-                        baseFeeItems={base_fee_items}
-                        nextSortOrder={nextSortOrder}
-                    />
+                    <div className="flex flex-wrap gap-2">
+                        <PaymentPlanDialog
+                            offering={offering}
+                            cycle={cycle}
+                            scope={scope}
+                            baseFeeItems={base_fee_items}
+                            nextSortOrder={nextSortOrder}
+                        />
+                        <DeleteRecordButton
+                            action={`/app/finance/cycles/${cycle.id}/programmes/${offering.id}`}
+                            label="programme fee"
+                            name={offering.fee_name}
+                            description="Its standard payment plan is removed with it. Custom payment plans must be deleted first."
+                        />
+                    </div>
                 </div>
 
                 <div className="mb-3 flex items-center justify-between gap-3">
@@ -681,13 +690,22 @@ export default function ProgrammeFeeDetails({
                                                 </p>
                                             )}
                                         </div>
-                                        <PaymentPlanDialog
-                                            offering={offering}
-                                            cycle={cycle}
-                                            scope={scope}
-                                            baseFeeItems={base_fee_items}
-                                            plan={plan}
-                                        />
+                                        <div className="flex flex-wrap gap-2">
+                                            <PaymentPlanDialog
+                                                offering={offering}
+                                                cycle={cycle}
+                                                scope={scope}
+                                                baseFeeItems={base_fee_items}
+                                                plan={plan}
+                                            />
+                                            {!plan.is_standard && (
+                                                <DeleteRecordButton
+                                                    action={`/app/finance/cycles/${cycle.id}/programmes/${offering.id}/payment-plans/${plan.id}`}
+                                                    label="payment plan"
+                                                    name={plan.name}
+                                                />
+                                            )}
+                                        </div>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="space-y-5">

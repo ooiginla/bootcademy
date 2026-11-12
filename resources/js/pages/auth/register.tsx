@@ -1,4 +1,6 @@
 import { Form, Head } from '@inertiajs/react';
+import { useRecaptchaToken } from '@/lib/recaptcha';
+import RecaptchaField from '@/components/recaptcha-field';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
@@ -14,12 +16,15 @@ type Props = {
 };
 
 export default function Register({ passwordRules }: Props) {
+    const recaptcha = useRecaptchaToken('register');
+
     return (
         <>
             <Head title="Register" />
             <Form
                 {...store.form()}
                 resetOnSuccess={['password', 'password_confirmation']}
+                onFinish={() => void recaptcha.refresh()}
                 disableWhileProcessing
                 className="flex flex-col gap-6"
             >
@@ -148,6 +153,11 @@ export default function Register({ passwordRules }: Props) {
                                     message={errors.password_confirmation}
                                 />
                             </div>
+
+                            <RecaptchaField
+                                {...recaptcha}
+                                error={errors.recaptcha_token}
+                            />
 
                             <Button
                                 type="submit"

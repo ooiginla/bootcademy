@@ -60,8 +60,8 @@ class SaveApplicationRequest extends FormRequest
         $rules = [
             'internal_identifier' => [
                 'nullable', 'string', 'max:64',
-                Rule::unique('applications')->where($forAcademy)->ignore($applicationId),
-                Rule::unique('players')->where($forAcademy),
+                Rule::unique('applications')->withoutTrashed()->where($forAcademy)->ignore($applicationId),
+                Rule::unique('players')->withoutTrashed()->where($forAcademy),
             ],
             'first_name' => ['required', 'string', 'max:100'], 'middle_name' => ['nullable', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'], 'date_of_birth' => ['nullable', 'date', 'before_or_equal:today'],
@@ -76,10 +76,10 @@ class SaveApplicationRequest extends FormRequest
             'guardian_whatsapp_number' => $collectGuardian ? ['nullable', 'string', 'max:32'] : ['prohibited'],
             'guardian_relationship' => $collectGuardian ? ['nullable', 'string', 'max:80'] : ['prohibited'],
             'guardian_signature' => $collectGuardian ? ['nullable', File::image()->types(['jpg', 'jpeg', 'png', 'webp'])->max(2 * 1024)] : ['prohibited'],
-            'programme_id' => ['nullable', 'integer', Rule::exists('programmes', 'id')->where($forAcademy)],
-            'programme_cycle_id' => ['nullable', 'integer', Rule::exists('programme_cycles', 'id')->where($forAcademy)],
+            'programme_id' => ['nullable', 'integer', Rule::exists('programmes', 'id')->withoutTrashed()->where($forAcademy)],
+            'programme_cycle_id' => ['nullable', 'integer', Rule::exists('programme_cycles', 'id')->withoutTrashed()->where($forAcademy)],
             'cohort_id' => ['required', 'integer', Rule::exists('cohorts', 'id')->where($forAcademy)],
-            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where($forAcademy)],
+            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->withoutTrashed()->where($forAcademy)],
         ];
         $fields = AcademyCustomField::query()->where('academy_id', $academyId)->where('entity_type', 'player')->where('is_active', true)->get();
         $rules['custom_fields'] = ['array'];

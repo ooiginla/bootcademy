@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import CycleDetailsPage from '@/pages/academies/cycle-details';
 
 vi.mock('@inertiajs/react', () => ({
+    Form: () => null,
     Head: () => null,
     Link: ({ children, href }: { children: ReactNode; href: string }) => (
         <a href={href}>{children}</a>

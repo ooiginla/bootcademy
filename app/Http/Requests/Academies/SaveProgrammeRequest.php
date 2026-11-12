@@ -55,8 +55,8 @@ class SaveProgrammeRequest extends FormRequest
         $forAcademy = fn (Builder $query): Builder => $query->where('academy_id', $context->id());
 
         return [
-            'name' => ['required', 'string', 'max:160', Rule::unique('programmes')->where($forAcademy)->ignore($programmeId)],
-            'code' => ['nullable', 'string', 'max:32', 'regex:/^[A-Z0-9_-]+$/', Rule::unique('programmes')->where($forAcademy)->ignore($programmeId)],
+            'name' => ['required', 'string', 'max:160', Rule::unique('programmes')->withoutTrashed()->where($forAcademy)->ignore($programmeId)],
+            'code' => ['nullable', 'string', 'max:32', 'regex:/^[A-Z0-9_-]+$/', Rule::unique('programmes')->withoutTrashed()->where($forAcademy)->ignore($programmeId)],
             'description' => ['nullable', 'string', 'max:2000'],
             'duration' => ['nullable', 'string', 'max:100'],
             'delivery_format' => ['nullable', 'string', 'max:100'],
@@ -82,7 +82,7 @@ class SaveProgrammeRequest extends FormRequest
             'testimonials.*.role' => ['nullable', 'string', 'max:160'],
             'is_active' => ['required', 'boolean'],
             'branch_ids' => ['array'],
-            'branch_ids.*' => ['integer', 'distinct', Rule::exists('branches', 'id')->where($forAcademy)],
+            'branch_ids.*' => ['integer', 'distinct', Rule::exists('branches', 'id')->withoutTrashed()->where($forAcademy)],
         ];
     }
 

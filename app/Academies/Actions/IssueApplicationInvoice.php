@@ -83,7 +83,11 @@ class IssueApplicationInvoice
         array $items,
         ?ProgrammeCyclePaymentPlan $paymentPlan = null,
     ): AcademyInvoice {
-        $existing = $application->invoices()->where('purpose', $purpose->value)->first();
+        $existing = $application->invoices()
+            ->where('purpose', $purpose->value)
+            ->where('status', '!=', AcademyInvoiceStatus::Void->value)
+            ->latest('id')
+            ->first();
         if ($existing !== null) {
             return $existing;
         }

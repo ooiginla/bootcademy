@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
@@ -29,6 +30,8 @@ use Illuminate\Support\Carbon;
 #[Fillable(['academy_id', 'branch_id', 'programme_id', 'cohort_id', 'all_branches', 'coach_membership_id', 'title', 'starts_at', 'ends_at', 'capacity', 'location', 'delivery_mode', 'meeting_link', 'notes', 'status', 'created_by_user_id'])]
 class TrainingSession extends Model
 {
+    use SoftDeletes;
+
     /** @return BelongsTo<Academy, $this> */
     public function academy(): BelongsTo
     {

@@ -23,6 +23,6 @@ class BookPlayerCycleFeeRequest extends FormRequest
     {
         $academyId = app(AcademyContext::class)->id();
 
-        return ['fee_id' => ['required', 'integer', Rule::exists('academy_cycle_fees', 'id')->where(fn (Builder $query) => $query->where('academy_id', $academyId)->where('is_active', true))]];
+        return ['fee_id' => ['required', 'integer', Rule::exists('academy_cycle_fees', 'id')->withoutTrashed()->where(fn (Builder $query) => $query->where('academy_id', $academyId)->where('is_active', true))]];
     }
 }

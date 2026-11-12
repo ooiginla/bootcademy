@@ -67,7 +67,7 @@ class SavePlayerRequest extends FormRequest
         $forAcademy = fn (Builder $query): Builder => $query->where('academy_id', $context->id());
 
         $rules = [
-            'internal_identifier' => ['nullable', 'string', 'max:64', Rule::unique('players')->where($forAcademy)->ignore($playerId)],
+            'internal_identifier' => ['nullable', 'string', 'max:64', Rule::unique('players')->withoutTrashed()->where($forAcademy)->ignore($playerId)],
             'first_name' => ['required', 'string', 'max:100'],
             'middle_name' => ['nullable', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],

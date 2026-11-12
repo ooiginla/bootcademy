@@ -33,10 +33,10 @@ class BulkReenrollProgrammeMembersRequest extends FormRequest
         return [
             'enrollment_ids' => ['required', 'array', 'min:1', 'max:200'],
             'enrollment_ids.*' => ['integer', 'distinct', Rule::exists('enrollments', 'id')->where($forAcademy)],
-            'academy_cycle_id' => ['required', 'integer', Rule::exists('academy_cycles', 'id')->where($forAcademy)],
-            'programme_id' => ['required', 'integer', Rule::exists('programmes', 'id')->where($forAcademy)],
+            'academy_cycle_id' => ['required', 'integer', Rule::exists('academy_cycles', 'id')->withoutTrashed()->where($forAcademy)],
+            'programme_id' => ['required', 'integer', Rule::exists('programmes', 'id')->withoutTrashed()->where($forAcademy)],
             'academy_cycle_term_id' => ['required', 'integer', Rule::exists('academy_cycle_terms', 'id')->where($forAcademy)],
-            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where($forAcademy)],
+            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->withoutTrashed()->where($forAcademy)],
             'cohort_id' => ['nullable', 'integer', Rule::exists('cohorts', 'id')->where($forAcademy)],
         ];
     }

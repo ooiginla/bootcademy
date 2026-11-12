@@ -42,4 +42,13 @@ return [
         'base_url' => env('PAYSTACK_BASE_URL', 'https://api.paystack.co'),
     ],
 
+    // Google reCAPTCHA v3. Leave both keys empty to switch verification off
+    // (local development and automated tests).
+    'recaptcha' => [
+        'site_key' => env('RECAPTCHA_SITE_KEY'),
+        'secret_key' => env('RECAPTCHA_SECRET_KEY'),
+        'min_score' => (float) env('RECAPTCHA_MIN_SCORE', 0.5),
+        'verify_url' => 'https://www.google.com/recaptcha/api/siteverify',
+    ],
+
 ];

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Academies;
 use App\Academies\AcademyContext;
 use App\Academies\Actions\BulkReenrollProgrammeMembers;
 use App\Academies\Actions\SaveProgramme;
+use App\Academies\Actions\SoftDeleteAcademyRecord;
 use App\Enums\AcademyCycleType;
 use App\Enums\CohortMembershipStatus;
 use App\Enums\EnrollmentStatus;
@@ -313,5 +314,14 @@ class ProgrammeController extends Controller
             : null;
 
         return $data;
+    }
+
+    public function destroy(Request $request, Programme $programme, AcademyContext $context, SoftDeleteAcademyRecord $delete): RedirectResponse
+    {
+        abort_unless($request->user()?->can('manage', $context->academy()) === true, 403);
+        $delete->handle($context->academy(), $request->user(), $programme, 'programme', $programme->name, $programme->only(['code', 'is_active']), $request);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Programme deleted.']);
+
+        return to_route('academy.programmes.index');
     }
 }

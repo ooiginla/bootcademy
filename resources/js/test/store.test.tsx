@@ -7,6 +7,7 @@ import Store from '@/pages/public/store';
 vi.mock('@inertiajs/react', async () => {
     const React = await import('react');
     return {
+        usePage: () => ({ props: { recaptcha_site_key: null } }),
         useForm: <T extends Record<string, unknown>>(initial: T) => {
             const [data, setDataState] = React.useState(initial);
             return {

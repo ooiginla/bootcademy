@@ -6,6 +6,7 @@ use App\Academies\Actions\CreateAcademy;
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Models\User;
+use App\Rules\PassesRecaptcha;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
@@ -27,6 +28,7 @@ class CreateNewUser implements CreatesNewUsers
             'academy_type' => ['required', 'string', 'max:80'],
             'timezone' => ['required', 'timezone'],
             'currency' => ['required', 'string', 'size:3', 'regex:/^[A-Za-z]{3}$/'],
+            'recaptcha_token' => [new PassesRecaptcha('register', request()->ip())],
         ])->validated();
 
         return DB::transaction(function () use ($validated): User {

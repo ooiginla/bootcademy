@@ -451,9 +451,10 @@ describe('Bootcademy public website', () => {
             document.querySelector('input[name="preferred_branch_id"]'),
         ).toHaveValue('4');
 
-        expect(screen.getByLabelText('Two payments')).toBeChecked();
+        expect(screen.getByLabelText(/Two payments/)).toBeChecked();
         expect(screen.getByText('Recommended')).toBeInTheDocument();
         expect(screen.getByText('₦10,000/month')).toBeInTheDocument();
+        expect(screen.getByText('₦10,000/month')).toHaveClass('font-bold');
         expect(screen.queryByText('Programme fees')).not.toBeInTheDocument();
         expect(screen.getByText('View repayment schedule')).toBeInTheDocument();
         fireEvent.click(screen.getByLabelText('Pay once'));
@@ -524,26 +525,61 @@ describe('Bootcademy public website', () => {
                     currency: 'NGN',
                     fee_items: [{ name: 'Tuition', amount_minor: 12000000 }],
                 }}
-                payment_options={[
+                submitted
+                payment_plans={[
                     {
-                        key: 'application_only',
-                        label: 'Pay application fee only',
-                        currency: 'NGN',
-                        application_amount: '5000.00',
-                        programme_amount: '0.00',
-                        base_amount: '5000.00',
-                        processing_fee: '177.67',
-                        total_charge: '5177.67',
+                        id: 32,
+                        name: 'Two payments',
+                        description:
+                            'Split the programme fee into two payments.',
+                        is_selected: true,
+                        items: [
+                            {
+                                name: 'Tuition',
+                                description: '₦10,000/month',
+                                amount: '120000.00',
+                            },
+                        ],
+                        first_payment: {
+                            name: 'First payment',
+                            amount: '60000.00',
+                            due_on: null,
+                            due_offset_days: 0,
+                        },
+                        payment_count: 2,
+                    },
+                ]}
+                cycle_fees={[
+                    {
+                        id: 71,
+                        name: 'Insurance',
+                        category: 'Insurance',
+                        amount: '2000.00',
+                        is_compulsory: true,
+                        is_selected: true,
                     },
                     {
-                        key: 'installment:1',
-                        label: 'Application fee + First installment',
+                        id: 72,
+                        name: 'Training kit',
+                        category: 'Kit',
+                        amount: '3000.00',
+                        is_compulsory: false,
+                        is_selected: false,
+                    },
+                ]}
+                payment_options={[
+                    {
+                        key: 'initial',
+                        label: 'Application fee + First payment + selected cycle fees',
                         currency: 'NGN',
                         application_amount: '5000.00',
                         programme_amount: '60000.00',
-                        base_amount: '65000.00',
-                        processing_fee: '1091.38',
-                        total_charge: '66091.38',
+                        programme_label: 'First payment',
+                        cycle_fee_amount: '2000.00',
+                        cycle_fees: [{ name: 'Insurance', amount: '2000.00' }],
+                        base_amount: '67000.00',
+                        processing_fee: '1121.38',
+                        total_charge: '68121.38',
                     },
                 ]}
                 paystack_ready
@@ -551,13 +587,24 @@ describe('Bootcademy public website', () => {
             />,
         );
 
+        expect(
+            screen.getByRole('dialog', { name: 'Application submitted' }),
+        ).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Review my fees' }));
         expect(screen.getByText('Application saved')).toBeInTheDocument();
         expect(
-            screen.getByText('Pay application fee only'),
+            screen.getByText(
+                'Application fee + First payment + selected cycle fees',
+            ),
         ).toBeInTheDocument();
+        expect(screen.getByLabelText(/Two payments/)).toBeChecked();
         expect(
-            screen.getByText('Application fee + First installment'),
+            screen.getByText('Additional general cycle fees'),
         ).toBeInTheDocument();
+        expect(screen.getByLabelText(/Insurance/)).toBeChecked();
+        expect(screen.getByLabelText(/Training kit/)).not.toBeChecked();
+        fireEvent.click(screen.getByLabelText(/Training kit/));
+        expect(screen.getByLabelText(/Training kit/)).toBeChecked();
         expect(
             screen.getByRole('button', { name: 'Pay securely with Paystack' }),
         ).toBeEnabled();

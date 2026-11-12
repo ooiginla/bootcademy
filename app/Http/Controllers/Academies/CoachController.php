@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Academies;
 
 use App\Academies\AcademyContext;
 use App\Academies\Actions\SaveCoachProfile;
+use App\Academies\Actions\SoftDeleteAcademyRecord;
 use App\Enums\AcademyRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Academies\SaveCoachProfileRequest;
@@ -12,6 +13,7 @@ use App\Models\AcademyMembership;
 use App\Models\CoachCustomFieldValue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -84,5 +86,19 @@ class CoachController extends Controller
                 'custom_fields' => $profile->customFieldValues->mapWithKeys(fn (CoachCustomFieldValue $value): array => [$value->field->key => $value->value]),
             ] : null,
         ];
+    }
+
+    public function destroy(Request $request, AcademyMembership $membership, AcademyContext $context, SoftDeleteAcademyRecord $delete): RedirectResponse
+    {
+        abort_unless($context->canManageAcademy(), 403);
+        abort_unless($membership->academy_id === $context->id() && $membership->role === AcademyRole::Coach, 404);
+        $label = mb_strtolower($context->academy()->staff_label_singular);
+        $delete->handle($context->academy(), $request->user(), $membership, $label, $membership->user->name, [
+            'user_id' => $membership->user_id,
+            'role' => $membership->role->value,
+        ], $request);
+        Inertia::flash('toast', ['type' => 'success', 'message' => ucfirst($label).' removed.']);
+
+        return back();
     }
 }

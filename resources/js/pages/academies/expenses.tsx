@@ -10,6 +10,7 @@ import {
     WalletCards,
 } from 'lucide-react';
 import { useState } from 'react';
+import DeleteRecordButton from '@/components/delete-record-button';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -794,6 +795,9 @@ export default function Expenses({
                                                     <th className="px-4 py-3 text-right">
                                                         Amount
                                                     </th>
+                                                    <th className="px-4 py-3 text-right">
+                                                        Action
+                                                    </th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -895,6 +899,18 @@ export default function Expenses({
                                                                     expense.currency,
                                                                     expense.amount,
                                                                 )}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right">
+                                                                <DeleteRecordButton
+                                                                    action={`/app/finance/expenses/${expense.id}`}
+                                                                    label="expense"
+                                                                    name={
+                                                                        expense.description ||
+                                                                        expense.category
+                                                                    }
+                                                                    size="icon"
+                                                                    variant="ghost"
+                                                                />
                                                             </td>
                                                         </tr>
                                                     ),

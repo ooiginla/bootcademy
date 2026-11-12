@@ -7,6 +7,7 @@ use App\Academies\Actions\IssuePlayerCycleFeeInvoice;
 use App\Academies\Actions\SaveEnrollment;
 use App\Academies\Actions\SaveGuardian;
 use App\Academies\Actions\SavePlayer;
+use App\Academies\Actions\SoftDeleteAcademyRecord;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Academies\BookPlayerCycleFeeRequest;
 use App\Http\Requests\Academies\SaveEnrollmentRequest;
@@ -340,5 +341,15 @@ class PlayerController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Fee invoice booked to player.']);
 
         return back();
+    }
+
+    public function destroy(Request $request, Player $player, AcademyContext $context, SoftDeleteAcademyRecord $delete): RedirectResponse
+    {
+        abort_unless($context->canManageAcademy(), 403);
+        $label = mb_strtolower($context->academy()->member_label_singular);
+        $delete->handle($context->academy(), $request->user(), $player, $label, trim($player->first_name.' '.$player->last_name), $player->only(['internal_identifier', 'status']), $request);
+        Inertia::flash('toast', ['type' => 'success', 'message' => ucfirst($label).' deleted.']);
+
+        return to_route('academy.players.index');
     }
 }

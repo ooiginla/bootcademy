@@ -38,7 +38,7 @@ class CreateAcademyMemberRequest extends FormRequest
             'role' => ['required', Rule::enum(AcademyRole::class)->only(AcademyRole::staffRoles())],
             'password' => $this->passwordRules(),
             'branch_ids' => ['array'],
-            'branch_ids.*' => ['integer', 'distinct', Rule::exists('branches', 'id')->where($forAcademy)],
+            'branch_ids.*' => ['integer', 'distinct', Rule::exists('branches', 'id')->withoutTrashed()->where($forAcademy)],
         ];
     }
 }

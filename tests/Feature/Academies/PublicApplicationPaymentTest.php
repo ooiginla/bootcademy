@@ -35,6 +35,7 @@ class PublicApplicationPaymentTest extends TestCase
         $selectedPlan = $offering->paymentPlans()->sole();
 
         $response->assertRedirectContains('/applications/'.$application->reference.'/fees?token=');
+        $response->assertRedirectContains('submitted=1');
         $this->assertSame('applicant@example.com', $application->email);
         $this->assertSame('website', $application->source);
         $this->assertSame($offering->branch_id, $application->branch_id);
@@ -59,15 +60,23 @@ class PublicApplicationPaymentTest extends TestCase
         });
 
         parse_str((string) parse_url($response->headers->get('Location'), PHP_URL_QUERY), $query);
-        $this->get(route('public.academy.application-fees', [$website->subdomain, $application->reference, 'token' => $query['token']]))
+        $this->get(route('public.academy.application-fees', [
+            $website->subdomain,
+            $application->reference,
+            'token' => $query['token'],
+            'submitted' => 1,
+        ]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('public/application-fees')
+                ->where('submitted', true)
                 ->where('application.email', 'applicant@example.com')
-                ->has('payment_options', 4)
-                ->where('payment_options.0.key', 'application_only')
-                ->where('payment_options.1.key', 'full')
-                ->where('payment_options.2.key', 'installment:1'));
+                ->has('payment_plans', 1)
+                ->where('payment_plans.0.is_selected', true)
+                ->where('payment_plans.0.first_payment.name', 'First plan payment')
+                ->has('payment_options', 1)
+                ->where('payment_options.0.key', 'initial')
+                ->where('payment_options.0.programme_label', 'First plan payment'));
 
         $this->get(route('public.academy.application-complete', [$website->subdomain, $application->reference, 'token' => $query['token']]))
             ->assertOk()
@@ -101,6 +110,131 @@ class PublicApplicationPaymentTest extends TestCase
         ]);
     }
 
+    public function test_applicant_can_change_payment_plan_and_add_general_cycle_fees_before_payment(): void
+    {
+        Notification::fake();
+        [$academy, $website, $offering] = $this->offering();
+        $alternatePlan = $offering->paymentPlans()->create([
+            'academy_id' => $academy->id,
+            'term_scope_id' => 0,
+            'cohort_scope_id' => 0,
+            'name' => 'Flexible plan',
+            'description' => 'A lower first payment.',
+            'sort_order' => 200,
+            'currency' => 'NGN',
+            'total_minor' => 8000000,
+            'is_default' => false,
+            'is_active' => true,
+        ]);
+        $alternatePlan->items()->create([
+            'academy_id' => $academy->id,
+            'name' => 'Flexible tuition',
+            'description' => 'Two equal payments',
+            'amount_minor' => 8000000,
+            'sort_order' => 0,
+        ]);
+        $alternatePlan->installments()->createMany([
+            ['academy_id' => $academy->id, 'name' => 'Flexible first payment', 'amount_minor' => 4000000, 'sequence' => 1],
+            ['academy_id' => $academy->id, 'name' => 'Flexible final payment', 'amount_minor' => 4000000, 'sequence' => 2],
+        ]);
+        $compulsoryFee = $academy->cycleFees()->create([
+            'academy_cycle_id' => $offering->academy_cycle_id,
+            'term_scope_id' => 0,
+            'cohort_scope_id' => 0,
+            'name' => 'Annual insurance',
+            'category' => 'Insurance',
+            'currency' => 'NGN',
+            'amount_minor' => 200000,
+            'is_compulsory' => true,
+            'applies_to_all_programmes' => true,
+            'is_active' => true,
+        ]);
+        $optionalFee = $academy->cycleFees()->create([
+            'academy_cycle_id' => $offering->academy_cycle_id,
+            'term_scope_id' => 0,
+            'cohort_scope_id' => 0,
+            'name' => 'Training kit',
+            'category' => 'Kit',
+            'currency' => 'NGN',
+            'amount_minor' => 300000,
+            'is_compulsory' => false,
+            'applies_to_all_programmes' => true,
+            'is_active' => true,
+        ]);
+
+        [$application, $token] = $this->submit($website, $offering);
+        $originalInvoice = $application->invoices()
+            ->where('purpose', AcademyInvoicePurpose::Programme->value)
+            ->firstOrFail();
+        $this->assertDatabaseHas('academy_invoices', [
+            'application_id' => $application->id,
+            'academy_cycle_fee_id' => $compulsoryFee->id,
+            'status' => 'issued',
+        ]);
+        $this->assertDatabaseMissing('academy_invoices', [
+            'application_id' => $application->id,
+            'academy_cycle_fee_id' => $optionalFee->id,
+        ]);
+
+        $this->post(route('public.academy.application-fees.configure', [
+            $website->subdomain,
+            $application->reference,
+        ]), [
+            'token' => $token,
+            'programme_cycle_payment_plan_id' => $alternatePlan->id,
+            'cycle_fee_ids' => [$optionalFee->id],
+        ])->assertRedirect();
+
+        $this->assertSame($alternatePlan->id, $application->fresh()->programme_cycle_payment_plan_id);
+        $this->assertSame('void', $originalInvoice->fresh()->status->value);
+        $this->assertDatabaseHas('academy_invoices', [
+            'application_id' => $application->id,
+            'purpose' => AcademyInvoicePurpose::Programme->value,
+            'programme_cycle_payment_plan_id' => $alternatePlan->id,
+            'total_minor' => 8000000,
+            'status' => 'issued',
+        ]);
+        $this->assertDatabaseHas('academy_invoices', [
+            'application_id' => $application->id,
+            'academy_cycle_fee_id' => $optionalFee->id,
+            'status' => 'issued',
+        ]);
+
+        $this->get(route('public.academy.application-fees', [
+            $website->subdomain,
+            $application->reference,
+            'token' => $token,
+        ]))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('payment_plans.1.name', 'Flexible plan')
+            ->where('payment_plans.1.is_selected', true)
+            ->where('cycle_fees.0.name', 'Annual insurance')
+            ->where('cycle_fees.0.is_selected', true)
+            ->where('cycle_fees.1.name', 'Training kit')
+            ->where('cycle_fees.1.is_selected', true)
+            ->where('payment_options.0.key', 'initial')
+            ->where('payment_options.0.programme_label', 'Flexible first payment')
+            ->where('payment_options.0.base_amount', '50000.00'));
+
+        $this->post(route('public.academy.application-fees.configure', [
+            $website->subdomain,
+            $application->reference,
+        ]), [
+            'token' => $token,
+            'programme_cycle_payment_plan_id' => $alternatePlan->id,
+            'cycle_fee_ids' => [],
+        ])->assertRedirect();
+        $this->assertDatabaseHas('academy_invoices', [
+            'application_id' => $application->id,
+            'academy_cycle_fee_id' => $compulsoryFee->id,
+            'status' => 'issued',
+        ]);
+        $this->assertDatabaseHas('academy_invoices', [
+            'application_id' => $application->id,
+            'academy_cycle_fee_id' => $optionalFee->id,
+            'status' => 'void',
+        ]);
+    }
+
     public function test_guardian_information_can_be_disabled_per_academy(): void
     {
         Notification::fake();
@@ -130,6 +264,20 @@ class PublicApplicationPaymentTest extends TestCase
         $this->post(route('public.academy.application.store', $website->subdomain), $payload)
             ->assertSessionHasErrors('programme_cycle_payment_plan_id');
         $this->assertDatabaseMissing(Application::class, ['academy_id' => $website->academy_id]);
+
+        [$application, $token] = $this->submit($website, $offering);
+        $selectedPlanId = $application->programme_cycle_payment_plan_id;
+
+        $this->post(route('public.academy.application-fees.configure', [
+            $website->subdomain,
+            $application->reference,
+        ]), [
+            'token' => $token,
+            'programme_cycle_payment_plan_id' => $foreignOffering->paymentPlans()->value('id'),
+            'cycle_fee_ids' => [],
+        ])->assertSessionHasErrors('programme_cycle_payment_plan_id');
+
+        $this->assertSame($selectedPlanId, $application->fresh()->programme_cycle_payment_plan_id);
     }
 
     public function test_paystack_initialization_uses_only_the_server_calculated_amount(): void
@@ -147,13 +295,13 @@ class PublicApplicationPaymentTest extends TestCase
         });
 
         $response = $this->postJson(route('public.academy.payment-initialize', [$website->subdomain, $application->reference]), [
-            'token' => $token, 'selection' => 'application_only', 'amount' => 1,
+            'token' => $token, 'selection' => 'initial', 'amount' => 1,
         ]);
         $response->assertOk()->assertJsonStructure(['access_code', 'reference', 'verify_url']);
 
         $intent = OnlinePaymentIntent::query()->firstOrFail();
-        $this->assertSame(500000, $intent->base_amount_minor);
-        $this->assertGreaterThan(500000, $intent->charged_amount_minor);
+        $this->assertSame(7000000, $intent->base_amount_minor);
+        $this->assertGreaterThan(7000000, $intent->charged_amount_minor);
         $this->assertSame($response->json('reference'), $intent->reference);
         Http::assertSent(fn ($request): bool => $request['amount'] === $intent->charged_amount_minor
             && $request['email'] === 'applicant@example.com'
@@ -182,7 +330,7 @@ class PublicApplicationPaymentTest extends TestCase
             ]]));
 
         $initialize = $this->postJson(route('public.academy.payment-initialize', [$website->subdomain, $application->reference]), [
-            'token' => $token, 'selection' => 'application_only',
+            'token' => $token, 'selection' => 'initial',
         ])->assertOk();
         $intent = OnlinePaymentIntent::query()->firstOrFail();
         $verifyRoute = route('public.academy.payment-verify', [$website->subdomain, $application->reference, $intent]);
@@ -203,13 +351,17 @@ class PublicApplicationPaymentTest extends TestCase
 
         $this->assertDatabaseCount('academy_payments', 1);
         $this->assertDatabaseHas('academy_payments', [
-            'application_id' => $application->id, 'amount_minor' => 500000,
+            'application_id' => $application->id, 'amount_minor' => 7000000,
             'gross_amount_minor' => $intent->charged_amount_minor,
             'customer_fee_minor' => $intent->surcharge_minor, 'provider' => 'paystack',
         ]);
         $this->assertDatabaseHas('academy_invoices', [
             'application_id' => $application->id, 'purpose' => AcademyInvoicePurpose::Application->value,
             'paid_minor' => 500000, 'status' => 'paid',
+        ]);
+        $this->assertDatabaseHas('academy_invoices', [
+            'application_id' => $application->id, 'purpose' => AcademyInvoicePurpose::Programme->value,
+            'paid_minor' => 6500000, 'status' => 'partially_paid',
         ]);
         Notification::assertSentOnDemand(AcademyPaymentReceiptNotification::class, function ($notification, array $channels, $notifiable): bool {
             $mail = $notification->toMail($notifiable);
@@ -232,7 +384,7 @@ class PublicApplicationPaymentTest extends TestCase
         Http::fake(['https://api.paystack.co/*' => Http::response(['status' => false], 502)]);
 
         $response = $this->postJson(route('public.academy.payment-initialize', [$website->subdomain, $application->reference]), [
-            'token' => $token, 'selection' => 'application_only',
+            'token' => $token, 'selection' => 'initial',
         ])->assertStatus(502)->assertJsonStructure(['completion_url']);
 
         $this->get($response->json('completion_url'))
@@ -252,7 +404,7 @@ class PublicApplicationPaymentTest extends TestCase
         [, $otherWebsite] = $this->offering('second-academy');
 
         $this->postJson(route('public.academy.payment-initialize', [$otherWebsite->subdomain, $application->reference]), [
-            'token' => $token, 'selection' => 'application_only',
+            'token' => $token, 'selection' => 'initial',
         ])->assertNotFound();
     }
 
@@ -266,7 +418,7 @@ class PublicApplicationPaymentTest extends TestCase
             'access_code' => 'access-code', 'reference' => $request['reference'],
         ]]));
         $this->postJson(route('public.academy.payment-initialize', [$website->subdomain, $application->reference]), [
-            'token' => $token, 'selection' => 'application_only',
+            'token' => $token, 'selection' => 'initial',
         ])->assertOk();
         $intent = OnlinePaymentIntent::query()->firstOrFail();
         $body = json_encode([

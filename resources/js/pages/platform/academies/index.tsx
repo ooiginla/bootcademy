@@ -6,10 +6,24 @@ import {
     ReceiptText,
     Search,
     ShieldCheck,
+    Trash2,
 } from 'lucide-react';
+import { useState } from 'react';
+import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import type { AcademyTheme } from '@/types/auth';
 
 type Academy = {
@@ -17,6 +31,8 @@ type Academy = {
     name: string;
     academy_type: string;
     memberships_count: number;
+    players_count: number;
+    applications_count: number;
     theme: AcademyTheme;
 };
 
@@ -103,7 +119,7 @@ export default function PlatformAcademies({ academies, filters }: Props) {
                     <div className="space-y-3">
                         {academies.data.map((academy) => (
                             <Card key={academy.id} className="py-0">
-                                <CardContent className="flex items-center gap-4 p-4 sm:p-5">
+                                <CardContent className="flex flex-wrap items-center gap-4 p-4 sm:flex-nowrap sm:p-5">
                                     <span
                                         className="grid size-11 shrink-0 place-items-center rounded-xl"
                                         style={{
@@ -149,7 +165,7 @@ export default function PlatformAcademies({ academies, filters }: Props) {
                                             }}
                                         />
                                     </div>
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex flex-wrap items-center justify-end gap-1">
                                         <Button
                                             variant="outline"
                                             size="sm"
@@ -195,6 +211,7 @@ export default function PlatformAcademies({ academies, filters }: Props) {
                                                 />
                                             </Link>
                                         </Button>
+                                        <PurgeAcademyDialog academy={academy} />
                                     </div>
                                 </CardContent>
                             </Card>
@@ -239,5 +256,94 @@ export default function PlatformAcademies({ academies, filters }: Props) {
                 )}
             </main>
         </>
+    );
+}
+
+function PurgeAcademyDialog({ academy }: { academy: Academy }) {
+    const [open, setOpen] = useState(false);
+    const [confirmation, setConfirmation] = useState('');
+    const matches = confirmation.trim() === academy.name;
+
+    return (
+        <Dialog
+            open={open}
+            onOpenChange={(next) => {
+                setOpen(next);
+                if (!next) {
+                    setConfirmation('');
+                }
+            }}
+        >
+            <DialogTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    aria-label={`Delete academy ${academy.name}`}
+                >
+                    <Trash2 className="size-4" aria-hidden="true" />
+                    Delete
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+                <DialogTitle>Permanently delete {academy.name}?</DialogTitle>
+                <DialogDescription>
+                    This erases the academy and everything in it, including{' '}
+                    {academy.memberships_count} team member
+                    {academy.memberships_count === 1 ? '' : 's'},{' '}
+                    {academy.players_count} student record
+                    {academy.players_count === 1 ? '' : 's'},{' '}
+                    {academy.applications_count} application
+                    {academy.applications_count === 1 ? '' : 's'}, finance
+                    records and uploaded files. User accounts that belong only
+                    to this academy are deleted too. This cannot be undone.
+                </DialogDescription>
+                <Form
+                    action={`/platform/academies/${academy.id}`}
+                    method="delete"
+                    onSuccess={() => setOpen(false)}
+                    className="space-y-4"
+                >
+                    {({ processing, errors }) => (
+                        <>
+                            <div className="grid gap-2">
+                                <Label htmlFor={`purge-confirm-${academy.id}`}>
+                                    Type{' '}
+                                    <span className="font-semibold">
+                                        {academy.name}
+                                    </span>{' '}
+                                    to confirm
+                                </Label>
+                                <Input
+                                    id={`purge-confirm-${academy.id}`}
+                                    name="confirmation"
+                                    autoComplete="off"
+                                    value={confirmation}
+                                    onChange={(event) =>
+                                        setConfirmation(event.target.value)
+                                    }
+                                />
+                                <InputError message={errors.confirmation} />
+                            </div>
+                            <DialogFooter className="gap-2">
+                                <DialogClose asChild>
+                                    <Button type="button" variant="secondary">
+                                        Cancel
+                                    </Button>
+                                </DialogClose>
+                                <Button
+                                    type="submit"
+                                    variant="destructive"
+                                    disabled={!matches || processing}
+                                >
+                                    {processing ? <Spinner /> : null}
+                                    Delete permanently
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    )}
+                </Form>
+            </DialogContent>
+        </Dialog>
     );
 }

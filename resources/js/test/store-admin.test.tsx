@@ -5,6 +5,7 @@ import Store from '@/pages/academies/store';
 vi.mock('@inertiajs/react', async () => {
     const React = await import('react');
     return {
+        Form: () => null,
         Head: () => null,
         router: { patch: vi.fn() },
         useForm: <T extends Record<string, unknown>>(initial: T) => {

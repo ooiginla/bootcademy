@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import DeleteRecordButton from '@/components/delete-record-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -558,22 +559,32 @@ export default function PlayerDetails({
                         {terminology.pluralLower}
                     </Link>
                 </Button>
-                <div className="mb-7">
-                    <p className="text-sm font-medium text-primary">
-                        {terminology.singular} account
-                    </p>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <h1 className="text-2xl font-semibold">
-                            {player.name}
-                        </h1>
-                        <Badge variant="secondary" className="capitalize">
-                            {player.status}
-                        </Badge>
+                <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <p className="text-sm font-medium text-primary">
+                            {terminology.singular} account
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <h1 className="text-2xl font-semibold">
+                                {player.name}
+                            </h1>
+                            <Badge variant="secondary" className="capitalize">
+                                {player.status}
+                            </Badge>
+                        </div>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                            {player.internal_identifier ?? 'No internal ID'} ·
+                            Cycle memberships, invoices and verified payment
+                            history
+                        </p>
                     </div>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                        {player.internal_identifier ?? 'No internal ID'} · Cycle
-                        memberships, invoices and verified payment history
-                    </p>
+                    <div className="flex flex-wrap gap-2">
+                        <DeleteRecordButton
+                            action={`/app/players/${player.id}`}
+                            label={terminology.singularLower}
+                            name={player.name}
+                        />
+                    </div>
                 </div>
 
                 {featuredCycle && (

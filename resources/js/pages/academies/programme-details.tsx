@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import DeleteRecordButton from '@/components/delete-record-button';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -442,10 +443,17 @@ export default function ProgrammeDetails({
                         </p>
                     </div>
                     {can_manage && (
-                        <ProgrammeDialog
-                            programme={programme}
-                            branches={branch_options}
-                        />
+                        <div className="flex flex-wrap gap-2">
+                            <ProgrammeDialog
+                                programme={programme}
+                                branches={branch_options}
+                            />
+                            <DeleteRecordButton
+                                action={`/app/programmes/${programme.id}`}
+                                label="programme"
+                                name={programme.name}
+                            />
+                        </div>
                     )}
                 </div>
 

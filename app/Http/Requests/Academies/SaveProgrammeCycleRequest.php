@@ -48,9 +48,9 @@ class SaveProgrammeCycleRequest extends FormRequest
 
         return [
             'programme_id' => [
-                'required', 'integer', Rule::exists('programmes', 'id')->where($forAcademy),
+                'required', 'integer', Rule::exists('programmes', 'id')->withoutTrashed()->where($forAcademy),
             ],
-            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where($forAcademy)],
+            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->withoutTrashed()->where($forAcademy)],
             'fee_name' => ['required', 'string', 'max:160'],
             'application_fee' => ['required', 'regex:/^\d{1,12}(?:\.\d{1,2})?$/'],
             'is_active' => ['boolean'],

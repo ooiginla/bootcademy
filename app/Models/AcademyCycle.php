@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property int $id
@@ -27,6 +28,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['academy_id', 'name', 'type', 'starts_on', 'ends_on', 'duration_months', 'duration_value', 'duration_unit', 'status'])]
 class AcademyCycle extends Model
 {
+    use SoftDeletes;
+
     public function supportsTerms(): bool
     {
         return $this->type === AcademyCycleType::Fixed;
