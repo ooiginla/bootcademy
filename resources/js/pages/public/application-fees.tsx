@@ -50,6 +50,8 @@ type OnlineFeeRule = {
     fixed_minor: number;
     cap_minor: number | null;
     waiver_threshold_minor: number | null;
+    platform_basis_points?: number;
+    platform_fixed_minor?: number;
 };
 type SummaryLine = { label: string; minor: number };
 
@@ -58,22 +60,27 @@ function toMinor(amount: string | number | null | undefined): number {
 }
 
 /**
- * Mirrors the server's PaystackFeeCalculator so the summary can update as choices change.
- * The server recalculates the fee before charging.
+ * Mirrors the server's PaystackFeeCalculator so the summary can update as choices change:
+ * the platform fee, plus Paystack's fee grossed up on top. The server recalculates before charging.
  */
 function onlinePaymentFee(rule: OnlineFeeRule, baseMinor: number): number {
-    if (baseMinor <= 0 || rule.basis_points <= 0) return 0;
+    if (baseMinor <= 0) return 0;
+    const platformFee =
+        Math.round((baseMinor * (rule.platform_basis_points ?? 0)) / 10000) +
+        (rule.platform_fixed_minor ?? 0);
+    const net = baseMinor + platformFee;
+    if (rule.basis_points <= 0) return platformFee;
     const rate = rule.basis_points / 10000;
-    const withoutFixed = Math.ceil(baseMinor / (1 - rate));
-    let fee =
+    const withoutFixed = Math.ceil(net / (1 - rate));
+    let paystackFee =
         rule.waiver_threshold_minor !== null &&
         withoutFixed < rule.waiver_threshold_minor
-            ? withoutFixed - baseMinor
-            : Math.ceil((baseMinor + rule.fixed_minor) / (1 - rate)) -
-              baseMinor;
-    if (rule.cap_minor !== null) fee = Math.min(fee, rule.cap_minor);
+            ? withoutFixed - net
+            : Math.ceil((net + rule.fixed_minor) / (1 - rate)) - net;
+    if (rule.cap_minor !== null)
+        paystackFee = Math.min(paystackFee, rule.cap_minor);
 
-    return Math.max(0, fee);
+    return platformFee + Math.max(0, paystackFee);
 }
 
 function csrfToken(): string {
@@ -693,8 +700,8 @@ export default function PublicApplicationFees({
                                                 <span className="text-white/55">
                                                     Online payment fee
                                                     <span className="block text-[11px] text-white/40">
-                                                        Paystack’s charge for
-                                                        paying online
+                                                        Charge for paying online
+                                                        through Paystack
                                                     </span>
                                                 </span>
                                                 <strong className="shrink-0">

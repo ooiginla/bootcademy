@@ -33,6 +33,13 @@ use Illuminate\Support\Carbon;
  * @property int $paystack_fee_fixed_minor
  * @property int|null $paystack_fee_cap_minor
  * @property int|null $paystack_fee_waiver_threshold_minor
+ * @property int|null $platform_fee_basis_points
+ * @property int|null $platform_fee_fixed_minor
+ * @property string|null $bank_code
+ * @property string|null $paystack_subaccount_code
+ * @property string $paystack_subaccount_status
+ * @property string|null $paystack_subaccount_error
+ * @property Carbon|null $paystack_subaccount_synced_at
  * @property string|null $logo_path
  * @property string|null $primary_color
  * @property string|null $secondary_color
@@ -57,6 +64,13 @@ use Illuminate\Support\Carbon;
     'bank_name',
     'bank_account_name',
     'bank_account_number',
+    'bank_code',
+    'paystack_subaccount_code',
+    'paystack_subaccount_status',
+    'paystack_subaccount_error',
+    'paystack_subaccount_synced_at',
+    'platform_fee_basis_points',
+    'platform_fee_fixed_minor',
     'paystack_fee_basis_points',
     'paystack_fee_fixed_minor',
     'paystack_fee_cap_minor',
@@ -298,6 +312,14 @@ class Academy extends Model
         return $this->hasOne(AcademySubscription::class);
     }
 
+    /** True when parents can pay online: Paystack is configured and the academy has an active subaccount. */
+    public function acceptsOnlinePayments(): bool
+    {
+        return filled(config('services.paystack.secret_key'))
+            && $this->paystack_subaccount_status === 'active'
+            && filled($this->paystack_subaccount_code);
+    }
+
     /** @return HasOne<AcademyWebsite, $this> */
     public function website(): HasOne
     {
@@ -312,6 +334,9 @@ class Academy extends Model
             'paystack_fee_fixed_minor' => 'integer',
             'paystack_fee_cap_minor' => 'integer',
             'paystack_fee_waiver_threshold_minor' => 'integer',
+            'platform_fee_basis_points' => 'integer',
+            'platform_fee_fixed_minor' => 'integer',
+            'paystack_subaccount_synced_at' => 'datetime',
         ];
     }
 }

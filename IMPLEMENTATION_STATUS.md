@@ -24,6 +24,7 @@ This is the live execution checklist. It complements `SPORTS_ACADEMY_SAAS_PRD.md
 - `[x]` **M3 complete:** sessions, attendance, offline finance, receipts, reversals, expenses, operational dashboard and tenant-safe CSV reporting.
 - `[x]` **Soft deletes and spam cleanup:** dependency-guarded soft deletes for applications, branches, programmes, sessions, cycles, cycle fees, programme fees, payment plans, expenses, players, coaches and store products; Platform Super Admin permanent academy purge with typed-name confirmation; Google reCAPTCHA v3 on signup, public applications and store checkout. See `docs/deletion-and-spam-protection.md`.
 - `[x]` **Plan-only programme pricing:** the Add/Edit programme fee form no longer has a standard one-off plan; prices come from payment plans, each with a "Show on the public website" setting. The public fee page updates its summary live, and Pay/Skip save the selection. See `docs/m3-cycles-invoices-payments.md`.
+- `[x]` **Paystack split settlement:** academy bank details create a Paystack subaccount; online payments settle the academy's exact amount to it, with Paystack's fee and a configurable platform fee (Platform settings, per-academy override) kept by the main account. Unfinished payments are confirmed by a scheduled requery instead of a webhook. See `docs/online-payments-paystack-split.md`.
 - `[!]` **Current decision:** how online academy fee payments settle through Paystack.
 
 ## Immediate execution queue

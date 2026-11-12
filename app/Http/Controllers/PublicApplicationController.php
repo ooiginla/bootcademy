@@ -93,6 +93,7 @@ class PublicApplicationController extends Controller
         ApplicationPaymentPlan $plans,
         PublicProgrammePaymentPlans $paymentPlans,
         ConfigurePublicApplicationFees $feeSelection,
+        PaystackFeeCalculator $feeCalculator,
     ): Response {
         [$website, $application] = $this->authorizedApplication($request, $subdomain, $reference);
         $application->load(['programmeCycle.programme', 'programmeCycle.cycle', 'programmeCycle.branch', 'invoices']);
@@ -130,12 +131,7 @@ class PublicApplicationController extends Controller
             // Fees already paid or adjusted cannot be changed, so the page shows what is owed as-is.
             'selection_locked' => $feeSelection->selectionLocked($application),
             // Lets the page preview Paystack's charge; the server recalculates it before charging.
-            'online_fee' => [
-                'basis_points' => (int) $academy->paystack_fee_basis_points,
-                'fixed_minor' => (int) $academy->paystack_fee_fixed_minor,
-                'cap_minor' => $academy->paystack_fee_cap_minor,
-                'waiver_threshold_minor' => $academy->paystack_fee_waiver_threshold_minor,
-            ],
+            'online_fee' => $feeCalculator->rule($academy),
             'payment_plans' => $availablePlans->map(fn ($plan): array => [
                 'id' => $plan->id,
                 'name' => $plan->name,
@@ -163,7 +159,7 @@ class PublicApplicationController extends Controller
                 'is_selected' => $fee->is_compulsory || $selectedCycleFeeIds->contains($fee->id),
             ])->values(),
             'payment_options' => $plans->options($website->academy, $application),
-            'paystack_ready' => filled(config('services.paystack.secret_key')),
+            'paystack_ready' => $academy->acceptsOnlinePayments(),
             'completion_url' => $this->completionUrl($request, $subdomain, $application, (string) $request->query('token')),
         ]);
     }
@@ -243,6 +239,7 @@ class PublicApplicationController extends Controller
         ConfigurePublicApplicationFees $configure,
     ): JsonResponse {
         [, $application] = $this->authorizedApplication($request, $subdomain, $reference);
+        abort_unless($application->academy->acceptsOnlinePayments(), 422, 'Online payment is not available for this academy yet. You can skip payment for now.');
         $validated = $request->validate([
             'selection' => ['required', 'string', 'max:80'],
             'apply_selection' => ['sometimes', 'boolean'],
@@ -264,10 +261,13 @@ class PublicApplicationController extends Controller
         $allocations = $plans->allocations($application->academy, $application, $validated['selection']);
         $base = (int) collect($allocations)->sum('amount_minor');
         abort_if($base <= 0, 422, 'There is no outstanding amount for this option.');
-        $surcharge = $feeCalculator->surcharge($application->academy, $base);
+        $fees = $feeCalculator->breakdown($application->academy, $base);
+        $surcharge = $fees['surcharge'];
         $charged = $base + $surcharge;
+        $subaccount = (string) $application->academy->paystack_subaccount_code;
         $existing = $application->onlinePaymentIntents()->where('selection_key', $validated['selection'])
             ->where('status', 'pending')->where('base_amount_minor', $base)->where('charged_amount_minor', $charged)
+            ->where('subaccount_code', $subaccount)
             ->where('created_at', '>=', now()->subMinutes(30))->whereNotNull('access_code')->latest()->first();
         if ($existing !== null) {
             return $this->intentResponse($request, $subdomain, $application, $existing);
@@ -279,13 +279,15 @@ class PublicApplicationController extends Controller
             'provider' => 'paystack', 'reference' => $referenceValue, 'selection_key' => $validated['selection'],
             'status' => 'pending', 'currency' => $application->programmeCycle->currency,
             'base_amount_minor' => $base, 'surcharge_minor' => $surcharge,
+            'platform_fee_minor' => $fees['platform_fee'], 'paystack_fee_estimate_minor' => $fees['paystack_fee'],
+            'subaccount_code' => $subaccount,
             'charged_amount_minor' => $charged, 'allocation_plan' => $allocations,
         ]);
         try {
             $initialized = $provider->initialize((string) $application->email, $charged, $intent->currency, $intent->reference, [
                 'academy_id' => $application->academy_id, 'application_reference' => $application->reference,
                 'payment_intent_id' => $intent->id,
-            ]);
+            ], ['subaccount' => $subaccount, 'transaction_charge' => $surcharge]);
             $intent->update(['access_code' => $initialized['access_code'], 'initialized_at' => now()]);
         } catch (RuntimeException $exception) {
             $intent->update(['status' => 'failed', 'failure_reason' => $exception->getMessage()]);

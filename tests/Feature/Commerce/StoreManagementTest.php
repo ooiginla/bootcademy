@@ -186,6 +186,9 @@ class StoreManagementTest extends TestCase
             'bank_name' => 'Example Bank',
             'bank_account_name' => 'Example Academy',
             'bank_account_number' => '0123456789',
+            'bank_code' => '058',
+            'paystack_subaccount_code' => 'ACCT_store',
+            'paystack_subaccount_status' => 'active',
         ]);
         [$website, $variant] = $this->sellable($academy, 5, 250000);
 
@@ -234,6 +237,10 @@ class StoreManagementTest extends TestCase
         ])
             ->assertOk()->assertJsonPath('access_code', 'access-store-123');
         $payment = StoreOrderPayment::query()->sole();
+        $this->assertSame('ACCT_store', $payment->subaccount_code);
+        Http::assertSent(fn (ClientRequest $request): bool => str_ends_with($request->url(), '/transaction/initialize')
+            && $request['subaccount'] === 'ACCT_store'
+            && $request['transaction_charge'] === $payment->surcharge_minor);
         $this->assertSame('corrected-store-parent@example.test', $order->fresh()->customer_email);
         $this->assertSame('pending', $payment->status);
         $this->assertGreaterThan($payment->amount_minor, $payment->charged_amount_minor);

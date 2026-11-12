@@ -3,13 +3,14 @@ import {
     Building2,
     CheckCircle2,
     ImageIcon,
-    Landmark,
     Languages,
     Palette,
     Upload,
 } from 'lucide-react';
 import { useRef } from 'react';
 import type { FormEvent } from 'react';
+import BankDetailsCard from '@/components/bank-details-card';
+import type { BankDetails, Settlement } from '@/components/bank-details-card';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -31,12 +32,11 @@ type Props = {
             guardian_plural: string;
             collect_guardian_information: boolean;
         };
-        bank_details: {
-            bank_name: string | null;
-            account_name: string | null;
-            account_number: string | null;
-        };
+        bank_details: BankDetails;
+        settlement: Settlement;
     };
+    uses_paystack?: boolean;
+    banks?: Array<{ code: string; name: string }>;
 };
 
 function readableForeground(background: string): string {
@@ -57,7 +57,11 @@ function readableForeground(background: string): string {
         : '#111827';
 }
 
-export default function AcademyBranding({ branding }: Props) {
+export default function AcademyBranding({
+    branding,
+    uses_paystack = false,
+    banks = [],
+}: Props) {
     const logoInput = useRef<HTMLInputElement>(null);
     const profileForm = useForm({ name: branding.name });
     const logoForm = useForm<{ logo: File | null }>({ logo: null });
@@ -74,11 +78,6 @@ export default function AcademyBranding({ branding }: Props) {
         guardian_label_plural: branding.terminology.guardian_plural,
         collect_guardian_information:
             branding.terminology.collect_guardian_information,
-    });
-    const bankForm = useForm({
-        bank_name: branding.bank_details.bank_name ?? '',
-        bank_account_name: branding.bank_details.account_name ?? '',
-        bank_account_number: branding.bank_details.account_number ?? '',
     });
 
     function submitLogo(event: FormEvent) {
@@ -110,13 +109,6 @@ export default function AcademyBranding({ branding }: Props) {
     function submitTerminology(event: FormEvent) {
         event.preventDefault();
         terminologyForm.patch('/app/settings/academy/terminology', {
-            preserveScroll: true,
-        });
-    }
-
-    function submitBankDetails(event: FormEvent) {
-        event.preventDefault();
-        bankForm.patch('/app/settings/academy/bank-details', {
             preserveScroll: true,
         });
     }
@@ -655,111 +647,13 @@ export default function AcademyBranding({ branding }: Props) {
                         </CardContent>
                     </Card>
 
-                    <Card className="xl:col-span-2">
-                        <CardHeader>
-                            <div className="flex items-center gap-2">
-                                <Landmark className="size-5 text-primary" />
-                                <h2 className="font-semibold">Bank details</h2>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                                Set the academy account used in bank-transfer
-                                payment instructions. All three fields are
-                                required when bank details are configured.
-                            </p>
-                        </CardHeader>
-                        <CardContent>
-                            <form
-                                onSubmit={submitBankDetails}
-                                className="space-y-5"
-                            >
-                                <div className="grid gap-4 sm:grid-cols-3">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="bank_name">
-                                            Bank name
-                                        </Label>
-                                        <Input
-                                            id="bank_name"
-                                            value={bankForm.data.bank_name}
-                                            onChange={(event) =>
-                                                bankForm.setData(
-                                                    'bank_name',
-                                                    event.target.value,
-                                                )
-                                            }
-                                            maxLength={120}
-                                            placeholder="Example Bank"
-                                        />
-                                        <InputError
-                                            message={bankForm.errors.bank_name}
-                                        />
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="bank_account_name">
-                                            Account name
-                                        </Label>
-                                        <Input
-                                            id="bank_account_name"
-                                            value={
-                                                bankForm.data.bank_account_name
-                                            }
-                                            onChange={(event) =>
-                                                bankForm.setData(
-                                                    'bank_account_name',
-                                                    event.target.value,
-                                                )
-                                            }
-                                            maxLength={160}
-                                            placeholder={branding.name}
-                                        />
-                                        <InputError
-                                            message={
-                                                bankForm.errors
-                                                    .bank_account_name
-                                            }
-                                        />
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="bank_account_number">
-                                            Account number
-                                        </Label>
-                                        <Input
-                                            id="bank_account_number"
-                                            value={
-                                                bankForm.data
-                                                    .bank_account_number
-                                            }
-                                            onChange={(event) =>
-                                                bankForm.setData(
-                                                    'bank_account_number',
-                                                    event.target.value,
-                                                )
-                                            }
-                                            maxLength={64}
-                                            inputMode="numeric"
-                                            autoComplete="off"
-                                            placeholder="0123456789"
-                                        />
-                                        <InputError
-                                            message={
-                                                bankForm.errors
-                                                    .bank_account_number
-                                            }
-                                        />
-                                    </div>
-                                </div>
-                                <Button
-                                    type="submit"
-                                    disabled={
-                                        bankForm.processing || !bankForm.isDirty
-                                    }
-                                >
-                                    {bankForm.processing
-                                        ? 'Saving…'
-                                        : 'Save bank details'}
-                                </Button>
-                            </form>
-                        </CardContent>
-                    </Card>
+                    <BankDetailsCard
+                        academyName={branding.name}
+                        bankDetails={branding.bank_details}
+                        settlement={branding.settlement}
+                        usesPaystack={uses_paystack}
+                        banks={banks}
+                    />
                 </div>
             </main>
         </>

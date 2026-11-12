@@ -1,5 +1,11 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, CheckCircle2, CreditCard, Palette } from 'lucide-react';
+import {
+    ArrowLeft,
+    CheckCircle2,
+    CreditCard,
+    Landmark,
+    Palette,
+} from 'lucide-react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -13,11 +19,20 @@ type Props = {
         id: number;
         name: string;
         theme: AcademyTheme;
-        paystack_fees: {
-            percentage: string;
-            fixed_fee: string;
-            cap: string;
-            waiver_threshold: string;
+        platform_fee: {
+            platform_percentage: string;
+            platform_fixed_fee: string;
+        };
+        default_platform_fee: { percentage: string; fixed_fee: string };
+        settlement: {
+            bank_name: string | null;
+            account_name: string | null;
+            account_number_last4: string | null;
+            status: string;
+            subaccount_code: string | null;
+            error: string | null;
+            synced_at: string | null;
+            can_retry: boolean;
         };
     };
 };
@@ -27,7 +42,9 @@ export default function PlatformAcademyBranding({ managedAcademy }: Props) {
         primary_color: managedAcademy.theme.primary,
         secondary_color: managedAcademy.theme.secondary,
     });
-    const feeForm = useForm(managedAcademy.paystack_fees);
+    const feeForm = useForm(managedAcademy.platform_fee);
+    const syncForm = useForm({});
+    const settlement = managedAcademy.settlement;
 
     function submit(event: FormEvent) {
         event.preventDefault();
@@ -40,6 +57,13 @@ export default function PlatformAcademyBranding({ managedAcademy }: Props) {
         event.preventDefault();
         feeForm.patch(
             `/platform/academies/${managedAcademy.id}/paystack-fees`,
+            { preserveScroll: true },
+        );
+    }
+
+    function retrySubaccount() {
+        syncForm.post(
+            `/platform/academies/${managedAcademy.id}/paystack-subaccount`,
             { preserveScroll: true },
         );
     }
@@ -67,81 +91,151 @@ export default function PlatformAcademyBranding({ managedAcademy }: Props) {
                     </p>
                 </div>
 
-                <Card className="mt-6">
-                    <CardHeader>
-                        <h2 className="flex items-center gap-2 font-semibold">
-                            <CreditCard className="size-5 text-primary" />{' '}
-                            Paystack customer fee
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                            Added to online checkout so the academy receives its
-                            intended fee. Defaults reflect Paystack’s current
-                            Nigerian local pricing.
-                        </p>
-                    </CardHeader>
-                    <CardContent>
-                        <form
-                            onSubmit={submitFees}
-                            className="grid gap-5 sm:grid-cols-2"
-                        >
-                            {(
-                                [
-                                    [
-                                        'percentage',
-                                        'Percentage (%)',
-                                        'e.g. 1.50',
-                                    ],
-                                    [
-                                        'fixed_fee',
-                                        'Fixed fee (₦)',
-                                        'e.g. 100.00',
-                                    ],
-                                    [
-                                        'cap',
-                                        'Maximum fee (₦)',
-                                        'Leave blank for no cap',
-                                    ],
-                                    [
-                                        'waiver_threshold',
-                                        'Fixed-fee waiver below (₦)',
-                                        'e.g. 2500.00',
-                                    ],
-                                ] as const
-                            ).map(([key, label, placeholder]) => (
-                                <div key={key} className="grid gap-2">
-                                    <Label htmlFor={`paystack-${key}`}>
-                                        {label}
-                                    </Label>
-                                    <Input
-                                        id={`paystack-${key}`}
-                                        inputMode="decimal"
-                                        value={feeForm.data[key]}
-                                        placeholder={placeholder}
-                                        onChange={(event) =>
-                                            feeForm.setData(
-                                                key,
-                                                event.target.value,
-                                            )
-                                        }
-                                    />
-                                    <InputError message={feeForm.errors[key]} />
+                <div className="mt-6 mb-6 grid gap-6 lg:grid-cols-2">
+                    <Card>
+                        <CardHeader>
+                            <h2 className="flex items-center gap-2 font-semibold">
+                                <Landmark className="size-5 text-primary" />
+                                Paystack settlement account
+                            </h2>
+                            <p className="text-sm text-muted-foreground">
+                                Online payments for this academy settle to this
+                                subaccount. The academy sets it up by saving its
+                                bank details.
+                            </p>
+                        </CardHeader>
+                        <CardContent className="space-y-3 text-sm">
+                            <dl className="grid gap-2 sm:grid-cols-2">
+                                <div>
+                                    <dt className="text-xs text-muted-foreground">
+                                        Status
+                                    </dt>
+                                    <dd className="font-medium capitalize">
+                                        {settlement.status}
+                                    </dd>
                                 </div>
-                            ))}
-                            <div className="sm:col-span-2">
-                                <Button
-                                    type="submit"
-                                    disabled={
-                                        feeForm.processing || !feeForm.isDirty
-                                    }
+                                <div>
+                                    <dt className="text-xs text-muted-foreground">
+                                        Subaccount code
+                                    </dt>
+                                    <dd className="font-mono text-xs">
+                                        {settlement.subaccount_code ?? '—'}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-xs text-muted-foreground">
+                                        Bank
+                                    </dt>
+                                    <dd>{settlement.bank_name ?? '—'}</dd>
+                                </div>
+                                <div>
+                                    <dt className="text-xs text-muted-foreground">
+                                        Account
+                                    </dt>
+                                    <dd>
+                                        {settlement.account_name ?? '—'}
+                                        {settlement.account_number_last4 &&
+                                            ` · ••••${settlement.account_number_last4}`}
+                                    </dd>
+                                </div>
+                            </dl>
+                            {settlement.error && (
+                                <p
+                                    className="text-xs text-destructive"
+                                    role="alert"
                                 >
-                                    {feeForm.processing
-                                        ? 'Saving…'
-                                        : 'Save Paystack fees'}
+                                    {settlement.error}
+                                </p>
+                            )}
+                            {settlement.can_retry && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={retrySubaccount}
+                                    disabled={syncForm.processing}
+                                >
+                                    {syncForm.processing
+                                        ? 'Contacting Paystack…'
+                                        : 'Send to Paystack again'}
                                 </Button>
-                            </div>
-                        </form>
-                    </CardContent>
-                </Card>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <h2 className="flex items-center gap-2 font-semibold">
+                                <CreditCard className="size-5 text-primary" />
+                                Platform fee for this academy
+                            </h2>
+                            <p className="text-sm text-muted-foreground">
+                                Leave both blank to use the default (
+                                {managedAcademy.default_platform_fee.percentage}
+                                % + ₦
+                                {managedAcademy.default_platform_fee.fixed_fee}
+                                ). Paystack rates are set in{' '}
+                                <Link
+                                    href="/platform/settings"
+                                    className="underline"
+                                >
+                                    Platform settings
+                                </Link>
+                                .
+                            </p>
+                        </CardHeader>
+                        <CardContent>
+                            <form
+                                onSubmit={submitFees}
+                                className="grid gap-5 sm:grid-cols-2"
+                            >
+                                {(
+                                    [
+                                        [
+                                            'platform_percentage',
+                                            'Percentage (%)',
+                                        ],
+                                        ['platform_fixed_fee', 'Fixed fee (₦)'],
+                                    ] as const
+                                ).map(([key, label]) => (
+                                    <div key={key} className="grid gap-2">
+                                        <Label htmlFor={`platform-${key}`}>
+                                            {label}
+                                        </Label>
+                                        <Input
+                                            id={`platform-${key}`}
+                                            inputMode="decimal"
+                                            value={feeForm.data[key]}
+                                            placeholder="Use default"
+                                            onChange={(event) =>
+                                                feeForm.setData(
+                                                    key,
+                                                    event.target.value,
+                                                )
+                                            }
+                                        />
+                                        <InputError
+                                            message={feeForm.errors[key]}
+                                        />
+                                    </div>
+                                ))}
+                                <div className="sm:col-span-2">
+                                    <Button
+                                        type="submit"
+                                        disabled={
+                                            feeForm.processing ||
+                                            !feeForm.isDirty
+                                        }
+                                    >
+                                        {feeForm.processing
+                                            ? 'Saving…'
+                                            : 'Save platform fee'}
+                                    </Button>
+                                </div>
+                            </form>
+                        </CardContent>
+                    </Card>
+                </div>
 
                 <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
                     <Card>

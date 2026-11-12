@@ -6,7 +6,6 @@ use App\Models\Academy;
 use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class AcademyThemeTest extends TestCase
@@ -70,54 +69,5 @@ class AcademyThemeTest extends TestCase
 
         $this->assertNull($academy->fresh()->primary_color);
         $this->assertDatabaseCount(AuditLog::class, 0);
-    }
-
-    public function test_platform_super_admin_can_configure_paystack_customer_fees_per_academy(): void
-    {
-        $admin = User::factory()->create(['is_platform_super_admin' => true]);
-        $academy = Academy::factory()->create();
-
-        $this->actingAs($admin)
-            ->get(route('platform.academies.branding.edit', $academy))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('managedAcademy.paystack_fees.percentage', '1.50')
-                ->where('managedAcademy.paystack_fees.fixed_fee', '100.00'));
-
-        $this->actingAs($admin)
-            ->patch(route('platform.academies.paystack-fees.update', $academy), [
-                'percentage' => '2.25',
-                'fixed_fee' => '150.00',
-                'cap' => '2500.00',
-                'waiver_threshold' => '3000.00',
-            ])
-            ->assertRedirect();
-
-        $this->assertDatabaseHas(Academy::class, [
-            'id' => $academy->id,
-            'paystack_fee_basis_points' => 225,
-            'paystack_fee_fixed_minor' => 15000,
-            'paystack_fee_cap_minor' => 250000,
-            'paystack_fee_waiver_threshold_minor' => 300000,
-        ]);
-        $this->assertDatabaseHas(AuditLog::class, [
-            'academy_id' => $academy->id,
-            'actor_user_id' => $admin->id,
-            'action' => 'platform.academy.paystack-fees.updated',
-        ]);
-    }
-
-    public function test_regular_user_cannot_change_paystack_fee_configuration(): void
-    {
-        $user = User::factory()->create();
-        $academy = Academy::factory()->create();
-
-        $this->actingAs($user)
-            ->patch(route('platform.academies.paystack-fees.update', $academy), [
-                'percentage' => '9.00', 'fixed_fee' => '900.00',
-            ])
-            ->assertForbidden();
-
-        $this->assertSame(150, $academy->fresh()->paystack_fee_basis_points);
     }
 }

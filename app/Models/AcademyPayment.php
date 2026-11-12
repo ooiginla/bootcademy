@@ -25,7 +25,7 @@ use Illuminate\Support\Carbon;
  */
 #[Fillable([
     'academy_id', 'reference', 'application_id', 'player_id', 'sponsor_id', 'method', 'status', 'currency',
-    'amount_minor', 'gross_amount_minor', 'customer_fee_minor', 'provider_fee_minor', 'unallocated_minor',
+    'amount_minor', 'gross_amount_minor', 'customer_fee_minor', 'platform_fee_minor', 'provider_fee_minor', 'unallocated_minor',
     'provider', 'reversed_minor', 'received_on', 'external_reference', 'notes', 'recorded_by_user_id',
 ])]
 class AcademyPayment extends Model

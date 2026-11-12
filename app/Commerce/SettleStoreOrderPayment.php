@@ -35,12 +35,17 @@ class SettleStoreOrderPayment
             return $payment->fresh();
         }
 
-        if (($providerData['reference'] ?? null) !== $payment->reference
+        // A split payment must have gone to the academy subaccount it was opened for.
+        $paidSubaccount = data_get($providerData, 'subaccount.subaccount_code');
+        $subaccountMismatch = $payment->subaccount_code !== null && is_string($paidSubaccount) && $paidSubaccount !== ''
+            && $paidSubaccount !== $payment->subaccount_code;
+        if ($subaccountMismatch
+            || ($providerData['reference'] ?? null) !== $payment->reference
             || (int) ($providerData['amount'] ?? -1) !== $payment->charged_amount_minor
             || strtoupper((string) ($providerData['currency'] ?? '')) !== $payment->currency) {
             $payment->update([
                 'status' => 'review_required',
-                'failure_reason' => 'Provider amount, currency or reference did not match the store payment.',
+                'failure_reason' => 'Provider amount, currency, reference or subaccount did not match the store payment.',
             ]);
             throw new RuntimeException('The verified transaction did not match the expected store payment.');
         }

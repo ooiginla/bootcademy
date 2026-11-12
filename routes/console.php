@@ -4,6 +4,7 @@ use App\Academies\Actions\ReconcileReferralRewards;
 use App\Academies\Actions\SendAcademyCommunication;
 use App\Models\AcademyCommunicationSetting;
 use App\Models\ReferralSetting;
+use App\Payments\RequeryPendingPayments;
 use App\Support\CalendarDays;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -69,3 +70,12 @@ Schedule::call(function (ReconcileReferralRewards $reconcile): void {
         }
     });
 })->dailyAt('01:30')->name('academy-referral-reward-reconciliation')->withoutOverlapping();
+
+// Paystack has no webhook for this app, so unfinished payments are confirmed by asking Paystack.
+Schedule::call(fn (RequeryPendingPayments $requery) => $requery->handle())
+    ->everyFiveMinutes()->name('paystack-requery-pending-payments')->withoutOverlapping();
+
+Artisan::command('payments:requery', function (RequeryPendingPayments $requery): void {
+    $totals = $requery->handle();
+    $this->info("Checked {$totals['checked']}, verified {$totals['verified']}, expired {$totals['expired']}.");
+})->purpose('Confirm unfinished Paystack payments with Paystack');

@@ -38,6 +38,7 @@ use App\Http\Controllers\Platform\AcademyBrandingController as PlatformAcademyBr
 use App\Http\Controllers\Platform\AcademyPurgeController;
 use App\Http\Controllers\Platform\AcademySubscriptionController as PlatformAcademySubscriptionController;
 use App\Http\Controllers\Platform\PlanController;
+use App\Http\Controllers\Platform\PlatformSettingsController;
 use App\Http\Controllers\Platform\SupportAccessController;
 use App\Http\Controllers\PublicAcademyWebsiteController;
 use App\Http\Controllers\PublicApplicationController;
@@ -327,6 +328,10 @@ Route::middleware([
                 ->name('academies.branding.update');
             Route::patch('academies/{academy}/paystack-fees', [PlatformAcademyBrandingController::class, 'updatePaystackFees'])
                 ->name('academies.paystack-fees.update');
+            Route::post('academies/{academy}/paystack-subaccount', [PlatformAcademyBrandingController::class, 'syncSubaccount'])
+                ->name('academies.paystack-subaccount.sync');
+            Route::get('settings', [PlatformSettingsController::class, 'edit'])->name('settings.edit');
+            Route::patch('settings', [PlatformSettingsController::class, 'update'])->name('settings.update');
             Route::get('academies/{academy}/subscription', [PlatformAcademySubscriptionController::class, 'edit'])
                 ->name('academies.subscription.edit');
             Route::patch('academies/{academy}/subscription', [PlatformAcademySubscriptionController::class, 'update'])

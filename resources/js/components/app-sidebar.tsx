@@ -207,6 +207,11 @@ export function AppSidebar() {
             href: '/platform/plans',
             icon: ReceiptText,
         });
+        mainNavItems.push({
+            title: 'Platform settings',
+            href: '/platform/settings',
+            icon: Settings2,
+        });
     }
 
     const homeHref = academy

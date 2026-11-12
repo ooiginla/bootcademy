@@ -13,6 +13,8 @@ use App\Http\Requests\Academies\UpdateAcademyLogoRequest;
 use App\Http\Requests\Academies\UpdateAcademyProfileRequest;
 use App\Http\Requests\Academies\UpdateAcademyTerminologyRequest;
 use App\Http\Requests\Academies\UpdateAcademyThemeRequest;
+use App\Models\Academy;
+use App\Payments\Contracts\PaymentProvider;
 use App\Platform\AuditLogger;
 use App\Support\AccessibleColor;
 use Illuminate\Http\RedirectResponse;
@@ -22,11 +24,12 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 use Throwable;
 
 class AcademyBrandingController extends Controller
 {
-    public function edit(AcademyContext $context): Response
+    public function edit(AcademyContext $context, PaymentProvider $provider): Response
     {
         Gate::authorize('manage', $context->academy());
 
@@ -48,11 +51,15 @@ class AcademyBrandingController extends Controller
                     'collect_guardian_information' => $context->academy()->collect_guardian_information,
                 ],
                 'bank_details' => [
+                    'bank_code' => $context->academy()->bank_code,
                     'bank_name' => $context->academy()->bank_name,
                     'account_name' => $context->academy()->bank_account_name,
                     'account_number' => $context->academy()->bank_account_number,
                 ],
+                'settlement' => $this->settlement($context->academy()),
             ],
+            'uses_paystack' => filled(config('services.paystack.secret_key')),
+            'banks' => $this->banks($provider),
         ]);
     }
 
@@ -154,9 +161,41 @@ class AcademyBrandingController extends Controller
         AcademyContext $context,
         UpdateAcademyBankDetails $updateBankDetails,
     ): RedirectResponse {
-        $updateBankDetails->handle($context->academy(), $request->user(), $request->validated(), $request);
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Bank details updated.']);
+        $academy = $context->academy();
+        $updateBankDetails->handle($academy, $request->user(), $request->validated(), $request, $request->usesPaystack());
+        $academy->refresh();
+        if ($academy->paystack_subaccount_status === 'failed' || $academy->paystack_subaccount_error !== null) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Bank details saved, but Paystack did not accept the settlement account. Online payments stay off until it does.']);
+        } else {
+            Inertia::flash('toast', ['type' => 'success', 'message' => 'Bank details updated.']);
+        }
 
         return back();
+    }
+
+    /** @return array<string, mixed> */
+    private function settlement(Academy $academy): array
+    {
+        return [
+            'status' => $academy->paystack_subaccount_status,
+            'subaccount_code' => $academy->paystack_subaccount_code,
+            'error' => $academy->paystack_subaccount_error,
+            'synced_at' => $academy->paystack_subaccount_synced_at?->toIso8601String(),
+            'accepts_online_payments' => $academy->acceptsOnlinePayments(),
+        ];
+    }
+
+    /** @return list<array{code: string, name: string}> */
+    private function banks(PaymentProvider $provider): array
+    {
+        if (! filled(config('services.paystack.secret_key'))) {
+            return [];
+        }
+        try {
+            return $provider->banks();
+        } catch (RuntimeException) {
+            // The form shows a retry message; the list is cached once Paystack answers.
+            return [];
+        }
     }
 }

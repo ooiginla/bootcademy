@@ -82,7 +82,7 @@ class PublicStoreController extends Controller
             'outstanding' => Money::fromMinor($outstandingMinor), 'processing_fee' => Money::fromMinor($fee),
             'online_total' => Money::fromMinor($outstandingMinor + $fee)],
             'payment_preference' => $order->payment_preference,
-            'paystack_ready' => filled(config('services.paystack.secret_key')),
+            'paystack_ready' => $academy->acceptsOnlinePayments(),
             'bank_details' => ['bank_name' => $academy->bank_name, 'account_name' => $academy->bank_account_name, 'account_number' => $academy->bank_account_number],
         ]);
     }
@@ -95,6 +95,8 @@ class PublicStoreController extends Controller
         PaystackFeeCalculator $fees,
     ): JsonResponse {
         [$website, , $order] = $this->authorizedOrder($request, $subdomain, $token);
+        $academy = $website->academy;
+        abort_unless($academy->acceptsOnlinePayments(), 422, 'Online payment is not available for this academy yet. Please use bank transfer.');
         $paymentEmail = strtolower(trim((string) $request->input('email', $order->customer_email)));
         $request->merge(['email' => $paymentEmail]);
         $request->validate(['email' => ['required', 'email:rfc', 'max:254']]);
@@ -104,10 +106,12 @@ class PublicStoreController extends Controller
         $alreadyPaid = (int) $order->payments()->where('status', 'verified')->sum('amount_minor');
         $base = max(0, $order->total_minor - $alreadyPaid);
         abort_if($base === 0, 422, 'This order is already paid.');
-        $surcharge = $fees->surcharge($website->academy, $base);
+        $breakdown = $fees->breakdown($academy, $base);
+        $surcharge = $breakdown['surcharge'];
         $charged = $base + $surcharge;
+        $subaccount = (string) $academy->paystack_subaccount_code;
         $existing = $order->payments()->where('method', 'paystack')->where('status', 'pending')
-            ->where('amount_minor', $base)->where('charged_amount_minor', $charged)
+            ->where('amount_minor', $base)->where('charged_amount_minor', $charged)->where('subaccount_code', $subaccount)
             ->where('created_at', '>=', now()->subMinutes(30))->whereNotNull('access_code')->latest()->first();
         if ($existing !== null) {
             return $this->paymentResponse($request, $subdomain, $token, $existing);
@@ -118,13 +122,15 @@ class PublicStoreController extends Controller
             'academy_id' => $order->academy_id, 'reference' => $reference, 'method' => 'paystack',
             'status' => 'pending', 'currency' => $order->currency, 'amount_minor' => $base,
             'surcharge_minor' => $surcharge, 'charged_amount_minor' => $charged,
+            'platform_fee_minor' => $breakdown['platform_fee'], 'paystack_fee_estimate_minor' => $breakdown['paystack_fee'],
+            'subaccount_code' => $subaccount,
             'received_on' => now()->toDateString(), 'notes' => 'Initialized from the public academy store.',
         ]);
         try {
             $initialized = $provider->initialize($paymentEmail, $charged, $order->currency, $reference, [
                 'academy_id' => $order->academy_id, 'store_order_id' => $order->id,
                 'store_order_number' => $order->number, 'store_order_payment_id' => $payment->id,
-            ]);
+            ], ['subaccount' => $subaccount, 'transaction_charge' => $surcharge]);
             $payment->update(['access_code' => $initialized['access_code'], 'initialized_at' => now()]);
         } catch (RuntimeException $exception) {
             $payment->update(['status' => 'failed', 'failure_reason' => $exception->getMessage()]);
@@ -186,7 +192,7 @@ class PublicStoreController extends Controller
             'categories' => $academy->productCategories()->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(['id', 'name', 'slug']),
             'locations' => $academy->branches()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'bank_details' => ['bank_name' => $academy->bank_name, 'account_name' => $academy->bank_account_name, 'account_number' => $academy->bank_account_number],
-            'paystack_ready' => filled(config('services.paystack.secret_key'))];
+            'paystack_ready' => $academy->acceptsOnlinePayments()];
     }
 
     /** @return array{AcademyWebsite, array<string, mixed>, StoreOrder} */

@@ -282,7 +282,7 @@ export default function StoreOrder({
                                                 Pay online with Paystack
                                             </h3>
                                             <p className="mt-1 text-sm text-slate-600">
-                                                Processing fee:{' '}
+                                                Online payment fee:{' '}
                                                 {formatCurrency(
                                                     order.currency,
                                                     order.processing_fee,

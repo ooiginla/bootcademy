@@ -44,9 +44,17 @@ describe('Academy settings', () => {
                         collect_guardian_information: false,
                     },
                     bank_details: {
+                        bank_code: null,
                         bank_name: 'Access Bank',
                         account_name: 'Example Academy Limited',
                         account_number: '0123456789',
+                    },
+                    settlement: {
+                        status: 'none',
+                        subaccount_code: null,
+                        error: null,
+                        synced_at: null,
+                        accepts_online_payments: false,
                     },
                 }}
             />,
@@ -81,6 +89,63 @@ describe('Academy settings', () => {
             screen.getByText(
                 'Collect guardian/contact information on applications',
             ),
+        ).toBeInTheDocument();
+    });
+
+    it('picks the bank from Paystack and shows the settlement subaccount', () => {
+        render(
+            <AcademyBranding
+                uses_paystack
+                banks={[
+                    { code: '044', name: 'Access Bank' },
+                    { code: '058', name: 'Guaranty Trust Bank' },
+                ]}
+                branding={{
+                    name: 'Example Academy',
+                    logo_url: null,
+                    theme: {
+                        primary: '#2563EB',
+                        primary_foreground: '#FFFFFF',
+                        secondary: '#0F766E',
+                        secondary_foreground: '#FFFFFF',
+                    },
+                    terminology: {
+                        singular: 'Student',
+                        plural: 'Students',
+                        staff_singular: 'Coach',
+                        staff_plural: 'Coaches',
+                        guardian_singular: 'Guardian',
+                        guardian_plural: 'Guardians',
+                        collect_guardian_information: true,
+                    },
+                    bank_details: {
+                        bank_code: '058',
+                        bank_name: 'Guaranty Trust Bank',
+                        account_name: 'EXAMPLE ACADEMY LTD',
+                        account_number: '0123456789',
+                    },
+                    settlement: {
+                        status: 'active',
+                        subaccount_code: 'ACCT_abc123',
+                        error: null,
+                        synced_at: '2026-11-12T10:00:00+00:00',
+                        accepts_online_payments: true,
+                    },
+                }}
+            />,
+        );
+
+        expect(screen.getByLabelText('Bank')).toHaveValue('058');
+        expect(screen.getByLabelText('Account name')).toHaveValue(
+            'EXAMPLE ACADEMY LTD',
+        );
+        expect(screen.getByLabelText('Account name')).toHaveAttribute(
+            'readonly',
+        );
+        expect(screen.getByText('ACCT_abc123')).toBeInTheDocument();
+        expect(screen.getByText('Active')).toBeInTheDocument();
+        expect(
+            screen.getByText(/settle straight to this account/),
         ).toBeInTheDocument();
     });
 });

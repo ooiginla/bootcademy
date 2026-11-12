@@ -36,10 +36,15 @@ class SettleOnlinePayment
 
             return $intent->fresh();
         }
-        if (($providerData['reference'] ?? null) !== $intent->reference
+        // A split payment must have gone to the academy subaccount it was opened for.
+        $paidSubaccount = data_get($providerData, 'subaccount.subaccount_code');
+        $subaccountMismatch = $intent->subaccount_code !== null && is_string($paidSubaccount) && $paidSubaccount !== ''
+            && $paidSubaccount !== $intent->subaccount_code;
+        if ($subaccountMismatch
+            || ($providerData['reference'] ?? null) !== $intent->reference
             || (int) ($providerData['amount'] ?? -1) !== $intent->charged_amount_minor
             || strtoupper((string) ($providerData['currency'] ?? '')) !== $intent->currency) {
-            $intent->update(['status' => 'review_required', 'failure_reason' => 'Provider amount, currency or reference did not match the payment intent.']);
+            $intent->update(['status' => 'review_required', 'failure_reason' => 'Provider amount, currency, reference or subaccount did not match the payment intent.']);
             throw new RuntimeException('The verified transaction did not match the expected payment.');
         }
 
@@ -58,6 +63,7 @@ class SettleOnlinePayment
                 'method' => AcademyPaymentMethod::Paystack, 'provider' => 'paystack', 'status' => AcademyPaymentStatus::Verified,
                 'currency' => $intent->currency, 'amount_minor' => $intent->base_amount_minor,
                 'gross_amount_minor' => $intent->charged_amount_minor, 'customer_fee_minor' => $intent->surcharge_minor,
+                'platform_fee_minor' => $intent->platform_fee_minor,
                 'provider_fee_minor' => isset($providerData['fees']) ? (int) $providerData['fees'] : null,
                 'unallocated_minor' => 0, 'received_on' => now()->toDateString(),
                 'external_reference' => $intent->reference, 'notes' => 'Verified online through Paystack.',

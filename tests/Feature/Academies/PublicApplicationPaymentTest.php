@@ -308,7 +308,12 @@ class PublicApplicationPaymentTest extends TestCase
         $this->assertSame($response->json('reference'), $intent->reference);
         Http::assertSent(fn ($request): bool => $request['amount'] === $intent->charged_amount_minor
             && $request['email'] === 'applicant@example.com'
-            && $request['reference'] === $intent->reference);
+            && $request['reference'] === $intent->reference
+            // The academy subaccount receives exactly the fee; the surcharge stays with the platform.
+            && $request['subaccount'] === 'ACCT_public-payments'
+            && $request['transaction_charge'] === $intent->surcharge_minor
+            && $request['bearer'] === 'account');
+        $this->assertSame('ACCT_public-payments', $intent->subaccount_code);
 
         $intent->update(['status' => 'failed', 'failure_reason' => 'Card declined.']);
         $this->get(route('public.academy.application-complete', [
@@ -605,7 +610,10 @@ class PublicApplicationPaymentTest extends TestCase
 
     private function offering(string $subdomain = 'public-payments'): array
     {
-        $academy = Academy::factory()->create();
+        $academy = Academy::factory()->create([
+            'bank_code' => '058', 'bank_name' => 'Guaranty Trust Bank', 'bank_account_number' => '0123456789',
+            'paystack_subaccount_code' => 'ACCT_'.$subdomain, 'paystack_subaccount_status' => 'active',
+        ]);
         $website = AcademyWebsite::query()->create([
             'academy_id' => $academy->id, 'subdomain' => $subdomain,
             'theme_key' => 'launch', 'is_published' => true, 'sections' => [],
