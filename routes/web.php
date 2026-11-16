@@ -34,6 +34,7 @@ use App\Http\Controllers\Academies\ScholarshipController;
 use App\Http\Controllers\Academies\StoreController;
 use App\Http\Controllers\Academies\SubscriptionController;
 use App\Http\Controllers\Academies\TrainingSessionController;
+use App\Http\Controllers\MarketingPageController;
 use App\Http\Controllers\Platform\AcademyBrandingController as PlatformAcademyBrandingController;
 use App\Http\Controllers\Platform\AcademyPurgeController;
 use App\Http\Controllers\Platform\AcademySubscriptionController as PlatformAcademySubscriptionController;
@@ -68,6 +69,12 @@ Route::get('/', function () {
         ],
     ]);
 })->name('home');
+
+foreach (config('marketing.pages') as $page => $path) {
+    Route::get($path, MarketingPageController::class)
+        ->defaults('page', $page)
+        ->name('marketing.'.$page);
+}
 
 Route::prefix('sites/{subdomain}')->group(function (): void {
     Route::get('/', [PublicAcademyWebsiteController::class, 'home'])->name('public.academy.home');

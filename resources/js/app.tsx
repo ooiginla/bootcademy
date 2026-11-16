@@ -14,6 +14,8 @@ void createInertiaApp({
         switch (true) {
             case name === 'welcome':
                 return null;
+            case name.startsWith('marketing/'):
+                return null;
             case name === 'academies/onboarding':
                 return null;
             case name === 'academies/accept-invitation':

@@ -59,7 +59,7 @@ describe('Bootcademy marketing homepage', () => {
 
         expect(
             screen.getByRole('heading', {
-                name: /Run your academy\. Grow with clarity\./i,
+                name: /Academy management software that runs the whole academy\./i,
             }),
         ).toBeVisible();
         expect(screen.getByText('₦25,000')).toBeVisible();

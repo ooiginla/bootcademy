@@ -40,11 +40,11 @@ type Plan = {
 type Seo = { canonical_url: string; image_url: string };
 
 const navigation = [
-    ['Product', '#product'],
-    ['Features', '#features'],
-    ['Who it is for', '#academies'],
+    ['Product', '/academy-management-software'],
+    ['Features', '/features'],
+    ['For sports', '/sports-academy-management-software'],
+    ['Free website', '/features/academy-website'],
     ['Pricing', '#pricing'],
-    ['FAQ', '#faq'],
 ] as const;
 
 const featureGroups = [
@@ -53,36 +53,63 @@ const featureGroups = [
         'Keep applicant, learner, guardian, instructor, branch and programme records connected from the first enquiry onward.',
         UsersRound,
         'bg-[#EAF5FD] text-[#0878D1]',
+        '/features/admissions-and-enrolment',
     ],
     [
         'Fees and payments',
         'Issue invoices, offer installments, verify Paystack payments, track balances and preserve a complete payment history.',
         CreditCard,
         'bg-[#FFF0E6] text-[#E85F00]',
+        '/features/fees-invoicing-payments',
     ],
     [
         'Sessions and attendance',
         'Plan physical or virtual sessions, assign instructors and capture a mobile-friendly attendance register.',
         CalendarCheck2,
         'bg-[#E8F9F7] text-[#078A85]',
+        '/features/programmes-cohorts-branches',
     ],
     [
         'Expenses and visibility',
         'Record expenses, vendors and categories, then compare collections, outstanding fees and operations by branch.',
         WalletCards,
         'bg-[#F1EEFF] text-[#6246B5]',
+        '/features/inventory-expenses-analytics',
     ],
     [
-        'Your academy website',
-        'Publish a branded academy website, programme pages and an application journey using your academy colours and logo.',
+        'Free academy website',
+        'Publish your branded academy website, programme pages, branches and online registration journey at no extra website fee.',
         Globe2,
         'bg-[#EAF5FD] text-[#0878D1]',
+        '/features/academy-website',
     ],
     [
         'Roles and audit history',
         'Give owners, finance teams, branch managers and instructors the right access while recording important actions.',
         ShieldCheck,
         'bg-[#FFF0E6] text-[#E85F00]',
+        '/academy-management-software',
+    ],
+    [
+        'Scholarships and referrals',
+        'Administer sponsors, awards, waivers, referral codes, qualification and reward approval with a traceable history.',
+        Landmark,
+        'bg-[#E8F9F7] text-[#078A85]',
+        '/features/scholarships-referrals',
+    ],
+    [
+        'Inventory and storefront',
+        'Track products, variants, branch stock, transfers, public orders, payments and fulfilment from the same academy workspace.',
+        FileSpreadsheet,
+        'bg-[#F1EEFF] text-[#6246B5]',
+        '/features/inventory-expenses-analytics',
+    ],
+    [
+        'Analytics and exports',
+        'Review enrolment, attendance, collections, outstanding fees and expenses by branch and export authorised records.',
+        BarChart3,
+        'bg-[#EAF5FD] text-[#0878D1]',
+        '/features/inventory-expenses-analytics',
     ],
 ] as const;
 
@@ -256,31 +283,52 @@ export default function Welcome({ plans, seo }: { plans: Plan[]; seo: Seo }) {
     const [annual, setAnnual] = useState(false);
     const structuredData = {
         '@context': 'https://schema.org',
-        '@type': 'SoftwareApplication',
-        name: 'Bootcademy',
-        applicationCategory: 'BusinessApplication',
-        operatingSystem: 'Web',
-        url: seo.canonical_url,
-        description:
-            'Academy management software for learners, programmes, branches, attendance, fees, payments, expenses and branded academy websites.',
-        offers: plans.map((plan) => ({
-            '@type': 'Offer',
-            name: plan.name,
-            priceCurrency: plan.currency,
-            price: annual ? plan.annual_price : plan.monthly_price,
-        })),
+        '@graph': [
+            {
+                '@type': 'Organization',
+                name: 'Bootcademy',
+                url: seo.canonical_url,
+                logo: `${seo.canonical_url}images/bootcademy-mark.png`,
+            },
+            {
+                '@type': 'SoftwareApplication',
+                name: 'Bootcademy',
+                applicationCategory: 'BusinessApplication',
+                operatingSystem: 'Web',
+                url: seo.canonical_url,
+                description:
+                    'Academy management software with a free branded website, online registration, learners, programmes, branches, attendance, fees, payments, expenses, inventory and reporting.',
+                offers: plans.map((plan) => ({
+                    '@type': 'Offer',
+                    name: plan.name,
+                    priceCurrency: plan.currency,
+                    price: annual ? plan.annual_price : plan.monthly_price,
+                })),
+            },
+            {
+                '@type': 'FAQPage',
+                mainEntity: faqs.map(([question, answer]) => ({
+                    '@type': 'Question',
+                    name: question,
+                    acceptedAnswer: {
+                        '@type': 'Answer',
+                        text: answer,
+                    },
+                })),
+            },
+        ],
     };
 
     return (
         <>
-            <Head title="Academy Management Software for Sports, Schools & Training Centres">
+            <Head title="Academy Management Software with a Free Academy Website">
                 <meta
                     name="description"
-                    content="Bootcademy is academy management software for sports, education, language and skills academies. Manage applications, learners, attendance, fees, Paystack payments, expenses, branches and websites in one platform."
+                    content="Bootcademy is academy management software with a free branded website, online registration, admissions, programmes, branches, fees, payments, attendance, inventory, expenses and analytics."
                 />
                 <meta
                     name="keywords"
-                    content="academy management software, sports academy software, student management system Nigeria, training academy app, attendance and fee management, football academy management software, learning centre software"
+                    content="academy management software, free academy website, sports academy software, online academy registration, fee management system, football academy management software, multi branch academy software"
                 />
                 <meta
                     name="robots"
@@ -292,11 +340,11 @@ export default function Welcome({ plans, seo }: { plans: Plan[]; seo: Seo }) {
                 <meta property="og:site_name" content="Bootcademy" />
                 <meta
                     property="og:title"
-                    content="Bootcademy · Every Academy. One Platform."
+                    content="Bootcademy · Run Your Entire Academy in One Platform"
                 />
                 <meta
                     property="og:description"
-                    content="Run learners, programmes, attendance, finance, branches and your academy website from one secure operational platform."
+                    content="Get a free academy website and manage registration, admissions, learners, programmes, branches, fees, attendance, inventory and reporting in one platform."
                 />
                 <meta property="og:url" content={seo.canonical_url} />
                 <meta property="og:image" content={seo.image_url} />
@@ -307,7 +355,7 @@ export default function Welcome({ plans, seo }: { plans: Plan[]; seo: Seo }) {
                 />
                 <meta
                     name="twitter:description"
-                    content="Every academy. One operational platform."
+                    content="Free academy website plus complete academy management software."
                 />
                 <meta name="twitter:image" content={seo.image_url} />
                 <script type="application/ld+json">
@@ -421,20 +469,21 @@ export default function Welcome({ plans, seo }: { plans: Plan[]; seo: Seo }) {
                             <div>
                                 <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-4 py-2 text-xs font-black tracking-[0.08em] text-white/80 uppercase">
                                     <Sparkles className="size-3.5 text-[#12B8B0]" />{' '}
-                                    Built for subscription-based academies
+                                    Free academy website · Multiple branches
                                 </p>
                                 <h1 className="mt-7 max-w-3xl text-5xl leading-[0.98] font-black tracking-[-0.055em] text-balance sm:text-6xl lg:text-7xl">
-                                    Run your academy.{' '}
+                                    Academy management software that{' '}
                                     <span className="text-[#FF8A3D]">
-                                        Grow with clarity.
+                                        runs the whole academy.
                                     </span>
                                 </h1>
                                 <p className="mt-7 max-w-2xl text-lg leading-8 text-white/68">
-                                    Bootcademy is the academy management
-                                    software that connects applications,
-                                    learners, programmes, attendance, payments,
-                                    expenses, staff and branches—without the
-                                    spreadsheet chaos.
+                                    Launch your academy website, accept online
+                                    registrations and manage admissions,
+                                    learners, instructors, programmes, cohorts,
+                                    branches, fees, payments, attendance,
+                                    inventory, expenses and analytics in one
+                                    connected platform.
                                 </p>
                                 <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                                     <Link
@@ -445,21 +494,21 @@ export default function Welcome({ plans, seo }: { plans: Plan[]; seo: Seo }) {
                                     >
                                         {auth.user
                                             ? 'Open your workspace'
-                                            : 'Start your academy workspace'}{' '}
+                                            : 'Start running your academy'}{' '}
                                         <ArrowRight className="size-4" />
                                     </Link>
                                     <a
-                                        href="#pricing"
+                                        href="/features"
                                         className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/8 px-7 py-4 text-sm font-black text-white transition hover:bg-white/12"
                                     >
-                                        View pricing
+                                        Explore every feature
                                     </a>
                                 </div>
                                 <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-xs font-bold text-white/55">
                                     {[
-                                        'Multi-branch ready',
-                                        'Paystack verified',
-                                        'Role-based access',
+                                        'Free branded website included',
+                                        'Multiple branches supported',
+                                        'Online registration and payments',
                                     ].map((item) => (
                                         <span
                                             key={item}
@@ -601,9 +650,10 @@ export default function Welcome({ plans, seo }: { plans: Plan[]; seo: Seo }) {
                             </div>
                             <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                                 {featureGroups.map(
-                                    ([title, text, Icon, tone]) => (
-                                        <article
+                                    ([title, text, Icon, tone, href]) => (
+                                        <Link
                                             key={title}
+                                            href={href}
                                             className="group rounded-3xl border border-[#071D49]/7 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-[#071D49]/7"
                                         >
                                             <span
@@ -617,7 +667,11 @@ export default function Welcome({ plans, seo }: { plans: Plan[]; seo: Seo }) {
                                             <p className="mt-3 text-sm leading-6 text-[#071D49]/60">
                                                 {text}
                                             </p>
-                                        </article>
+                                            <span className="mt-5 inline-flex items-center gap-2 text-xs font-black text-[#0878D1]">
+                                                Learn more
+                                                <ArrowRight className="size-3.5 transition group-hover:translate-x-1" />
+                                            </span>
+                                        </Link>
                                     ),
                                 )}
                             </div>
