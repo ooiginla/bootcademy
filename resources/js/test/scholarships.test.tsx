@@ -1,9 +1,13 @@
+import type { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import Scholarships from '@/pages/academies/scholarships';
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
+    Link: ({ children, href }: { children: ReactNode; href: string }) => (
+        <a href={href}>{children}</a>
+    ),
     useForm: (data: object) => ({
         data,
         errors: {},

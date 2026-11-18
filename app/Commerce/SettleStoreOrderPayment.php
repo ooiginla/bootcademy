@@ -79,6 +79,12 @@ class SettleStoreOrderPayment
                 'payment_status' => $paid >= $order->total_minor ? 'paid' : 'partially_paid',
                 'paid_at' => $paid >= $order->total_minor ? now() : null,
             ]);
+            if ($paid >= $order->total_minor) {
+                $order->couponRedemptions()->where('status', 'applied')->update([
+                    'status' => 'redeemed',
+                    'redeemed_at' => now(),
+                ]);
+            }
 
             return $payment->fresh(['order', 'academy']);
         }, 3);

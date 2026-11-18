@@ -17,10 +17,29 @@ class PaystackFeeCalculator
     /** @return array{platform_fee: int, paystack_fee: int, surcharge: int} */
     public function breakdown(Academy $academy, int $baseMinor): array
     {
+        return $this->breakdownFor($this->rule($academy), $baseMinor);
+    }
+
+    /**
+     * The same calculation for a subscription payment to the platform. Uses the platform's
+     * default fee; per-academy overrides only apply to payments from parents.
+     *
+     * @return array{platform_fee: int, paystack_fee: int, surcharge: int}
+     */
+    public function subscriptionBreakdown(int $baseMinor): array
+    {
+        return $this->breakdownFor($this->rule(null), $baseMinor);
+    }
+
+    /**
+     * @param  array{basis_points: int, fixed_minor: int, cap_minor: int|null, waiver_threshold_minor: int|null, platform_basis_points: int, platform_fixed_minor: int}  $rule
+     * @return array{platform_fee: int, paystack_fee: int, surcharge: int}
+     */
+    private function breakdownFor(array $rule, int $baseMinor): array
+    {
         if ($baseMinor <= 0) {
             return ['platform_fee' => 0, 'paystack_fee' => 0, 'surcharge' => 0];
         }
-        $rule = $this->rule($academy);
         $platformFee = (int) round($baseMinor * $rule['platform_basis_points'] / 10000) + $rule['platform_fixed_minor'];
         $paystackFee = $this->paystackFee($rule, $baseMinor + $platformFee);
 
@@ -38,18 +57,20 @@ class PaystackFeeCalculator
      *
      * @return array{basis_points: int, fixed_minor: int, cap_minor: int|null, waiver_threshold_minor: int|null, platform_basis_points: int, platform_fixed_minor: int}
      */
-    public function rule(Academy $academy): array
+    public function rule(?Academy $academy): array
     {
         $settings = PlatformSetting::current();
-        $hasOverride = $academy->platform_fee_basis_points !== null || $academy->platform_fee_fixed_minor !== null;
+        $override = $academy !== null && ($academy->platform_fee_basis_points !== null || $academy->platform_fee_fixed_minor !== null)
+            ? $academy
+            : null;
 
         return [
             'basis_points' => $settings->paystack_fee_basis_points,
             'fixed_minor' => $settings->paystack_fee_fixed_minor,
             'cap_minor' => $settings->paystack_fee_cap_minor,
             'waiver_threshold_minor' => $settings->paystack_fee_waiver_threshold_minor,
-            'platform_basis_points' => $hasOverride ? (int) $academy->platform_fee_basis_points : $settings->platform_fee_basis_points,
-            'platform_fixed_minor' => $hasOverride ? (int) $academy->platform_fee_fixed_minor : $settings->platform_fee_fixed_minor,
+            'platform_basis_points' => $override !== null ? (int) $override->platform_fee_basis_points : $settings->platform_fee_basis_points,
+            'platform_fixed_minor' => $override !== null ? (int) $override->platform_fee_fixed_minor : $settings->platform_fee_fixed_minor,
         ];
     }
 

@@ -293,7 +293,7 @@ class StoreController extends Controller
     {
         $this->authorizeAccess($context);
         $data = $this->orderData($request, $context);
-        $result = $place->handle($context->academy(), $data, $request->user(), 'admin');
+        $result = $place->handle($context->academy(), $data, $request->user(), 'admin', $request);
         $order = $result['order'];
         if (filled($data['amount_paid'] ?? null)) {
             $manage->recordPayment($order, Money::toMinor($data['amount_paid']), $data['payment_method'], $data['received_on'], $data['payment_reference'] ?? null, null, $request->user());

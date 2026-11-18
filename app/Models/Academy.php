@@ -220,6 +220,18 @@ class Academy extends Model
         return $this->hasMany(ScholarshipAward::class);
     }
 
+    /** @return HasMany<Coupon, $this> */
+    public function coupons(): HasMany
+    {
+        return $this->hasMany(Coupon::class);
+    }
+
+    /** @return HasMany<CouponRedemption, $this> */
+    public function couponRedemptions(): HasMany
+    {
+        return $this->hasMany(CouponRedemption::class);
+    }
+
     /** @return HasMany<OnlinePaymentIntent, $this> */
     public function onlinePaymentIntents(): HasMany
     {
@@ -320,6 +332,24 @@ class Academy extends Model
     public function subscription(): HasOne
     {
         return $this->hasOne(AcademySubscription::class);
+    }
+
+    /** @return HasMany<AcademySubscriptionPeriod, $this> */
+    public function subscriptionPeriods(): HasMany
+    {
+        return $this->hasMany(AcademySubscriptionPeriod::class);
+    }
+
+    /** @return HasMany<SubscriptionPayment, $this> */
+    public function subscriptionPayments(): HasMany
+    {
+        return $this->hasMany(SubscriptionPayment::class);
+    }
+
+    /** @return HasMany<AcademyPlanPrice, $this> */
+    public function planPrices(): HasMany
+    {
+        return $this->hasMany(AcademyPlanPrice::class);
     }
 
     /** True when parents can pay online: Paystack is configured and the academy has an active subaccount. */

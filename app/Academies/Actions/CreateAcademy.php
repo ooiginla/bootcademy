@@ -8,11 +8,14 @@ use App\Models\Academy;
 use App\Models\AcademyMembership;
 use App\Models\AcademyWebsite;
 use App\Models\User;
+use App\Platform\Subscriptions\StartAcademyTrial;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class CreateAcademy
 {
+    public function __construct(private readonly StartAcademyTrial $startTrial) {}
+
     /**
      * @param  array{name: string, academy_type: string, country_code: string, timezone: string, currency: string}  $data
      */
@@ -44,6 +47,8 @@ class CreateAcademy
                 'is_published' => true,
                 'sections' => [],
             ]);
+
+            $this->startTrial->handle($academy);
 
             return $academy;
         });

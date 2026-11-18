@@ -2,18 +2,23 @@
 
 namespace App\Academies\Actions;
 
+use App\Enums\EnrollmentStatus;
 use App\Models\Academy;
 use App\Models\Enrollment;
 use App\Models\Player;
 use App\Models\User;
 use App\Platform\AuditLogger;
+use App\Platform\Subscriptions\PlanLimits;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class SaveEnrollment
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly PlanLimits $limits,
+    ) {}
 
     /** @param array<string, mixed> $data */
     public function handle(
@@ -61,7 +66,12 @@ class SaveEnrollment
             $data['programme_cycle_id'] = $offering?->id;
         }
 
+        $wasActive = $wasExisting && $enrollment->status === EnrollmentStatus::Active;
         $enrollment->fill($data);
+        // A new enrolment without a status is stored as active.
+        if (($enrollment->status ?? EnrollmentStatus::Active) === EnrollmentStatus::Active && ! $wasActive) {
+            $this->limits->ensureCanActivatePlayer($academy, $player, $enrollment);
+        }
         if ($scopeChanged || $enrollment->uniqueness_key !== null) {
             $enrollment->uniqueness_key = implode(':', [$player->id, $programmeId, $cycleId ?? 0, $branchId ?? 0]);
         }

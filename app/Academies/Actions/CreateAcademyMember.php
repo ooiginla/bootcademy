@@ -8,13 +8,17 @@ use App\Models\Academy;
 use App\Models\AcademyMembership;
 use App\Models\User;
 use App\Platform\AuditLogger;
+use App\Platform\Subscriptions\PlanLimits;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class CreateAcademyMember
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly PlanLimits $limits,
+    ) {}
 
     /** @param list<int> $branchIds */
     public function handle(
@@ -28,6 +32,10 @@ class CreateAcademyMember
         Request $request,
     ): AcademyMembership {
         [$user, $membership] = DB::transaction(function () use ($academy, $actor, $name, $email, $password, $role, $branchIds, $request): array {
+            if ($role !== AcademyRole::Guardian) {
+                $this->limits->ensureCanAddStaff($academy);
+            }
+
             $user = User::create([
                 'name' => trim($name),
                 'email' => mb_strtolower(trim($email)),

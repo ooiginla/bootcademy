@@ -10,6 +10,7 @@ use App\Models\AcademyInvitation;
 use App\Models\User;
 use App\Notifications\AcademyInvitationNotification;
 use App\Platform\AuditLogger;
+use App\Platform\Subscriptions\PlanLimits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -18,7 +19,10 @@ use Illuminate\Validation\ValidationException;
 
 class InviteAcademyMember
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly PlanLimits $limits,
+    ) {}
 
     /** @param list<int> $branchIds */
     public function handle(
@@ -49,6 +53,10 @@ class InviteAcademyMember
                 ->lockForUpdate()
                 ->exists()) {
                 throw ValidationException::withMessages(['email' => 'A valid invitation is already pending for that email address.']);
+            }
+
+            if ($role !== AcademyRole::Guardian) {
+                $this->limits->ensureCanAddStaff($academy);
             }
 
             $invitation = $academy->invitations()->create([

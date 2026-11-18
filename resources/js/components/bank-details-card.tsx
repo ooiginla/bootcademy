@@ -34,7 +34,15 @@ const statusLabels: Record<string, string> = {
     none: 'Not set up',
 };
 
-export function SettlementPanel({ settlement }: { settlement: Settlement }) {
+export function SettlementPanel({
+    settlement,
+    activeText = 'Online payments from parents settle straight to this account. Paystack pays out on its normal settlement schedule.',
+    inactiveText = 'Online payments are off until Paystack accepts this academy’s settlement account. Parents can still pay by bank transfer.',
+}: {
+    settlement: Settlement;
+    activeText?: string;
+    inactiveText?: string;
+}) {
     const active = settlement.status === 'active';
 
     return (
@@ -75,9 +83,7 @@ export function SettlementPanel({ settlement }: { settlement: Settlement }) {
                 </div>
             </dl>
             <p className="mt-3 text-xs text-muted-foreground">
-                {active
-                    ? 'Online payments from parents settle straight to this account. Paystack pays out on its normal settlement schedule.'
-                    : 'Online payments are off until Paystack accepts this academy’s settlement account. Parents can still pay by bank transfer.'}
+                {active ? activeText : inactiveText}
             </p>
             {settlement.error && (
                 <p className="mt-2 text-xs text-destructive" role="alert">
@@ -94,12 +100,20 @@ export default function BankDetailsCard({
     settlement,
     usesPaystack,
     banks,
+    action = '/app/settings/academy/bank-details',
+    title = 'Bank details',
+    description,
+    settlementText,
 }: {
     academyName: string;
     bankDetails: BankDetails;
     settlement: Settlement;
     usesPaystack: boolean;
     banks: Array<{ code: string; name: string }>;
+    action?: string;
+    title?: string;
+    description?: string;
+    settlementText?: { active: string; inactive: string };
 }) {
     const form = useForm({
         bank_code: bankDetails.bank_code ?? '',
@@ -134,7 +148,7 @@ export default function BankDetailsCard({
 
     function submit(event: FormEvent) {
         event.preventDefault();
-        form.patch('/app/settings/academy/bank-details', {
+        form.patch(action, {
             preserveScroll: true,
         });
     }
@@ -144,12 +158,13 @@ export default function BankDetailsCard({
             <CardHeader>
                 <div className="flex items-center gap-2">
                     <Landmark className="size-5 text-primary" />
-                    <h2 className="font-semibold">Bank details</h2>
+                    <h2 className="font-semibold">{title}</h2>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                    {usesPaystack
-                        ? 'Online payments from parents settle to this account, and it is shown in bank-transfer instructions. The account name is confirmed with the bank when you save.'
-                        : 'Set the academy account used in bank-transfer payment instructions. All three fields are required when bank details are configured.'}
+                    {description ??
+                        (usesPaystack
+                            ? 'Online payments from parents settle to this account, and it is shown in bank-transfer instructions. The account name is confirmed with the bank when you save.'
+                            : 'Set the academy account used in bank-transfer payment instructions. All three fields are required when bank details are configured.')}
                 </p>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -322,7 +337,13 @@ export default function BankDetailsCard({
                             : 'Save bank details'}
                     </Button>
                 </form>
-                {usesPaystack && <SettlementPanel settlement={settlement} />}
+                {usesPaystack && (
+                    <SettlementPanel
+                        settlement={settlement}
+                        activeText={settlementText?.active}
+                        inactiveText={settlementText?.inactive}
+                    />
+                )}
             </CardContent>
         </Card>
     );

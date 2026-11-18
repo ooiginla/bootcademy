@@ -10,18 +10,21 @@ use App\Models\StockMovement;
 use App\Models\StoreOrder;
 use App\Models\StoreOrderItem;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class PlaceStoreOrder
 {
+    public function __construct(private readonly ApplyCoupon $coupons) {}
+
     /** @param array<string, mixed> $data
      * @return array{order: StoreOrder, token: string}
      */
-    public function handle(Academy $academy, array $data, ?User $actor = null, string $source = 'storefront'): array
+    public function handle(Academy $academy, array $data, ?User $actor = null, string $source = 'storefront', ?Request $request = null): array
     {
-        return DB::transaction(function () use ($academy, $data, $actor, $source): array {
+        return DB::transaction(function () use ($academy, $data, $actor, $source, $request): array {
             $branchId = isset($data['branch_id']) ? (int) $data['branch_id'] : null;
             $lines = [];
             $subtotal = 0;
@@ -74,6 +77,16 @@ class PlaceStoreOrder
                     // Inventory is always reserved from the academy's combined branch stock.
                     $this->reserveAcrossBranches($academy, $item, $variant, $line['quantity'], null, $actor);
                 }
+            }
+
+            if (filled($data['coupon_code'] ?? null)) {
+                $this->coupons->toStoreOrder(
+                    $academy,
+                    $order,
+                    (string) $data['coupon_code'],
+                    (string) ($data['customer_email'] ?? ''),
+                    $request ?? request(),
+                );
             }
 
             return ['order' => $order->load('items.allocations'), 'token' => $token];

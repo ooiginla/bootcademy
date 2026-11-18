@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import {
     Building2,
     GraduationCap,
@@ -8,6 +8,7 @@ import {
     Plus,
     ReceiptText,
     Search,
+    TicketPercent,
     UsersRound,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -1387,6 +1388,11 @@ export default function Scholarships({
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                        <Button asChild variant="outline">
+                            <Link href="/app/coupons">
+                                <TicketPercent className="size-4" /> Coupons
+                            </Link>
+                        </Button>
                         <SponsorDialog />
                         <SchemeDialog
                             sponsors={sponsors}

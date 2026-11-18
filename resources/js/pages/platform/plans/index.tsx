@@ -13,6 +13,9 @@ type Plan = {
     quarterly_ngn: number;
     annual_ngn: number;
     active_player_limit: number;
+    branch_limit: number | null;
+    staff_account_limit: number | null;
+    is_recommended: boolean;
     is_active: boolean;
     subscriptions_count: number;
 };
@@ -37,8 +40,9 @@ export default function PlatformPlans({ plans }: { plans: Plan[] }) {
                         Plans and entitlements
                     </h1>
                     <p className="mt-2 text-sm text-muted-foreground">
-                        Configurable catalog values are stored in minor currency
-                        units; no payment is charged from this screen.
+                        List prices and limits academies see on their
+                        subscription page. Every feature is included in every
+                        plan except the ones you switch on per plan.
                     </p>
                 </div>
                 <div className="grid gap-4 lg:grid-cols-3">
@@ -49,15 +53,24 @@ export default function PlatformPlans({ plans }: { plans: Plan[] }) {
                                     <span className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
                                         <ReceiptText className="size-5" />
                                     </span>
-                                    <Badge
-                                        variant={
-                                            plan.is_active
-                                                ? 'default'
-                                                : 'secondary'
-                                        }
-                                    >
-                                        {plan.is_active ? 'Active' : 'Inactive'}
-                                    </Badge>
+                                    <div className="flex gap-2">
+                                        {plan.is_recommended && (
+                                            <Badge variant="outline">
+                                                Most popular
+                                            </Badge>
+                                        )}
+                                        <Badge
+                                            variant={
+                                                plan.is_active
+                                                    ? 'default'
+                                                    : 'secondary'
+                                            }
+                                        >
+                                            {plan.is_active
+                                                ? 'Active'
+                                                : 'Inactive'}
+                                        </Badge>
+                                    </div>
                                 </div>
                                 <h2 className="mt-5 text-xl font-semibold">
                                     {plan.name}
@@ -72,11 +85,18 @@ export default function PlatformPlans({ plans }: { plans: Plan[] }) {
                                 <div className="mt-5 space-y-2 text-sm text-muted-foreground">
                                     <p>
                                         {plan.active_player_limit.toLocaleString()}{' '}
-                                        active learners
+                                        active players
                                     </p>
                                     <p>
-                                        {plan.subscriptions_count} assigned
-                                        academies
+                                        {plan.branch_limit ?? 'Unlimited'}{' '}
+                                        branches ·{' '}
+                                        {plan.staff_account_limit ??
+                                            'Unlimited'}{' '}
+                                        staff accounts
+                                    </p>
+                                    <p>
+                                        {plan.subscriptions_count} academies on
+                                        this plan
                                     </p>
                                     <p>Quarterly {ngn(plan.quarterly_ngn)}</p>
                                     <p>Annual {ngn(plan.annual_ngn)}</p>

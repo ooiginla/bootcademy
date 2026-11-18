@@ -26,17 +26,38 @@ import {
     X,
 } from 'lucide-react';
 import { useState } from 'react';
-import { currencySymbol, formatMoneyAmount } from '@/lib/money';
+import type {
+    BillingInterval,
+    PlanComparison,
+    PlanDetails,
+} from '@/types/subscription';
+import {
+    intervalLabels,
+    intervalMonths,
+    limitLabel,
+    minorToMoney,
+} from '@/types/subscription';
+
+const intervalUnits: Record<BillingInterval, string> = {
+    monthly: 'month',
+    quarterly: 'quarter',
+    annual: 'year',
+};
+
+/** The discount a longer period gives over paying monthly, from the stored prices. */
+function savingsPercent(plans: Plan[], interval: BillingInterval) {
+    const plan = plans[0];
+    if (!plan || interval === 'monthly') return null;
+    const full = plan.prices.monthly * intervalMonths[interval];
+    const actual = plan.prices[interval];
+    if (full <= 0 || actual >= full) return null;
+
+    return Math.round(((full - actual) / full) * 100);
+}
 import { dashboard, login, register } from '@/routes';
 
-type Plan = {
-    code: string;
-    name: string;
-    currency: string;
-    monthly_price: string;
-    annual_price: string;
-    active_player_limit: number;
-};
+type Plan = PlanDetails & { prices: Record<BillingInterval, number> };
+type Trial = { days: number; plan_name: string | null };
 type Seo = { canonical_url: string; image_url: string };
 
 const navigation = [
@@ -277,10 +298,20 @@ function ProductPreview() {
     );
 }
 
-export default function Welcome({ plans, seo }: { plans: Plan[]; seo: Seo }) {
+export default function Welcome({
+    plans,
+    comparison,
+    trial,
+    seo,
+}: {
+    plans: Plan[];
+    comparison: PlanComparison;
+    trial: Trial;
+    seo: Seo;
+}) {
     const { auth } = usePage().props;
     const [menuOpen, setMenuOpen] = useState(false);
-    const [annual, setAnnual] = useState(false);
+    const [interval, setInterval] = useState<BillingInterval>('monthly');
     const structuredData = {
         '@context': 'https://schema.org',
         '@graph': [
@@ -302,7 +333,7 @@ export default function Welcome({ plans, seo }: { plans: Plan[]; seo: Seo }) {
                     '@type': 'Offer',
                     name: plan.name,
                     priceCurrency: plan.currency,
-                    price: annual ? plan.annual_price : plan.monthly_price,
+                    price: (plan.prices.monthly / 100).toFixed(2),
                 })),
             },
             {
@@ -810,113 +841,235 @@ export default function Welcome({ plans, seo }: { plans: Plan[]; seo: Seo }) {
                                     Choose room for your academy to grow.
                                 </h2>
                                 <p className="mt-5 text-base leading-7 text-[#071D49]/65">
-                                    All prices are in Nigerian naira. Annual
-                                    billing includes the configured 10%
-                                    discount.
+                                    Every plan includes every feature. Plans
+                                    differ in how many players, branches and
+                                    staff accounts they hold. All prices are in
+                                    Nigerian naira.
                                 </p>
-                                <div className="mt-7 inline-flex rounded-full border border-[#071D49]/10 bg-white p-1 shadow-sm">
-                                    <button
-                                        type="button"
-                                        onClick={() => setAnnual(false)}
-                                        className={`rounded-full px-5 py-2.5 text-sm font-black ${!annual ? 'bg-[#071D49] text-white' : 'text-[#071D49]/55'}`}
-                                    >
-                                        Monthly
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setAnnual(true)}
-                                        className={`rounded-full px-5 py-2.5 text-sm font-black ${annual ? 'bg-[#071D49] text-white' : 'text-[#071D49]/55'}`}
-                                    >
-                                        Annual{' '}
-                                        <span className="text-[#12B8B0]">
-                                            save 10%
-                                        </span>
-                                    </button>
-                                </div>
-                            </div>
-                            {plans.length > 0 ? (
-                                <div className="mt-12 grid gap-5 lg:grid-cols-3">
-                                    {plans.map((plan) => {
-                                        const featured =
-                                            plan.code === 'professional';
-                                        const amount = annual
-                                            ? plan.annual_price
-                                            : plan.monthly_price;
+                                {trial.plan_name && (
+                                    <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#12B8B0]/10 px-4 py-2 text-sm font-black text-[#0B7F7A]">
+                                        <Sparkles className="size-4" />
+                                        Start with a free {trial.days}-day{' '}
+                                        {trial.plan_name} trial
+                                    </p>
+                                )}
+                                <div
+                                    role="radiogroup"
+                                    aria-label="Billing period"
+                                    className="mt-7 inline-flex flex-wrap justify-center rounded-full border border-[#071D49]/10 bg-white p-1 shadow-sm"
+                                >
+                                    {(
+                                        Object.keys(
+                                            intervalLabels,
+                                        ) as BillingInterval[]
+                                    ).map((key) => {
+                                        const savings = savingsPercent(
+                                            plans,
+                                            key,
+                                        );
+
                                         return (
-                                            <article
-                                                key={plan.code}
-                                                className={`relative flex flex-col rounded-[2rem] border p-7 sm:p-8 ${featured ? 'border-[#0878D1] bg-[#071D49] text-white shadow-2xl shadow-[#071D49]/20' : 'border-[#071D49]/8 bg-white'}`}
+                                            <button
+                                                key={key}
+                                                type="button"
+                                                role="radio"
+                                                aria-checked={interval === key}
+                                                onClick={() => setInterval(key)}
+                                                className={`rounded-full px-5 py-2.5 text-sm font-black ${interval === key ? 'bg-[#071D49] text-white' : 'text-[#071D49]/55'}`}
                                             >
-                                                {featured && (
-                                                    <span className="absolute -top-3 left-7 rounded-full bg-[#FF6900] px-4 py-1.5 text-[10px] font-black tracking-[0.12em] text-white uppercase">
-                                                        Most popular
+                                                {intervalLabels[key]}
+                                                {savings !== null && (
+                                                    <span className="text-[#12B8B0]">
+                                                        {' '}
+                                                        save {savings}%
                                                     </span>
                                                 )}
-                                                <h3 className="text-xl font-black">
-                                                    {plan.name}
-                                                </h3>
-                                                <p
-                                                    className={`mt-2 text-sm ${featured ? 'text-white/55' : 'text-[#071D49]/55'}`}
-                                                >
-                                                    Up to{' '}
-                                                    {plan.active_player_limit.toLocaleString()}{' '}
-                                                    active learners
-                                                </p>
-                                                <div className="mt-7 flex items-end gap-2">
-                                                    <span className="text-4xl font-black tracking-[-0.05em]">
-                                                        {currencySymbol(
-                                                            plan.currency,
-                                                        )}
-                                                        {formatMoneyAmount(
-                                                            amount,
-                                                        ).replace('.00', '')}
-                                                    </span>
-                                                    <span
-                                                        className={`pb-1 text-xs ${featured ? 'text-white/50' : 'text-[#071D49]/45'}`}
-                                                    >
-                                                        /
-                                                        {annual
-                                                            ? 'year'
-                                                            : 'month'}
-                                                    </span>
-                                                </div>
-                                                <div
-                                                    className={`my-7 h-px ${featured ? 'bg-white/10' : 'bg-[#071D49]/8'}`}
-                                                />
-                                                <ul className="space-y-3 text-sm">
-                                                    {[
-                                                        `${plan.active_player_limit.toLocaleString()} active learner records`,
-                                                        'Secure academy workspace',
-                                                        'Plan modules configured in your account',
-                                                        'Records preserved when your plan changes',
-                                                    ].map((item) => (
-                                                        <li
-                                                            key={item}
-                                                            className="flex gap-2.5"
-                                                        >
-                                                            <Check className="mt-0.5 size-4 shrink-0 text-[#12B8B0]" />
-                                                            <span
-                                                                className={
-                                                                    featured
-                                                                        ? 'text-white/75'
-                                                                        : 'text-[#071D49]/65'
-                                                                }
-                                                            >
-                                                                {item}
-                                                            </span>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                                <Link
-                                                    href={register()}
-                                                    className={`mt-8 inline-flex items-center justify-center rounded-full px-5 py-3.5 text-sm font-black ${featured ? 'bg-[#FF6900] text-white' : 'bg-[#0878D1] text-white'}`}
-                                                >
-                                                    Choose {plan.name}
-                                                </Link>
-                                            </article>
+                                            </button>
                                         );
                                     })}
                                 </div>
+                            </div>
+                            {plans.length > 0 ? (
+                                <>
+                                    <div className="mt-12 grid gap-5 lg:grid-cols-3">
+                                        {plans.map((plan) => {
+                                            const featured =
+                                                plan.is_recommended;
+                                            const muted = featured
+                                                ? 'text-white/55'
+                                                : 'text-[#071D49]/55';
+                                            const items: Array<
+                                                [string, boolean]
+                                            > = [
+                                                [
+                                                    limitLabel(
+                                                        plan.active_player_limit,
+                                                        'active learners',
+                                                    ),
+                                                    true,
+                                                ],
+                                                [
+                                                    limitLabel(
+                                                        plan.branch_limit,
+                                                        plan.branch_limit === 1
+                                                            ? 'branch'
+                                                            : 'branches',
+                                                    ),
+                                                    true,
+                                                ],
+                                                [
+                                                    limitLabel(
+                                                        plan.staff_account_limit,
+                                                        'staff accounts',
+                                                    ),
+                                                    true,
+                                                ],
+                                                ...Object.entries(
+                                                    comparison.flags,
+                                                ).map(
+                                                    ([key, label]): [
+                                                        string,
+                                                        boolean,
+                                                    ] => [
+                                                        label,
+                                                        plan.flags[key] ===
+                                                            true,
+                                                    ],
+                                                ),
+                                                ...(plan.migration_support
+                                                    ? [
+                                                          [
+                                                              `Data migration: ${plan.migration_support}`,
+                                                              true,
+                                                          ] as [
+                                                              string,
+                                                              boolean,
+                                                          ],
+                                                      ]
+                                                    : []),
+                                                ...(plan.support_level
+                                                    ? [
+                                                          [
+                                                              `Support: ${plan.support_level}`,
+                                                              true,
+                                                          ] as [
+                                                              string,
+                                                              boolean,
+                                                          ],
+                                                      ]
+                                                    : []),
+                                            ];
+
+                                            return (
+                                                <article
+                                                    key={plan.code}
+                                                    className={`relative flex flex-col rounded-[2rem] border p-7 sm:p-8 ${featured ? 'border-[#0878D1] bg-[#071D49] text-white shadow-2xl shadow-[#071D49]/20' : 'border-[#071D49]/8 bg-white'}`}
+                                                >
+                                                    {featured && (
+                                                        <span className="absolute -top-3 left-7 rounded-full bg-[#FF6900] px-4 py-1.5 text-[10px] font-black tracking-[0.12em] text-white uppercase">
+                                                            Most popular
+                                                        </span>
+                                                    )}
+                                                    <h3 className="text-xl font-black">
+                                                        {plan.name}
+                                                    </h3>
+                                                    {plan.description && (
+                                                        <p
+                                                            className={`mt-2 text-sm ${muted}`}
+                                                        >
+                                                            {plan.description}
+                                                        </p>
+                                                    )}
+                                                    <div className="mt-7 flex items-end gap-2">
+                                                        <span className="text-4xl font-black tracking-[-0.05em]">
+                                                            {minorToMoney(
+                                                                plan.currency,
+                                                                plan.prices[
+                                                                    interval
+                                                                ],
+                                                            )}
+                                                        </span>
+                                                        <span
+                                                            className={`pb-1 text-xs ${featured ? 'text-white/50' : 'text-[#071D49]/45'}`}
+                                                        >
+                                                            /
+                                                            {
+                                                                intervalUnits[
+                                                                    interval
+                                                                ]
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                    <div
+                                                        className={`my-7 h-px ${featured ? 'bg-white/10' : 'bg-[#071D49]/8'}`}
+                                                    />
+                                                    <ul className="space-y-3 text-sm">
+                                                        {items.map(
+                                                            ([
+                                                                item,
+                                                                included,
+                                                            ]) => (
+                                                                <li
+                                                                    key={item}
+                                                                    className="flex gap-2.5"
+                                                                >
+                                                                    {included ? (
+                                                                        <Check className="mt-0.5 size-4 shrink-0 text-[#12B8B0]" />
+                                                                    ) : (
+                                                                        <X
+                                                                            className={`mt-0.5 size-4 shrink-0 ${featured ? 'text-white/30' : 'text-[#071D49]/25'}`}
+                                                                        />
+                                                                    )}
+                                                                    <span
+                                                                        className={
+                                                                            included
+                                                                                ? featured
+                                                                                    ? 'text-white/75'
+                                                                                    : 'text-[#071D49]/65'
+                                                                                : featured
+                                                                                  ? 'text-white/35 line-through'
+                                                                                  : 'text-[#071D49]/35 line-through'
+                                                                        }
+                                                                    >
+                                                                        {item}
+                                                                    </span>
+                                                                </li>
+                                                            ),
+                                                        )}
+                                                    </ul>
+                                                    <Link
+                                                        href={register()}
+                                                        className={`mt-8 inline-flex items-center justify-center rounded-full px-5 py-3.5 text-sm font-black ${featured ? 'bg-[#FF6900] text-white' : 'bg-[#0878D1] text-white'}`}
+                                                    >
+                                                        {trial.plan_name
+                                                            ? 'Start free trial'
+                                                            : `Choose ${plan.name}`}
+                                                    </Link>
+                                                </article>
+                                            );
+                                        })}
+                                    </div>
+                                    {comparison.included.length > 0 && (
+                                        <div className="mt-8 rounded-[2rem] border border-[#071D49]/8 bg-white p-7 sm:p-8">
+                                            <h3 className="text-lg font-black">
+                                                Included in every plan
+                                            </h3>
+                                            <ul className="mt-5 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                                                {comparison.included.map(
+                                                    (feature) => (
+                                                        <li
+                                                            key={feature}
+                                                            className="flex gap-2.5 text-[#071D49]/65"
+                                                        >
+                                                            <Check className="mt-0.5 size-4 shrink-0 text-[#12B8B0]" />
+                                                            {feature}
+                                                        </li>
+                                                    ),
+                                                )}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </>
                             ) : (
                                 <div className="mx-auto mt-12 max-w-2xl rounded-3xl border border-[#071D49]/8 bg-white p-8 text-center">
                                     <p className="font-black">
@@ -929,10 +1082,10 @@ export default function Welcome({ plans, seo }: { plans: Plan[]; seo: Seo }) {
                                 </div>
                             )}
                             <p className="mt-6 text-center text-xs leading-5 text-[#071D49]/45">
-                                Plan modules and limits are data-driven and may
-                                be configured for the academy. Payment
-                                processing, messaging and other external service
-                                charges are separate.
+                                Limits stop new additions only; your records are
+                                kept if you change plan. Payment processing,
+                                messaging and other external service charges are
+                                separate.
                             </p>
                         </div>
                     </section>

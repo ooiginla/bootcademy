@@ -98,6 +98,7 @@ export default function Store({
         delivery_method: 'pickup',
         delivery_address: '',
         notes: '',
+        coupon_code: '',
         payment_option: paystack_ready
             ? 'paystack'
             : bank_details.account_number
@@ -747,6 +748,35 @@ export default function Store({
                                                 Your order is created when you
                                                 continue. Stock and all totals
                                                 are rechecked by the server.
+                                            </p>
+                                        </div>
+                                        <div className="grid gap-2 rounded-xl border bg-slate-50 p-4">
+                                            <label
+                                                htmlFor="store-coupon"
+                                                className="text-sm font-bold"
+                                            >
+                                                Coupon code
+                                            </label>
+                                            <input
+                                                id="store-coupon"
+                                                value={
+                                                    checkout.data.coupon_code
+                                                }
+                                                onChange={(event) =>
+                                                    checkout.setData(
+                                                        'coupon_code',
+                                                        event.target.value.toUpperCase(),
+                                                    )
+                                                }
+                                                maxLength={64}
+                                                autoComplete="off"
+                                                placeholder="Enter code (optional)"
+                                                className="h-10 rounded-lg border bg-white px-3 text-sm font-semibold uppercase"
+                                            />
+                                            <p className="text-xs text-slate-500">
+                                                The discount is validated and
+                                                shown on your order before any
+                                                Paystack payment.
                                             </p>
                                         </div>
                                         {paystack_ready && (

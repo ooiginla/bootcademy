@@ -45,6 +45,7 @@ class PublicStoreController extends Controller
         $academy = $website->academy;
         $data = $request->validate(['recaptcha_token' => [new PassesRecaptcha('store_order', $request->ip())], 'customer_name' => ['required', 'string', 'max:160'], 'customer_email' => ['required', 'email:rfc', 'max:254'],
             'customer_phone' => ['required', 'string', 'max:40'], 'member_name' => ['nullable', 'string', 'max:160'],
+            'coupon_code' => ['nullable', 'string', 'max:64'],
             'payment_option' => ['nullable', Rule::in(['paystack', 'bank_transfer', 'pay_later'])],
             'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->withoutTrashed()->where(fn (Builder $q) => $q->where('academy_id', $academy->id)->where('is_active', true))],
             'delivery_method' => ['required', Rule::in(['pickup', 'delivery'])], 'delivery_address' => ['nullable', 'required_if:delivery_method,delivery', 'string', 'max:1000'], 'notes' => ['nullable', 'string', 'max:1000'],
@@ -57,7 +58,7 @@ class PublicStoreController extends Controller
         if ($data['payment_option'] === 'bank_transfer' && blank($academy->bank_account_number)) {
             throw ValidationException::withMessages(['payment_option' => 'Bank transfer is not configured for this academy.']);
         }
-        $result = $place->handle($academy, $data);
+        $result = $place->handle($academy, $data, null, 'storefront', $request);
         $audit->record('academy.store.order.created', null, $academy, $result['order'], ['source' => 'storefront'], $request);
 
         return redirect($common['base_url'].'/store/orders/'.$result['token'].'?payment='.urlencode($data['payment_option']))
@@ -76,7 +77,8 @@ class PublicStoreController extends Controller
 
         return Inertia::render('public/store-order', $common + ['order_token' => $token, 'order' => ['number' => $order->number, 'customer_name' => $order->customer_name,
             'customer_email' => $order->customer_email, 'member_name' => $order->member_name,
-            'currency' => $order->currency, 'total' => Money::fromMinor($order->total_minor), 'paid' => Money::fromMinor((int) $order->payments->where('status', 'verified')->sum('amount_minor')),
+            'currency' => $order->currency, 'subtotal' => Money::fromMinor($order->subtotal_minor),
+            'discount' => Money::fromMinor($order->discount_minor), 'total' => Money::fromMinor($order->total_minor), 'paid' => Money::fromMinor((int) $order->payments->where('status', 'verified')->sum('amount_minor')),
             'payment_status' => $order->payment_status, 'fulfillment_status' => $order->fulfillment_status, 'delivery_method' => $order->delivery_method,
             'branch' => $order->branch?->name, 'items' => $order->items->map(fn ($item) => ['name' => $item->product_name, 'variant' => $item->variant_name, 'quantity' => $item->quantity, 'unit_price' => Money::fromMinor($item->unit_price_minor)]),
             'outstanding' => Money::fromMinor($outstandingMinor), 'processing_fee' => Money::fromMinor($fee),

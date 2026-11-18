@@ -24,6 +24,7 @@ import {
     Globe2,
     WalletCards,
     ShoppingBag,
+    TicketPercent,
     UsersRound,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
@@ -55,144 +56,158 @@ export function AppSidebar() {
     const coachTerminology = useCoachTerminology();
     const { academy, academies, platform, pending_invitations_count } =
         usePage().props;
-    const mainNavItems: NavItem[] = academy
+    const locked = academy !== null && !academy.subscription.has_access;
+    const mainNavItems: NavItem[] = locked
         ? [
               {
-                  title: 'Dashboard',
-                  href: '/app/dashboard',
-                  icon: LayoutDashboard,
+                  title: 'Subscription',
+                  href: '/app/settings/subscription',
+                  icon: ReceiptText,
               },
-              {
-                  title: 'Branches',
-                  href: '/app/branches',
-                  icon: MapPin,
-              },
-              {
-                  title: 'Programmes',
-                  href: '/app/programmes',
-                  icon: BookOpenText,
-              },
-              {
-                  title: 'Sessions',
-                  href: '/app/sessions',
-                  icon: CalendarDays,
-              },
-              ...(academy.can_manage_finance
-                  ? [
-                        {
-                            title: 'Academy cycles',
-                            href: '/app/finance/cycles',
-                            icon: CalendarRange,
-                        },
-                        {
-                            title: 'Invoices',
-                            href: '/app/finance/invoices',
-                            icon: ReceiptText,
-                        },
-                        {
-                            title: 'Payments',
-                            href: '/app/finance/payments',
-                            icon: Banknote,
-                        },
-                        {
-                            title: 'Expenses',
-                            href: '/app/finance/expenses',
-                            icon: WalletCards,
-                        },
-                        {
-                            title: 'Scholarships',
-                            href: '/app/scholarships',
-                            icon: HandHeart,
-                        },
-                    ]
-                  : []),
-              ...(academy.can_manage
-                  ? [
-                        {
-                            title: 'Applications',
-                            href: '/app/applications',
-                            icon: ClipboardList,
-                        },
-                        {
-                            title: terminology.plural,
-                            href: '/app/players',
-                            icon: UserRound,
-                        },
-                        {
-                            title: coachTerminology.plural,
-                            href: '/app/coaches',
-                            icon: Dumbbell,
-                        },
-                        {
-                            title: 'Reviews',
-                            href: '/app/reviews',
-                            icon: MessageSquareQuote,
-                        },
-                    ]
-                  : []),
-              ...(academy.can_manage || academy.can_manage_finance
-                  ? [
-                        {
-                            title: 'Communications',
-                            href: '/app/communications',
-                            icon: Megaphone,
-                        },
-                    ]
-                  : []),
-              ...(academy.can_manage || academy.can_manage_finance
-                  ? [
-                        {
-                            title: 'Referrals',
-                            href: '/app/referrals',
-                            icon: Share2,
-                        },
-                        {
-                            title: 'Store',
-                            href: '/app/store',
-                            icon: ShoppingBag,
-                        },
-                    ]
-                  : []),
-              ...(academy.can_manage
-                  ? [
-                        {
-                            title: 'Settings',
-                            href: '/app/settings/academy',
-                            icon: Settings2,
-                        },
-                        {
-                            title: 'Public website',
-                            href: '/app/settings/website',
-                            icon: Globe2,
-                        },
-                        {
-                            title: 'Team and roles',
-                            href: '/app/settings/team',
-                            icon: UsersRound,
-                        },
-                        {
-                            title: 'API integrations',
-                            href: '/app/settings/api',
-                            icon: Braces,
-                        },
-                        {
-                            title: 'Subscription',
-                            href: '/app/settings/subscription',
-                            icon: ReceiptText,
-                        },
-                    ]
-                  : []),
-              ...(academy.can_view_audit_log
-                  ? [
-                        {
-                            title: 'Audit log',
-                            href: '/app/settings/audit-log',
-                            icon: ScrollText,
-                        },
-                    ]
-                  : []),
           ]
-        : [];
+        : academy
+          ? [
+                {
+                    title: 'Dashboard',
+                    href: '/app/dashboard',
+                    icon: LayoutDashboard,
+                },
+                {
+                    title: 'Branches',
+                    href: '/app/branches',
+                    icon: MapPin,
+                },
+                {
+                    title: 'Programmes',
+                    href: '/app/programmes',
+                    icon: BookOpenText,
+                },
+                {
+                    title: 'Sessions',
+                    href: '/app/sessions',
+                    icon: CalendarDays,
+                },
+                ...(academy.can_manage_finance
+                    ? [
+                          {
+                              title: 'Academy cycles',
+                              href: '/app/finance/cycles',
+                              icon: CalendarRange,
+                          },
+                          {
+                              title: 'Invoices',
+                              href: '/app/finance/invoices',
+                              icon: ReceiptText,
+                          },
+                          {
+                              title: 'Payments',
+                              href: '/app/finance/payments',
+                              icon: Banknote,
+                          },
+                          {
+                              title: 'Expenses',
+                              href: '/app/finance/expenses',
+                              icon: WalletCards,
+                          },
+                          {
+                              title: 'Scholarships',
+                              href: '/app/scholarships',
+                              icon: HandHeart,
+                          },
+                          {
+                              title: 'Coupons',
+                              href: '/app/coupons',
+                              icon: TicketPercent,
+                          },
+                      ]
+                    : []),
+                ...(academy.can_manage
+                    ? [
+                          {
+                              title: 'Applications',
+                              href: '/app/applications',
+                              icon: ClipboardList,
+                          },
+                          {
+                              title: terminology.plural,
+                              href: '/app/players',
+                              icon: UserRound,
+                          },
+                          {
+                              title: coachTerminology.plural,
+                              href: '/app/coaches',
+                              icon: Dumbbell,
+                          },
+                          {
+                              title: 'Reviews',
+                              href: '/app/reviews',
+                              icon: MessageSquareQuote,
+                          },
+                      ]
+                    : []),
+                ...(academy.can_manage || academy.can_manage_finance
+                    ? [
+                          {
+                              title: 'Communications',
+                              href: '/app/communications',
+                              icon: Megaphone,
+                          },
+                      ]
+                    : []),
+                ...(academy.can_manage || academy.can_manage_finance
+                    ? [
+                          {
+                              title: 'Referrals',
+                              href: '/app/referrals',
+                              icon: Share2,
+                          },
+                          {
+                              title: 'Store',
+                              href: '/app/store',
+                              icon: ShoppingBag,
+                          },
+                      ]
+                    : []),
+                ...(academy.can_manage
+                    ? [
+                          {
+                              title: 'Settings',
+                              href: '/app/settings/academy',
+                              icon: Settings2,
+                          },
+                          {
+                              title: 'Public website',
+                              href: '/app/settings/website',
+                              icon: Globe2,
+                          },
+                          {
+                              title: 'Team and roles',
+                              href: '/app/settings/team',
+                              icon: UsersRound,
+                          },
+                          {
+                              title: 'API integrations',
+                              href: '/app/settings/api',
+                              icon: Braces,
+                          },
+                          {
+                              title: 'Subscription',
+                              href: '/app/settings/subscription',
+                              icon: ReceiptText,
+                          },
+                      ]
+                    : []),
+                ...(academy.can_view_audit_log
+                    ? [
+                          {
+                              title: 'Audit log',
+                              href: '/app/settings/audit-log',
+                              icon: ScrollText,
+                          },
+                      ]
+                    : []),
+            ]
+          : [];
 
     if (pending_invitations_count > 0) {
         mainNavItems.push({
@@ -214,17 +229,24 @@ export function AppSidebar() {
             icon: ReceiptText,
         });
         mainNavItems.push({
+            title: 'Tenant subscriptions',
+            href: '/platform/subscriptions',
+            icon: Banknote,
+        });
+        mainNavItems.push({
             title: 'Platform settings',
             href: '/platform/settings',
             icon: Settings2,
         });
     }
 
-    const homeHref = academy
-        ? '/app/dashboard'
-        : platform.is_super_admin
-          ? '/platform/academies'
-          : '/app/onboarding';
+    const homeHref = locked
+        ? '/app/settings/subscription'
+        : academy
+          ? '/app/dashboard'
+          : platform.is_super_admin
+            ? '/platform/academies'
+            : '/app/onboarding';
 
     return (
         <Sidebar collapsible="icon" variant="inset">

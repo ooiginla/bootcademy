@@ -39,6 +39,12 @@ class AcademySubscription extends Model
         return $this->belongsTo(Plan::class);
     }
 
+    /** @return HasMany<AcademySubscriptionPeriod, $this> */
+    public function periods(): HasMany
+    {
+        return $this->hasMany(AcademySubscriptionPeriod::class);
+    }
+
     /** @return HasMany<SubscriptionEvent, $this> */
     public function events(): HasMany
     {

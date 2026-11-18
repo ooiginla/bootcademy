@@ -1,6 +1,8 @@
 import { Head, useForm } from '@inertiajs/react';
-import { CreditCard, Percent } from 'lucide-react';
+import { CreditCard, Percent, Sparkles } from 'lucide-react';
 import type { FormEvent } from 'react';
+import BankDetailsCard from '@/components/bank-details-card';
+import type { BankDetails, Settlement } from '@/components/bank-details-card';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -33,14 +35,40 @@ const platformFields: Field[] = [
     ['platform_fixed_fee', 'Fixed fee (₦)', 'e.g. 50.00'],
 ];
 
+type TrialSettings = {
+    trial_plan_id: number | null;
+    post_trial_plan_id: number | null;
+    trial_days: number;
+};
+
 export default function PlatformSettings({
     settings,
     paystack_configured,
+    trial,
+    plans,
+    bank_details,
+    settlement,
+    banks,
 }: {
     settings: Settings;
     paystack_configured: boolean;
+    trial: TrialSettings;
+    plans: Array<{ id: number; name: string }>;
+    bank_details: BankDetails;
+    settlement: Settlement;
+    banks: Array<{ code: string; name: string }>;
 }) {
     const form = useForm(settings);
+    const trialForm = useForm({
+        trial_plan_id: String(trial.trial_plan_id ?? ''),
+        post_trial_plan_id: String(trial.post_trial_plan_id ?? ''),
+        trial_days: String(trial.trial_days),
+    });
+
+    function submitTrial(event: FormEvent) {
+        event.preventDefault();
+        trialForm.patch('/platform/settings/trial', { preserveScroll: true });
+    }
 
     function submit(event: FormEvent) {
         event.preventDefault();
@@ -129,6 +157,129 @@ export default function PlatformSettings({
                         {form.processing ? 'Saving…' : 'Save fees'}
                     </Button>
                 </form>
+
+                <div className="mt-10 space-y-6">
+                    <div>
+                        <h2 className="text-xl font-semibold tracking-tight">
+                            Academy subscriptions
+                        </h2>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            Academies pay their plan price plus the online
+                            payment fee above. The plan price settles to your
+                            account below.
+                        </p>
+                    </div>
+                    {paystack_configured ? (
+                        <BankDetailsCard
+                            academyName="Your business"
+                            bankDetails={bank_details}
+                            settlement={settlement}
+                            usesPaystack
+                            banks={banks}
+                            action="/platform/settings/settlement-account"
+                            title="Subscription settlement account"
+                            description="Subscription payments from academies settle to this account. The account name is confirmed with the bank when you save."
+                            settlementText={{
+                                active: 'Subscription payments settle straight to this account. The online payment fee stays in your main Paystack balance.',
+                                inactive:
+                                    'Subscription payments stay in your main Paystack balance until Paystack accepts this account.',
+                            }}
+                        />
+                    ) : (
+                        <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                            Set the Paystack keys on this server to add a
+                            settlement account and take subscription payments.
+                        </p>
+                    )}
+                    <Card>
+                        <CardHeader>
+                            <h3 className="flex items-center gap-2 font-semibold">
+                                <Sparkles className="size-5 text-primary" />
+                                Free trial
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                                New academies start on the trial plan. When the
+                                trial ends without a payment they move to the
+                                plan after the trial, and only see the
+                                subscription page until they pay.
+                            </p>
+                        </CardHeader>
+                        <CardContent>
+                            <form
+                                onSubmit={submitTrial}
+                                className="grid gap-4 sm:grid-cols-[1fr_1fr_8rem_auto] sm:items-end"
+                            >
+                                {(
+                                    [
+                                        ['trial_plan_id', 'Trial plan'],
+                                        [
+                                            'post_trial_plan_id',
+                                            'Plan after the trial',
+                                        ],
+                                    ] as const
+                                ).map(([key, label]) => (
+                                    <div key={key} className="grid gap-2">
+                                        <Label htmlFor={key}>{label}</Label>
+                                        <select
+                                            id={key}
+                                            className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+                                            value={trialForm.data[key]}
+                                            onChange={(event) =>
+                                                trialForm.setData(
+                                                    key,
+                                                    event.target.value,
+                                                )
+                                            }
+                                        >
+                                            <option value="">
+                                                Select plan
+                                            </option>
+                                            {plans.map((plan) => (
+                                                <option
+                                                    key={plan.id}
+                                                    value={plan.id}
+                                                >
+                                                    {plan.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <InputError
+                                            message={trialForm.errors[key]}
+                                        />
+                                    </div>
+                                ))}
+                                <div className="grid gap-2">
+                                    <Label htmlFor="trial_days">Days</Label>
+                                    <Input
+                                        id="trial_days"
+                                        type="number"
+                                        min="1"
+                                        max="365"
+                                        value={trialForm.data.trial_days}
+                                        onChange={(event) =>
+                                            trialForm.setData(
+                                                'trial_days',
+                                                event.target.value,
+                                            )
+                                        }
+                                    />
+                                    <InputError
+                                        message={trialForm.errors.trial_days}
+                                    />
+                                </div>
+                                <Button
+                                    type="submit"
+                                    disabled={
+                                        trialForm.processing ||
+                                        !trialForm.isDirty
+                                    }
+                                >
+                                    Save
+                                </Button>
+                            </form>
+                        </CardContent>
+                    </Card>
+                </div>
             </main>
         </>
     );

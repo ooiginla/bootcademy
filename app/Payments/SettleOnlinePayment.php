@@ -76,7 +76,9 @@ class SettleOnlinePayment
                     ->where('academy_invoice_id', $invoice->id)->whereKey($planned['installment_id'])->lockForUpdate()->firstOrFail();
                 $available = $invoice->status === AcademyInvoiceStatus::Void
                     ? 0
-                    : max(0, $installment->amount_minor - $installment->paid_minor - $installment->written_off_minor);
+                    : max(0, $installment->amount_minor - ($installment->paid_minor - $installment->sponsor_paid_minor)
+                        - $installment->written_off_minor - $installment->scholarship_concession_minor - $installment->coupon_discount_minor
+                        - $installment->sponsor_responsibility_minor);
                 $allocated = min((int) $planned['amount_minor'], $available);
                 if ($allocated > 0) {
                     $payment->allocations()->create([
@@ -104,6 +106,8 @@ class SettleOnlinePayment
                 'verified_at' => now(),
                 'failure_reason' => $unallocated > 0 ? 'Part of this verified payment requires manual allocation.' : null,
             ]);
+            $intent->application->couponRedemptions()->where('online_payment_intent_id', $intent->id)
+                ->where('status', 'applied')->update(['status' => 'redeemed', 'redeemed_at' => now()]);
             $this->audit->record('academy.payment.online-verified', null, $intent->academy, $payment, [
                 'intent_id' => $intent->id, 'base_amount_minor' => $intent->base_amount_minor,
                 'surcharge_minor' => $intent->surcharge_minor, 'charged_amount_minor' => $intent->charged_amount_minor,

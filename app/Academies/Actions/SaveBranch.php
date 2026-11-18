@@ -6,12 +6,16 @@ use App\Models\Academy;
 use App\Models\Branch;
 use App\Models\User;
 use App\Platform\AuditLogger;
+use App\Platform\Subscriptions\PlanLimits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class SaveBranch
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly PlanLimits $limits,
+    ) {}
 
     /** @param array<string, mixed> $attributes */
     public function handle(
@@ -25,6 +29,11 @@ class SaveBranch
             $before = $branch?->only(array_keys($attributes));
             $branch ??= new Branch(['academy_id' => $academy->id]);
             abort_unless($branch->academy_id === $academy->id, 404);
+            $wasActive = $branch->exists && $branch->is_active;
+            $willBeActive = (bool) ($attributes['is_active'] ?? ($branch->exists ? $branch->is_active : true));
+            if ($willBeActive && ! $wasActive) {
+                $this->limits->ensureCanAddBranch($academy);
+            }
 
             $branch->fill($attributes);
             $branch->save();

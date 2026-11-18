@@ -41,6 +41,12 @@ export type ActiveAcademy = {
     can_manage_finance: boolean;
     can_view_audit_log: boolean;
     active_member_count: number;
+    subscription: {
+        state: 'trialing' | 'active' | 'lapsed' | 'suspended';
+        has_access: boolean;
+        plan_name: string | null;
+        ends_at: string | null;
+    };
     theme: AcademyTheme;
 };
 

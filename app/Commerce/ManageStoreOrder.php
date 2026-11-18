@@ -103,6 +103,7 @@ class ManageStoreOrder
                 }
             }
             $order->update(['fulfillment_status' => 'cancelled', 'cancelled_at' => now()]);
+            $order->couponRedemptions()->where('status', 'applied')->update(['status' => 'cancelled']);
         }, 3);
     }
 }

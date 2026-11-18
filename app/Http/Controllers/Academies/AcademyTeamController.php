@@ -14,6 +14,7 @@ use App\Http\Requests\Academies\InviteAcademyMemberRequest;
 use App\Http\Requests\Academies\UpdateAcademyMemberRequest;
 use App\Models\AcademyMembership;
 use App\Platform\AuditLogger;
+use App\Platform\Subscriptions\PlanLimits;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -148,6 +149,12 @@ class AcademyTeamController extends Controller
                     ->where('status', MembershipStatus::Active->value)
                     ->count() <= 1) {
                 throw ValidationException::withMessages(['status' => 'Every academy must retain an active Owner/Admin.']);
+            }
+
+            $isStaff = fn (AcademyRole $role): bool => $role !== AcademyRole::Guardian;
+            if ($nextStatus === MembershipStatus::Active && $isStaff($nextRole)
+                && ($membership->status !== MembershipStatus::Active || ! $isStaff($membership->role))) {
+                app(PlanLimits::class)->ensureCanAddStaff($context->academy(), 'status');
             }
 
             $before = [

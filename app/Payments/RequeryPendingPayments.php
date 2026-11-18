@@ -5,7 +5,9 @@ namespace App\Payments;
 use App\Commerce\SettleStoreOrderPayment;
 use App\Models\OnlinePaymentIntent;
 use App\Models\StoreOrderPayment;
+use App\Models\SubscriptionPayment;
 use App\Payments\Contracts\PaymentProvider;
+use App\Platform\Subscriptions\SettleSubscriptionPayment;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -27,6 +29,7 @@ class RequeryPendingPayments
         private readonly PaymentProvider $provider,
         private readonly SettleOnlinePayment $settleApplication,
         private readonly SettleStoreOrderPayment $settleStore,
+        private readonly SettleSubscriptionPayment $settleSubscription,
     ) {}
 
     /** @return array{checked: int, verified: int, expired: int} */
@@ -42,6 +45,10 @@ class RequeryPendingPayments
         $this->due(StoreOrderPayment::query()->where('method', 'paystack'))
             ->each(function (StoreOrderPayment $payment) use (&$totals, $request): void {
                 $this->check($payment, fn (array $data) => $this->settleStore->handle($payment, $data, $request), $totals);
+            });
+        $this->due(SubscriptionPayment::query()->where('provider', 'paystack'))
+            ->each(function (SubscriptionPayment $payment) use (&$totals, $request): void {
+                $this->check($payment, fn (array $data) => $this->settleSubscription->handle($payment, $data, $request), $totals);
             });
 
         return $totals;
@@ -70,7 +77,7 @@ class RequeryPendingPayments
      * @param  callable(array<string, mixed>): Model  $settle
      * @param  array{checked: int, verified: int, expired: int}  $totals
      */
-    private function check(OnlinePaymentIntent|StoreOrderPayment $record, callable $settle, array &$totals): void
+    private function check(OnlinePaymentIntent|StoreOrderPayment|SubscriptionPayment $record, callable $settle, array &$totals): void
     {
         $totals['checked']++;
         try {

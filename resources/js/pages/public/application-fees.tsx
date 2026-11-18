@@ -194,6 +194,7 @@ export default function PublicApplicationFees({
     const [submittedDialogOpen, setSubmittedDialogOpen] = useState(submitted);
     const [status, setStatus] = useState<PaymentStatus>('idle');
     const [message, setMessage] = useState('');
+    const [couponCode, setCouponCode] = useState('');
     const [paymentReference, setPaymentReference] = useState('');
     const stopped = useRef(false);
     const currency = offering.currency;
@@ -287,6 +288,7 @@ export default function PublicApplicationFees({
             ? Number(selectedPlanId)
             : null,
         cycle_fee_ids: selectedCycleFeeIds,
+        coupon_code: couponCode.trim() || null,
     });
 
     const pollVerification = async (
@@ -732,6 +734,32 @@ export default function PublicApplicationFees({
                                     <LockKeyhole className="size-3" /> Payment
                                     details are handled securely by Paystack
                                 </p>
+                                <div className="mt-5 border-t border-white/10 pt-5">
+                                    <label
+                                        htmlFor="application-coupon"
+                                        className="text-xs font-bold text-white/70"
+                                    >
+                                        Coupon code
+                                    </label>
+                                    <input
+                                        id="application-coupon"
+                                        value={couponCode}
+                                        onChange={(event) =>
+                                            setCouponCode(
+                                                event.target.value.toUpperCase(),
+                                            )
+                                        }
+                                        disabled={busy}
+                                        maxLength={64}
+                                        autoComplete="off"
+                                        placeholder="Enter code"
+                                        className="mt-2 h-10 w-full rounded-xl border border-white/15 bg-white/10 px-3 text-sm font-bold text-white uppercase placeholder:text-white/35 disabled:opacity-50"
+                                    />
+                                    <p className="mt-2 text-[11px] text-white/45">
+                                        Your discount is securely checked before
+                                        Paystack opens.
+                                    </p>
+                                </div>
                             </div>
                             <div className="rounded-3xl border bg-white p-5 text-xs leading-5 text-slate-500">
                                 A receipt will be sent to{' '}

@@ -120,6 +120,12 @@ class Application extends Model
         return $this->hasMany(OnlinePaymentIntent::class);
     }
 
+    /** @return HasMany<CouponRedemption, $this> */
+    public function couponRedemptions(): HasMany
+    {
+        return $this->hasMany(CouponRedemption::class);
+    }
+
     /** @return BelongsTo<Branch, $this> */
     public function branch(): BelongsTo
     {

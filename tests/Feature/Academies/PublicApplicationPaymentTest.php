@@ -11,6 +11,7 @@ use App\Models\Application;
 use App\Models\ApplicationIntake;
 use App\Models\Branch;
 use App\Models\Cohort;
+use App\Models\Coupon;
 use App\Models\OnlinePaymentIntent;
 use App\Models\Programme;
 use App\Models\ProgrammeCycle;
@@ -580,6 +581,61 @@ class PublicApplicationPaymentTest extends TestCase
             'application_id' => $application->id, 'purpose' => AcademyInvoicePurpose::Programme->value,
             'programme_cycle_payment_plan_id' => $flexible->id, 'status' => 'issued',
         ]);
+    }
+
+    public function test_coupon_reduces_the_server_amount_immediately_before_paystack(): void
+    {
+        Notification::fake();
+        config(['services.paystack.secret_key' => 'sk_test_secret']);
+        [$academy, $website, $offering] = $this->offering();
+        [$application, $token] = $this->submit($website, $offering);
+        $coupon = Coupon::query()->create([
+            'academy_id' => $academy->id,
+            'code' => 'TENOFF',
+            'name' => 'Ten percent off',
+            'discount_type' => 'percentage',
+            'percentage_basis_points' => 1000,
+            'currency' => 'NGN',
+            'applies_to' => ['application_fee', 'programme_fee'],
+            'max_redemptions' => 20,
+            'per_customer_limit' => 1,
+            'is_active' => true,
+            'created_by_user_id' => $academy->created_by_user_id,
+        ]);
+        Http::fake(fn ($request) => Http::response(['status' => true, 'data' => [
+            'access_code' => 'coupon-access-code',
+            'reference' => $request['reference'],
+        ]]));
+
+        $this->postJson(route('public.academy.payment-initialize', [$website->subdomain, $application->reference]), [
+            'token' => $token,
+            'selection' => 'initial',
+            'coupon_code' => 'tenoff',
+        ])->assertOk()->assertJsonPath('access_code', 'coupon-access-code');
+
+        $intent = OnlinePaymentIntent::query()->sole();
+        $this->assertSame(6300000, $intent->base_amount_minor);
+        $this->assertDatabaseHas('coupon_redemptions', [
+            'academy_id' => $academy->id,
+            'coupon_id' => $coupon->id,
+            'application_id' => $application->id,
+            'online_payment_intent_id' => $intent->id,
+            'eligible_amount_minor' => 7000000,
+            'discount_minor' => 700000,
+            'status' => 'applied',
+        ]);
+        $this->assertSame(700000, (int) $application->invoices()->sum('coupon_discount_minor'));
+        $this->assertSame(0, (int) $application->invoices()->sum('scholarship_concession_minor'));
+        Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/transaction/initialize')
+            && $request['amount'] === $intent->charged_amount_minor
+            && $request['metadata']['coupon_id'] === $coupon->id);
+
+        $this->postJson(route('public.academy.payment-initialize', [$website->subdomain, $application->reference]), [
+            'token' => $token,
+            'selection' => 'initial',
+            'coupon_code' => 'DIFFERENT',
+        ])->assertUnprocessable()->assertJsonValidationErrors('coupon_code');
+        $this->assertDatabaseCount('coupon_redemptions', 1);
     }
 
     /** @param array<string, mixed> $attributes */

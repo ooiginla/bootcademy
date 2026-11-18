@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Academies;
 use App\Academies\AcademyContext;
 use App\Http\Controllers\Controller;
 use App\Models\AcademyApiKey;
+use App\Platform\AcademyEntitlements;
 use App\Platform\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,6 +35,9 @@ class AcademyApiKeyController extends Controller
     {
         abort_unless($context->canManageAcademy(), 403);
         $validated = $request->validate(['name' => ['required', 'string', 'max:100']]);
+        if (! AcademyEntitlements::for($context->academy())->allows('api_access')) {
+            throw ValidationException::withMessages(['name' => 'API access is not included in your current plan. Upgrade your subscription to create API keys.']);
+        }
         $secret = 'aca_'.Str::lower(Str::random(72));
         $key = $context->academy()->apiKeys()->create([
             'created_by_user_id' => $request->user()->id,

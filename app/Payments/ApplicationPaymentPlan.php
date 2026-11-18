@@ -6,6 +6,7 @@ use App\Enums\AcademyInvoicePurpose;
 use App\Enums\AcademyInvoiceStatus;
 use App\Models\Academy;
 use App\Models\AcademyInvoice;
+use App\Models\AcademyInvoiceInstallment;
 use App\Models\Application;
 use App\Support\Money;
 use Illuminate\Validation\ValidationException;
@@ -26,11 +27,11 @@ class ApplicationPaymentPlan
         $cycleFeeInvoices = $invoices->whereNotNull('academy_cycle_fee_id')->values();
         $applicationBalance = $applicationInvoice?->balanceMinor() ?? 0;
         $programmeInstallment = $programmeInvoice?->installments->sortBy('sequence')->first(
-            fn ($installment): bool => $installment->amount_minor - $installment->paid_minor - $installment->written_off_minor > 0,
+            fn ($installment): bool => $this->personalInstallmentBalance($installment) > 0,
         );
         $programmeBalance = $programmeInstallment === null
             ? 0
-            : $programmeInstallment->amount_minor - $programmeInstallment->paid_minor - $programmeInstallment->written_off_minor;
+            : $this->personalInstallmentBalance($programmeInstallment);
         $cycleFeeBalances = $cycleFeeInvoices->map(function (AcademyInvoice $invoice): array {
             return [
                 'invoice' => $invoice,
@@ -91,10 +92,10 @@ class ApplicationPaymentPlan
             $allocations[] = ['invoice_id' => $applicationInvoice->id, 'installment_id' => $installment->id, 'amount_minor' => $applicationBalance, 'label' => 'Application fee'];
         }
         $programmeInstallment = $programmeInvoice?->installments->sortBy('sequence')->first(
-            fn ($installment): bool => $installment->amount_minor - $installment->paid_minor - $installment->written_off_minor > 0,
+            fn ($installment): bool => $this->personalInstallmentBalance($installment) > 0,
         );
         if ($programmeInvoice !== null && $programmeInstallment !== null) {
-            $balance = $programmeInstallment->amount_minor - $programmeInstallment->paid_minor - $programmeInstallment->written_off_minor;
+            $balance = $this->personalInstallmentBalance($programmeInstallment);
             $allocations[] = [
                 'invoice_id' => $programmeInvoice->id,
                 'installment_id' => $programmeInstallment->id,
@@ -107,7 +108,7 @@ class ApplicationPaymentPlan
             if ($installment === null) {
                 continue;
             }
-            $balance = $installment->amount_minor - $installment->paid_minor - $installment->written_off_minor;
+            $balance = $this->personalInstallmentBalance($installment);
             if ($balance > 0) {
                 $allocations[] = [
                     'invoice_id' => $invoice->id,
@@ -119,6 +120,14 @@ class ApplicationPaymentPlan
         }
 
         return $allocations;
+    }
+
+    private function personalInstallmentBalance(AcademyInvoiceInstallment $installment): int
+    {
+        $studentPaid = $installment->paid_minor - $installment->sponsor_paid_minor;
+
+        return max(0, $installment->amount_minor - $studentPaid - $installment->written_off_minor
+            - $installment->scholarship_concession_minor - $installment->coupon_discount_minor - $installment->sponsor_responsibility_minor);
     }
 
     /** @param array<string, mixed> $extra

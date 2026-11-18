@@ -64,6 +64,8 @@ export default function StoreOrder({
         customer_email: string;
         member_name: string | null;
         currency: string;
+        subtotal: string;
+        discount: string;
         total: string;
         paid: string;
         outstanding: string;
@@ -228,6 +230,29 @@ export default function StoreOrder({
                             </div>
                         ))}
                     </div>
+                    {Number(order.discount) > 0 && (
+                        <div className="mt-6 space-y-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
+                            <div className="flex justify-between">
+                                <span>Subtotal</span>
+                                <span>
+                                    {formatCurrency(
+                                        order.currency,
+                                        order.subtotal,
+                                    )}
+                                </span>
+                            </div>
+                            <div className="flex justify-between font-bold text-emerald-700">
+                                <span>Coupon discount</span>
+                                <span>
+                                    −
+                                    {formatCurrency(
+                                        order.currency,
+                                        order.discount,
+                                    )}
+                                </span>
+                            </div>
+                        </div>
+                    )}
                     <div className="mt-6 grid gap-3 rounded-2xl bg-slate-50 p-5 sm:grid-cols-3">
                         <div>
                             <p className="text-xs text-slate-500 uppercase">

@@ -40,6 +40,8 @@ const props = {
         customer_email: 'parent@example.test',
         member_name: 'Player Name',
         currency: 'NGN',
+        subtotal: '12500.00',
+        discount: '0.00',
         total: '12500.00',
         paid: '0.00',
         outstanding: '12500.00',

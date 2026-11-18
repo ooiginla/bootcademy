@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Academies\AcademyContext;
+use App\Platform\AcademyEntitlements;
 use App\Platform\SupportAccess;
 use App\Support\AccessibleColor;
 use App\Support\Recaptcha;
@@ -55,6 +56,7 @@ class HandleInertiaRequests extends Middleware
 
                 $academy = $context->academy();
                 $membership = $context->membershipOrNull();
+                $entitlements = AcademyEntitlements::for($academy);
 
                 return [
                     'id' => $academy->id,
@@ -84,6 +86,13 @@ class HandleInertiaRequests extends Middleware
                     'active_member_count' => $academy->memberships()
                         ->where('status', 'active')
                         ->count(),
+                    'subscription' => [
+                        'state' => $entitlements->state(),
+                        // Support mode is never limited to the subscription page.
+                        'has_access' => $context->isSupportMode() || $entitlements->hasAccess(),
+                        'plan_name' => $entitlements->plan()?->name,
+                        'ends_at' => $entitlements->accessEndsAt()?->toIso8601String(),
+                    ],
                     'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color, $academy->heading_color),
                 ];
             },

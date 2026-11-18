@@ -34,6 +34,12 @@ class StoreOrder extends Model
         return $this->hasMany(StoreOrderPayment::class);
     }
 
+    /** @return HasMany<CouponRedemption, $this> */
+    public function couponRedemptions(): HasMany
+    {
+        return $this->hasMany(CouponRedemption::class);
+    }
+
     protected function casts(): array
     {
         return ['subtotal_minor' => 'integer', 'discount_minor' => 'integer', 'delivery_minor' => 'integer', 'total_minor' => 'integer', 'placed_at' => 'datetime', 'paid_at' => 'datetime', 'fulfilled_at' => 'datetime', 'cancelled_at' => 'datetime'];

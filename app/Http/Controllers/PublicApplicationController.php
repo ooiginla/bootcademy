@@ -6,6 +6,7 @@ use App\Academies\Actions\ConfigurePublicApplicationFees;
 use App\Academies\Actions\SaveApplication;
 use App\Academies\ApplicationIntakeAvailability;
 use App\Academies\PublicProgrammePaymentPlans;
+use App\Commerce\ApplyCoupon;
 use App\Enums\AcademyInvoicePurpose;
 use App\Http\Requests\Public\StorePublicApplicationRequest;
 use App\Models\AcademyInvoice;
@@ -237,6 +238,7 @@ class PublicApplicationController extends Controller
         PaymentProvider $provider,
         PaystackFeeCalculator $feeCalculator,
         ConfigurePublicApplicationFees $configure,
+        ApplyCoupon $applyCoupon,
     ): JsonResponse {
         [, $application] = $this->authorizedApplication($request, $subdomain, $reference);
         abort_unless($application->academy->acceptsOnlinePayments(), 422, 'Online payment is not available for this academy yet. You can skip payment for now.');
@@ -246,6 +248,7 @@ class PublicApplicationController extends Controller
             'programme_cycle_payment_plan_id' => ['nullable', 'integer'],
             'cycle_fee_ids' => ['array'],
             'cycle_fee_ids.*' => ['integer', 'distinct'],
+            'coupon_code' => ['nullable', 'string', 'max:64'],
         ]);
         // The fee page has no separate save step: the plan and optional fees picked on screen are
         // saved here, then the amount is worked out from the resulting invoices.
@@ -261,6 +264,36 @@ class PublicApplicationController extends Controller
         $allocations = $plans->allocations($application->academy, $application, $validated['selection']);
         $base = (int) collect($allocations)->sum('amount_minor');
         abort_if($base <= 0, 422, 'There is no outstanding amount for this option.');
+        $redemption = $application->couponRedemptions()->with('coupon')->first();
+        if (filled($validated['coupon_code'] ?? null)) {
+            $redemption = $applyCoupon->toApplication(
+                $application->academy,
+                $application,
+                (string) $validated['coupon_code'],
+                (string) $application->email,
+                $allocations,
+                $request,
+            );
+            if ($redemption->wasRecentlyCreated) {
+                $discounts = collect($redemption->allocationList())->keyBy('installment_id');
+                $allocations = collect($allocations)->map(function (array $allocation) use ($discounts): array {
+                    $discount = (int) ($discounts->get($allocation['installment_id'])['amount_minor'] ?? 0);
+                    $allocation['amount_minor'] = max(0, $allocation['amount_minor'] - $discount);
+
+                    return $allocation;
+                })->filter(fn (array $allocation): bool => $allocation['amount_minor'] > 0)->values()->all();
+                $base = (int) collect($allocations)->sum('amount_minor');
+            }
+        }
+        if ($base === 0) {
+            $redemption->update(['status' => 'redeemed', 'redeemed_at' => now()]);
+
+            return response()->json([
+                'status' => 'discounted',
+                'message' => 'The coupon covered the full amount due.',
+                'completion_url' => $this->completionUrl($request, $subdomain, $application, (string) $request->input('token')),
+            ]);
+        }
         $fees = $feeCalculator->breakdown($application->academy, $base);
         $surcharge = $fees['surcharge'];
         $charged = $base + $surcharge;
@@ -283,10 +316,13 @@ class PublicApplicationController extends Controller
             'subaccount_code' => $subaccount,
             'charged_amount_minor' => $charged, 'allocation_plan' => $allocations,
         ]);
+        if ($redemption !== null) {
+            $redemption->update(['online_payment_intent_id' => $intent->id]);
+        }
         try {
             $initialized = $provider->initialize((string) $application->email, $charged, $intent->currency, $intent->reference, [
                 'academy_id' => $application->academy_id, 'application_reference' => $application->reference,
-                'payment_intent_id' => $intent->id,
+                'payment_intent_id' => $intent->id, 'coupon_id' => $redemption?->coupon_id,
             ], ['subaccount' => $subaccount, 'transaction_charge' => $surcharge]);
             $intent->update(['access_code' => $initialized['access_code'], 'initialized_at' => now()]);
         } catch (RuntimeException $exception) {

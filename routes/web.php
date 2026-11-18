@@ -22,6 +22,7 @@ use App\Http\Controllers\Academies\BranchController;
 use App\Http\Controllers\Academies\CoachController;
 use App\Http\Controllers\Academies\CohortController;
 use App\Http\Controllers\Academies\CommunicationController;
+use App\Http\Controllers\Academies\CouponController;
 use App\Http\Controllers\Academies\CustomFieldController;
 use App\Http\Controllers\Academies\DashboardController;
 use App\Http\Controllers\Academies\GuardianSignatureController;
@@ -42,29 +43,26 @@ use App\Http\Controllers\Platform\AcademySubscriptionController as PlatformAcade
 use App\Http\Controllers\Platform\PlanController;
 use App\Http\Controllers\Platform\PlatformSettingsController;
 use App\Http\Controllers\Platform\SupportAccessController;
+use App\Http\Controllers\Platform\TenantSubscriptionController;
 use App\Http\Controllers\PublicAcademyWebsiteController;
 use App\Http\Controllers\PublicApplicationController;
 use App\Http\Controllers\PublicReviewController;
 use App\Http\Controllers\PublicStoreController;
 use App\Http\Controllers\RequiredPasswordController;
+use App\Http\Middleware\EnsureAcademySubscription;
 use App\Http\Middleware\EnsureEmailIsVerifiedWhenRequired;
 use App\Http\Middleware\EnsurePlatformSuperAdmin;
 use App\Http\Middleware\EnsureTemporaryPasswordChanged;
 use App\Http\Middleware\ResolveActiveAcademy;
-use App\Models\Plan;
+use App\Platform\Subscriptions\SubscriptionPresenter;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
+Route::get('/', function (SubscriptionPresenter $presenter) {
     return Inertia::render('welcome', [
-        'plans' => Plan::query()->where('is_active', true)->orderBy('sort_order')->get()->map(fn (Plan $plan): array => [
-            'code' => $plan->code,
-            'name' => $plan->name,
-            'currency' => $plan->currency,
-            'monthly_price' => number_format($plan->monthly_price_minor / 100, 2, '.', ''),
-            'annual_price' => number_format($plan->annual_price_minor / 100, 2, '.', ''),
-            'active_player_limit' => $plan->active_player_limit,
-        ])->values(),
+        'plans' => $presenter->publicPlans(),
+        'comparison' => $presenter->comparison(),
+        'trial' => $presenter->trial(),
         'seo' => [
             'canonical_url' => rtrim((string) config('app.url'), '/').'/',
             'image_url' => rtrim((string) config('app.url'), '/').'/images/bootcademy-academy-owner.jpg',
@@ -159,7 +157,7 @@ Route::middleware([
     Route::post('app/invitations/{membership}/accept', [AcademyInvitationController::class, 'accept'])
         ->name('academy.invitations.accept');
 
-    Route::middleware(ResolveActiveAcademy::class)->group(function (): void {
+    Route::middleware([ResolveActiveAcademy::class, EnsureAcademySubscription::class])->group(function (): void {
         Route::get('app/dashboard', DashboardController::class)->name('dashboard');
         Route::get('app/reports/payments.csv', [AcademyExportController::class, 'payments'])->name('academy.exports.payments');
         Route::get('app/reports/invoices.csv', [AcademyExportController::class, 'invoices'])->name('academy.exports.invoices');
@@ -255,6 +253,9 @@ Route::middleware([
         Route::post('app/scholarships/awards', [ScholarshipController::class, 'storeAward'])->name('academy.scholarships.awards.store');
         Route::post('app/scholarships/awards/{award}/allocations', [ScholarshipController::class, 'applyAward'])->name('academy.scholarships.awards.allocations.store');
         Route::post('app/scholarships/allocations/{allocation}/contributions', [ScholarshipController::class, 'recordContribution'])->name('academy.scholarships.contributions.store');
+        Route::get('app/coupons', [CouponController::class, 'index'])->name('academy.coupons.index');
+        Route::post('app/coupons', [CouponController::class, 'store'])->name('academy.coupons.store');
+        Route::patch('app/coupons/{coupon}', [CouponController::class, 'update'])->name('academy.coupons.update');
         Route::get('app/store', [StoreController::class, 'index'])->name('academy.store.index');
         Route::post('app/store/products', [StoreController::class, 'storeProduct'])->name('academy.store.products.store');
         Route::patch('app/store/products/{product}', [StoreController::class, 'updateProduct'])->name('academy.store.products.update');
@@ -332,6 +333,12 @@ Route::middleware([
             ->name('academy.api-keys.revoke');
         Route::get('app/settings/subscription', [SubscriptionController::class, 'show'])
             ->name('academy.subscription.show');
+        Route::post('app/settings/subscription/payments', [SubscriptionController::class, 'initialize'])
+            ->middleware('throttle:10,1')
+            ->name('academy.subscription.payments.store');
+        Route::post('app/settings/subscription/payments/{subscriptionPayment}/verify', [SubscriptionController::class, 'verify'])
+            ->middleware('throttle:30,1')
+            ->name('academy.subscription.payments.verify');
         Route::get('app/settings/website', [AcademyWebsiteController::class, 'edit'])
             ->name('academy.website.edit');
         Route::patch('app/settings/website', [AcademyWebsiteController::class, 'update'])
@@ -360,10 +367,19 @@ Route::middleware([
                 ->name('academies.paystack-subaccount.sync');
             Route::get('settings', [PlatformSettingsController::class, 'edit'])->name('settings.edit');
             Route::patch('settings', [PlatformSettingsController::class, 'update'])->name('settings.update');
+            Route::patch('settings/trial', [PlatformSettingsController::class, 'updateTrial'])->name('settings.trial.update');
+            Route::patch('settings/settlement-account', [PlatformSettingsController::class, 'updateSettlementAccount'])->name('settings.settlement-account.update');
             Route::get('academies/{academy}/subscription', [PlatformAcademySubscriptionController::class, 'edit'])
                 ->name('academies.subscription.edit');
             Route::patch('academies/{academy}/subscription', [PlatformAcademySubscriptionController::class, 'update'])
                 ->name('academies.subscription.update');
+            Route::post('academies/{academy}/subscription/periods', [PlatformAcademySubscriptionController::class, 'grant'])
+                ->name('academies.subscription.periods.store');
+            Route::put('academies/{academy}/subscription/prices/{plan}', [PlatformAcademySubscriptionController::class, 'savePrice'])
+                ->name('academies.subscription.prices.update');
+            Route::delete('academies/{academy}/subscription/prices/{plan}', [PlatformAcademySubscriptionController::class, 'destroyPrice'])
+                ->name('academies.subscription.prices.destroy');
+            Route::get('subscriptions', TenantSubscriptionController::class)->name('subscriptions.index');
             Route::get('academies/{academy}/support-access', [SupportAccessController::class, 'show'])
                 ->name('academies.support-access.show');
             Route::post('academies/{academy}/support-access', [SupportAccessController::class, 'start'])
