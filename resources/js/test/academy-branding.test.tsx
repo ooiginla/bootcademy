@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import AcademyBranding from '@/pages/academies/branding';
@@ -25,15 +25,23 @@ describe('Academy settings', () => {
     it('shows the tenant bank details form with existing values', () => {
         render(
             <AcademyBranding
+                countries={[
+                    {
+                        code: 'NG',
+                        name: 'Nigeria',
+                        timezone: 'Africa/Lagos',
+                        currency: 'NGN',
+                    },
+                ]}
+                timezones={['Africa/Lagos']}
+                currencies={[{ code: 'NGN', name: 'Nigerian Naira' }]}
                 branding={{
                     name: 'Example Academy',
+                    academy_type: 'Football',
+                    country_code: 'NG',
+                    timezone: 'Africa/Lagos',
+                    currency: 'NGN',
                     logo_url: null,
-                    theme: {
-                        primary: '#5B5BD6',
-                        primary_foreground: '#FFFFFF',
-                        secondary: '#1F2937',
-                        secondary_foreground: '#FFFFFF',
-                    },
                     terminology: {
                         singular: 'Student',
                         plural: 'Students',
@@ -67,6 +75,9 @@ describe('Academy settings', () => {
             'Example Academy',
         );
         expect(
+            screen.queryByLabelText('Headings text colour'),
+        ).not.toBeInTheDocument();
+        expect(
             screen.getByRole('heading', { name: 'Bank details' }),
         ).toBeInTheDocument();
         expect(screen.getByLabelText('Bank name')).toHaveValue('Access Bank');
@@ -96,19 +107,27 @@ describe('Academy settings', () => {
         render(
             <AcademyBranding
                 uses_paystack
+                countries={[
+                    {
+                        code: 'NG',
+                        name: 'Nigeria',
+                        timezone: 'Africa/Lagos',
+                        currency: 'NGN',
+                    },
+                ]}
+                timezones={['Africa/Lagos']}
+                currencies={[{ code: 'NGN', name: 'Nigerian Naira' }]}
                 banks={[
                     { code: '044', name: 'Access Bank' },
                     { code: '058', name: 'Guaranty Trust Bank' },
                 ]}
                 branding={{
                     name: 'Example Academy',
+                    academy_type: 'Football',
+                    country_code: 'NG',
+                    timezone: 'Africa/Lagos',
+                    currency: 'NGN',
                     logo_url: null,
-                    theme: {
-                        primary: '#2563EB',
-                        primary_foreground: '#FFFFFF',
-                        secondary: '#0F766E',
-                        secondary_foreground: '#FFFFFF',
-                    },
                     terminology: {
                         singular: 'Student',
                         plural: 'Students',
@@ -136,6 +155,15 @@ describe('Academy settings', () => {
         );
 
         expect(screen.getByLabelText('Bank')).toHaveValue('058');
+        fireEvent.change(screen.getByLabelText('Search banks'), {
+            target: { value: 'Guaranty' },
+        });
+        expect(
+            screen.queryByRole('option', { name: 'Access Bank' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('option', { name: 'Guaranty Trust Bank' }),
+        ).toBeInTheDocument();
         expect(screen.getByLabelText('Account name')).toHaveValue(
             'EXAMPLE ACADEMY LTD',
         );

@@ -1,12 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
-import {
-    Building2,
-    CheckCircle2,
-    ImageIcon,
-    Languages,
-    Palette,
-    Upload,
-} from 'lucide-react';
+import { Building2, ImageIcon, Languages, Upload } from 'lucide-react';
 import { useRef } from 'react';
 import type { FormEvent } from 'react';
 import BankDetailsCard from '@/components/bank-details-card';
@@ -16,13 +9,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { AcademyTheme } from '@/types/auth';
 
 type Props = {
     branding: {
         name: string;
+        academy_type: string;
+        country_code: string | null;
+        timezone: string;
+        currency: string;
         logo_url: string | null;
-        theme: AcademyTheme;
         terminology: {
             singular: string;
             plural: string;
@@ -37,38 +32,36 @@ type Props = {
     };
     uses_paystack?: boolean;
     banks?: Array<{ code: string; name: string }>;
+    countries: Array<{
+        code: string;
+        name: string;
+        timezone: string;
+        currency: string;
+    }>;
+    timezones: string[];
+    currencies: Array<{ code: string; name: string }>;
 };
 
-function readableForeground(background: string): string {
-    if (!/^#[0-9A-Fa-f]{6}$/.test(background)) return '#111827';
-
-    const channels = [1, 3, 5].map((start) => {
-        const value =
-            Number.parseInt(background.slice(start, start + 2), 16) / 255;
-        return value <= 0.04045
-            ? value / 12.92
-            : ((value + 0.055) / 1.055) ** 2.4;
-    });
-    const luminance =
-        0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
-
-    return 1.05 / (luminance + 0.05) >= (luminance + 0.05) / 0.05
-        ? '#FFFFFF'
-        : '#111827';
-}
+const selectClass =
+    'h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50';
 
 export default function AcademyBranding({
     branding,
     uses_paystack = false,
     banks = [],
+    countries,
+    timezones,
+    currencies,
 }: Props) {
     const logoInput = useRef<HTMLInputElement>(null);
-    const profileForm = useForm({ name: branding.name });
-    const logoForm = useForm<{ logo: File | null }>({ logo: null });
-    const themeForm = useForm({
-        primary_color: branding.theme.primary,
-        secondary_color: branding.theme.secondary,
+    const profileForm = useForm({
+        name: branding.name,
+        academy_type: branding.academy_type,
+        country_code: branding.country_code ?? '',
+        timezone: branding.timezone,
+        currency: branding.currency,
     });
+    const logoForm = useForm<{ logo: File | null }>({ logo: null });
     const terminologyForm = useForm({
         member_label_singular: branding.terminology.singular,
         member_label_plural: branding.terminology.plural,
@@ -99,11 +92,17 @@ export default function AcademyBranding({
         });
     }
 
-    function submitTheme(event: FormEvent) {
-        event.preventDefault();
-        themeForm.patch('/app/settings/academy/theme', {
-            preserveScroll: true,
-        });
+    function selectCountry(code: string) {
+        profileForm.setData('country_code', code);
+        const selected = countries.find((country) => country.code === code);
+        if (selected) {
+            profileForm.setData((data) => ({
+                ...data,
+                country_code: code,
+                timezone: selected.timezone,
+                currency: selected.currency,
+            }));
+        }
     }
 
     function submitTerminology(event: FormEvent) {
@@ -140,9 +139,9 @@ export default function AcademyBranding({
                                 </h2>
                             </div>
                             <p className="text-sm text-muted-foreground">
-                                Update the academy name shown throughout the
-                                platform. This does not change its public URL or
-                                subdomain.
+                                Keep the academy identity, country, timezone and
+                                financial display currency current. Updating the
+                                name does not change its public URL.
                             </p>
                         </CardHeader>
                         <CardContent>
@@ -150,26 +149,150 @@ export default function AcademyBranding({
                                 onSubmit={submitProfile}
                                 className="max-w-2xl space-y-5"
                             >
-                                <div className="grid gap-2">
-                                    <Label htmlFor="academy_name">
-                                        Academy name
-                                    </Label>
-                                    <Input
-                                        id="academy_name"
-                                        value={profileForm.data.name}
-                                        onChange={(event) =>
-                                            profileForm.setData(
-                                                'name',
-                                                event.target.value,
-                                            )
-                                        }
-                                        maxLength={160}
-                                        autoComplete="organization"
-                                        required
-                                    />
-                                    <InputError
-                                        message={profileForm.errors.name}
-                                    />
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="academy_name">
+                                            Academy name
+                                        </Label>
+                                        <Input
+                                            id="academy_name"
+                                            value={profileForm.data.name}
+                                            onChange={(event) =>
+                                                profileForm.setData(
+                                                    'name',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            maxLength={160}
+                                            autoComplete="organization"
+                                            required
+                                        />
+                                        <InputError
+                                            message={profileForm.errors.name}
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="academy_type">
+                                            Academy type
+                                        </Label>
+                                        <Input
+                                            id="academy_type"
+                                            value={
+                                                profileForm.data.academy_type
+                                            }
+                                            onChange={(event) =>
+                                                profileForm.setData(
+                                                    'academy_type',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            maxLength={80}
+                                            required
+                                        />
+                                        <InputError
+                                            message={
+                                                profileForm.errors.academy_type
+                                            }
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="country_code">
+                                            Country
+                                        </Label>
+                                        <select
+                                            id="country_code"
+                                            value={
+                                                profileForm.data.country_code
+                                            }
+                                            onChange={(event) =>
+                                                selectCountry(
+                                                    event.target.value,
+                                                )
+                                            }
+                                            className={selectClass}
+                                            required
+                                        >
+                                            <option value="">
+                                                Select a country
+                                            </option>
+                                            {countries.map((country) => (
+                                                <option
+                                                    key={country.code}
+                                                    value={country.code}
+                                                >
+                                                    {country.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <InputError
+                                            message={
+                                                profileForm.errors.country_code
+                                            }
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="academy_timezone">
+                                            Timezone
+                                        </Label>
+                                        <select
+                                            id="academy_timezone"
+                                            value={profileForm.data.timezone}
+                                            onChange={(event) =>
+                                                profileForm.setData(
+                                                    'timezone',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            className={selectClass}
+                                            required
+                                        >
+                                            {timezones.map((timezone) => (
+                                                <option
+                                                    key={timezone}
+                                                    value={timezone}
+                                                >
+                                                    {timezone}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <InputError
+                                            message={
+                                                profileForm.errors.timezone
+                                            }
+                                        />
+                                    </div>
+                                    <div className="grid gap-2 sm:col-span-2">
+                                        <Label htmlFor="academy_currency">
+                                            Currency
+                                        </Label>
+                                        <select
+                                            id="academy_currency"
+                                            value={profileForm.data.currency}
+                                            onChange={(event) =>
+                                                profileForm.setData(
+                                                    'currency',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            className={selectClass}
+                                            required
+                                        >
+                                            {currencies.map((currency) => (
+                                                <option
+                                                    key={currency.code}
+                                                    value={currency.code}
+                                                >
+                                                    {currency.code} —{' '}
+                                                    {currency.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <InputError
+                                            message={
+                                                profileForm.errors.currency
+                                            }
+                                        />
+                                    </div>
                                 </div>
                                 <Button
                                     type="submit"
@@ -180,7 +303,7 @@ export default function AcademyBranding({
                                 >
                                     {profileForm.processing
                                         ? 'Saving…'
-                                        : 'Save academy name'}
+                                        : 'Save academy profile'}
                                 </Button>
                             </form>
                         </CardContent>
@@ -257,144 +380,6 @@ export default function AcademyBranding({
                                     {logoForm.processing
                                         ? 'Uploading…'
                                         : 'Upload logo'}
-                                </Button>
-                            </form>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <h2 className="font-semibold">Academy colours</h2>
-                            <p className="text-sm text-muted-foreground">
-                                These colours follow your team across
-                                navigation, actions and dashboard highlights.
-                            </p>
-                        </CardHeader>
-                        <CardContent>
-                            <form onSubmit={submitTheme} className="space-y-5">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="primary_color">
-                                        Primary colour
-                                    </Label>
-                                    <div className="flex gap-3">
-                                        <input
-                                            aria-label="Choose primary colour"
-                                            type="color"
-                                            value={themeForm.data.primary_color}
-                                            onChange={(event) =>
-                                                themeForm.setData(
-                                                    'primary_color',
-                                                    event.target.value.toUpperCase(),
-                                                )
-                                            }
-                                            className="h-10 w-14 cursor-pointer rounded-md border bg-background p-1"
-                                        />
-                                        <Input
-                                            id="primary_color"
-                                            value={themeForm.data.primary_color}
-                                            onChange={(event) =>
-                                                themeForm.setData(
-                                                    'primary_color',
-                                                    event.target.value.toUpperCase(),
-                                                )
-                                            }
-                                            maxLength={7}
-                                        />
-                                    </div>
-                                    <InputError
-                                        message={themeForm.errors.primary_color}
-                                    />
-                                </div>
-
-                                <div className="grid gap-2">
-                                    <Label htmlFor="secondary_color">
-                                        Secondary colour
-                                    </Label>
-                                    <div className="flex gap-3">
-                                        <input
-                                            aria-label="Choose secondary colour"
-                                            type="color"
-                                            value={
-                                                themeForm.data.secondary_color
-                                            }
-                                            onChange={(event) =>
-                                                themeForm.setData(
-                                                    'secondary_color',
-                                                    event.target.value.toUpperCase(),
-                                                )
-                                            }
-                                            className="h-10 w-14 cursor-pointer rounded-md border bg-background p-1"
-                                        />
-                                        <Input
-                                            id="secondary_color"
-                                            value={
-                                                themeForm.data.secondary_color
-                                            }
-                                            onChange={(event) =>
-                                                themeForm.setData(
-                                                    'secondary_color',
-                                                    event.target.value.toUpperCase(),
-                                                )
-                                            }
-                                            maxLength={7}
-                                        />
-                                    </div>
-                                    <InputError
-                                        message={
-                                            themeForm.errors.secondary_color
-                                        }
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 overflow-hidden rounded-2xl border">
-                                    <div
-                                        className="p-4"
-                                        style={{
-                                            backgroundColor:
-                                                themeForm.data.primary_color,
-                                            color: readableForeground(
-                                                themeForm.data.primary_color,
-                                            ),
-                                        }}
-                                    >
-                                        <Palette
-                                            className="size-5"
-                                            aria-hidden="true"
-                                        />
-                                        <p className="mt-5 text-sm font-medium">
-                                            Primary
-                                        </p>
-                                    </div>
-                                    <div
-                                        className="p-4"
-                                        style={{
-                                            backgroundColor:
-                                                themeForm.data.secondary_color,
-                                            color: readableForeground(
-                                                themeForm.data.secondary_color,
-                                            ),
-                                        }}
-                                    >
-                                        <CheckCircle2
-                                            className="size-5"
-                                            aria-hidden="true"
-                                        />
-                                        <p className="mt-5 text-sm font-medium">
-                                            Secondary
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <Button
-                                    type="submit"
-                                    disabled={
-                                        themeForm.processing ||
-                                        !themeForm.isDirty
-                                    }
-                                >
-                                    {themeForm.processing
-                                        ? 'Saving…'
-                                        : 'Save academy colours'}
                                 </Button>
                             </form>
                         </CardContent>

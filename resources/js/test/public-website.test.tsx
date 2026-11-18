@@ -30,6 +30,14 @@ vi.mock('@inertiajs/react', () => ({
                 : children}
         </form>
     ),
+    useForm: (initial: Record<string, string>) => ({
+        data: initial,
+        setData: vi.fn(),
+        patch: vi.fn(),
+        errors: {},
+        processing: false,
+        isDirty: false,
+    }),
     usePage: () => ({ props: { errors: {} } }),
 }));
 
@@ -45,6 +53,7 @@ const academy: PublicAcademy = {
         primary_foreground: '#FFFFFF',
         secondary: '#DBEAFE',
         secondary_foreground: '#172554',
+        heading: '#334155',
     },
 };
 
@@ -59,6 +68,8 @@ const site: PublicSite = {
             email: 'hello@example.test',
             socials: '',
             quick_links: 'Apply | /apply',
+            background_color: '#102030',
+            text_color: '#F8FAFC',
         },
         announcement: {
             enabled: true,
@@ -205,9 +216,11 @@ describe('Bootcademy public website', () => {
                             enabled: true,
                             title: 'Welcome',
                             headline: 'Build your future',
+                            background_color: '#ABCDEF',
                         },
                     },
                 }}
+                theme={academy.theme}
                 definitions={{
                     hero: {
                         label: 'Hero',
@@ -220,6 +233,12 @@ describe('Bootcademy public website', () => {
                                 type: 'text',
                                 default: '',
                                 help: '',
+                            },
+                            background_color: {
+                                label: 'Background colour',
+                                type: 'color',
+                                default: '',
+                                help: 'Optional. Leave blank to use the website theme default.',
                             },
                         },
                     },
@@ -239,6 +258,13 @@ describe('Bootcademy public website', () => {
         expect(screen.getByLabelText('Headline')).toHaveValue(
             'Build your future',
         );
+        expect(screen.getByLabelText('Background colour')).toHaveValue(
+            '#ABCDEF',
+        );
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Use theme default' }),
+        );
+        expect(screen.getByLabelText('Background colour')).toHaveValue('');
     });
 
     it('presents the built-in online store as a visible website module', () => {
@@ -258,6 +284,7 @@ describe('Bootcademy public website', () => {
                         },
                     },
                 }}
+                theme={academy.theme}
                 definitions={{
                     store: {
                         label: 'Store',
@@ -301,7 +328,7 @@ describe('Bootcademy public website', () => {
     });
 
     it('renders the branded theme with live programmes and WhatsApp contact', () => {
-        render(
+        const { container } = render(
             <PublicHome
                 academy={academy}
                 site={site}
@@ -335,6 +362,15 @@ describe('Bootcademy public website', () => {
         );
         expect(screen.getByText('Website powered by')).toBeInTheDocument();
         expect(screen.getByText('Bootcademy')).toBeInTheDocument();
+        expect(container.querySelector('.public-site-theme')).toHaveStyle({
+            '--site-heading': '#334155',
+        });
+        expect(
+            container.querySelector('.public-chrome-custom-text.bg-slate-950'),
+        ).toHaveStyle({
+            backgroundColor: '#102030',
+            color: '#F8FAFC',
+        });
     });
 
     it('keeps four priority links visible and groups other enabled sections under Explore', () => {

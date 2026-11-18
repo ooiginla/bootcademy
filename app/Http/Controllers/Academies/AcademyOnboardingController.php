@@ -6,6 +6,7 @@ use App\Academies\Actions\CreateAcademy;
 use App\Enums\MembershipStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Academies\StoreAcademyRequest;
+use App\Support\AcademyLocaleOptions;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -28,7 +29,11 @@ class AcademyOnboardingController extends Controller
             'defaults' => [
                 'timezone' => 'Africa/Lagos',
                 'currency' => 'NGN',
+                'country_code' => 'NG',
             ],
+            'countries' => AcademyLocaleOptions::countries(),
+            'timezones' => AcademyLocaleOptions::timezones(),
+            'currencies' => AcademyLocaleOptions::currencies(),
         ]);
     }
 
@@ -38,6 +43,7 @@ class AcademyOnboardingController extends Controller
         $academy = $createAcademy->handle($request->user(), [
             'name' => $validated['name'],
             'academy_type' => $validated['academy_type'],
+            'country_code' => $validated['country_code'],
             'timezone' => $validated['timezone'],
             'currency' => $validated['currency'],
         ]);

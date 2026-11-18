@@ -168,6 +168,21 @@ describe('Programme cycle fees', () => {
         expect(
             screen.getByRole('option', { name: 'Gbagada' }),
         ).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'Edit cycle fee Medical fee',
+            }),
+        );
+        expect(
+            screen.getByRole('heading', { name: 'Edit bookable fee' }),
+        ).toBeInTheDocument();
+        expect(screen.getByDisplayValue('Medical fee')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('medical')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('25,000.00')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
         expect(screen.getByText('General cycle fees')).toBeInTheDocument();
         expect(screen.getByText('Programme cycle fees')).toBeInTheDocument();
         expect(screen.getByText('Session registration')).toBeInTheDocument();

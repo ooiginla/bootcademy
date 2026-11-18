@@ -18,11 +18,13 @@ class AcademyFactory extends Factory
             'name' => $name,
             'slug' => Str::slug($name).'-'.Str::lower(Str::random(6)),
             'academy_type' => 'general',
+            'country_code' => 'NG',
             'timezone' => 'Africa/Lagos',
             'currency' => 'NGN',
             'logo_path' => null,
             'primary_color' => null,
             'secondary_color' => null,
+            'heading_color' => null,
             'created_by_user_id' => User::factory(),
         ];
     }

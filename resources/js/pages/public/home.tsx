@@ -24,6 +24,7 @@ import {
     parseRows,
     resolveSiteUrl,
     safeUrl,
+    sectionAppearance,
 } from '@/components/public-site/utils';
 import type {
     PublicAcademy,
@@ -186,7 +187,12 @@ export default function PublicHome({
         <PublicSiteShell academy={academy} site={site} baseUrl={base_url}>
             <main>
                 {hero?.enabled && (
-                    <section className="relative isolate overflow-hidden bg-slate-950 text-white">
+                    <section
+                        {...sectionAppearance(
+                            hero,
+                            'relative isolate overflow-hidden bg-slate-950 text-white',
+                        )}
+                    >
                         {hero.media_type === 'video' && hero.video_url ? (
                             <video
                                 src={safeUrl(String(hero.video_url), '')}
@@ -312,7 +318,13 @@ export default function PublicHome({
                 )}
 
                 {sections.about?.enabled && (
-                    <section id="about" className="px-5 py-20 sm:px-8 lg:py-28">
+                    <section
+                        id="about"
+                        {...sectionAppearance(
+                            sections.about,
+                            'px-5 py-20 sm:px-8 lg:py-28',
+                        )}
+                    >
                         <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
                             <div className="lg:sticky lg:top-28">
                                 <SectionHeading
@@ -384,7 +396,10 @@ export default function PublicHome({
                 {sections.welcome?.enabled && (
                     <section
                         id="welcome"
-                        className="bg-[var(--site-secondary)] px-5 py-20 text-[var(--site-secondary-fg)] sm:px-8 lg:py-24"
+                        {...sectionAppearance(
+                            sections.welcome,
+                            'bg-[var(--site-secondary)] px-5 py-20 text-[var(--site-secondary-fg)] sm:px-8 lg:py-24',
+                        )}
                     >
                         <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[0.72fr_1.28fr]">
                             <div className="relative mx-auto w-full max-w-sm">
@@ -422,7 +437,10 @@ export default function PublicHome({
                 {sections.programmes?.enabled && (
                     <section
                         id="programmes"
-                        className="px-5 py-20 sm:px-8 lg:py-28"
+                        {...sectionAppearance(
+                            sections.programmes,
+                            'px-5 py-20 sm:px-8 lg:py-28',
+                        )}
                     >
                         <div className="mx-auto max-w-7xl">
                             <div className="flex flex-wrap items-end justify-between gap-6">
@@ -481,7 +499,10 @@ export default function PublicHome({
                 {sections.locations?.enabled && (
                     <section
                         id="locations"
-                        className="bg-slate-950 px-5 py-20 text-white sm:px-8 lg:py-28"
+                        {...sectionAppearance(
+                            sections.locations,
+                            'bg-slate-950 px-5 py-20 text-white sm:px-8 lg:py-28',
+                        )}
                     >
                         <div className="mx-auto max-w-7xl">
                             <SectionHeading
@@ -548,7 +569,10 @@ export default function PublicHome({
                 {sections.experience?.enabled && experienceItems.length > 0 && (
                     <section
                         id="experience"
-                        className="px-5 py-20 sm:px-8 lg:py-28"
+                        {...sectionAppearance(
+                            sections.experience,
+                            'px-5 py-20 sm:px-8 lg:py-28',
+                        )}
                     >
                         <div className="mx-auto max-w-7xl">
                             <SectionHeading
@@ -592,7 +616,10 @@ export default function PublicHome({
                 {sections.events?.enabled && events.length > 0 && (
                     <section
                         id="events"
-                        className="bg-white px-5 py-20 sm:px-8 lg:py-24"
+                        {...sectionAppearance(
+                            sections.events,
+                            'bg-white px-5 py-20 sm:px-8 lg:py-24',
+                        )}
                     >
                         <div className="mx-auto max-w-7xl">
                             <SectionHeading
@@ -636,7 +663,13 @@ export default function PublicHome({
                 )}
 
                 {sections.news?.enabled && news.length > 0 && (
-                    <section id="news" className="px-5 py-20 sm:px-8 lg:py-28">
+                    <section
+                        id="news"
+                        {...sectionAppearance(
+                            sections.news,
+                            'px-5 py-20 sm:px-8 lg:py-28',
+                        )}
+                    >
                         <div className="mx-auto max-w-7xl">
                             <SectionHeading
                                 section={sections.news}
@@ -680,7 +713,10 @@ export default function PublicHome({
                 {sections.statistics?.enabled && statistics.length > 0 && (
                     <section
                         id="statistics"
-                        className="bg-[var(--site-primary)] px-5 py-16 text-[var(--site-primary-fg)] sm:px-8"
+                        {...sectionAppearance(
+                            sections.statistics,
+                            'bg-[var(--site-primary)] px-5 py-16 text-[var(--site-primary-fg)] sm:px-8',
+                        )}
                     >
                         <div className="mx-auto grid max-w-7xl gap-8 sm:grid-cols-2 lg:grid-cols-4">
                             {statistics.map(([number, label], index) => (
@@ -695,7 +731,13 @@ export default function PublicHome({
                 )}
 
                 {sections.team?.enabled && team.length > 0 && (
-                    <section id="team" className="px-5 py-20 sm:px-8 lg:py-28">
+                    <section
+                        id="team"
+                        {...sectionAppearance(
+                            sections.team,
+                            'px-5 py-20 sm:px-8 lg:py-28',
+                        )}
+                    >
                         <div className="mx-auto max-w-7xl">
                             <SectionHeading
                                 section={sections.team}
@@ -734,7 +776,10 @@ export default function PublicHome({
                 {sections.testimonials?.enabled && testimonials.length > 0 && (
                     <section
                         id="testimonials"
-                        className="bg-slate-950 px-5 py-20 text-white sm:px-8 lg:py-24"
+                        {...sectionAppearance(
+                            sections.testimonials,
+                            'bg-slate-950 px-5 py-20 text-white sm:px-8 lg:py-24',
+                        )}
                     >
                         <div className="mx-auto max-w-7xl">
                             <SectionHeading
@@ -771,7 +816,10 @@ export default function PublicHome({
                 {sections.alumni?.enabled && alumni.length > 0 && (
                     <section
                         id="alumni"
-                        className="px-5 py-20 sm:px-8 lg:py-24"
+                        {...sectionAppearance(
+                            sections.alumni,
+                            'px-5 py-20 sm:px-8 lg:py-24',
+                        )}
                     >
                         <div className="mx-auto max-w-7xl">
                             <SectionHeading
@@ -807,7 +855,10 @@ export default function PublicHome({
                 {sections.gallery?.enabled && gallery.length > 0 && (
                     <section
                         id="gallery"
-                        className="bg-white px-5 py-20 sm:px-8 lg:py-24"
+                        {...sectionAppearance(
+                            sections.gallery,
+                            'bg-white px-5 py-20 sm:px-8 lg:py-24',
+                        )}
                     >
                         <div className="mx-auto max-w-7xl">
                             <SectionHeading
@@ -837,30 +888,47 @@ export default function PublicHome({
                     </section>
                 )}
 
-                {(sections.affiliations?.enabled && affiliations.length > 0) ||
-                (sections.sponsors?.enabled && sponsors.length > 0) ? (
-                    <section id="partners" className="px-5 py-16 sm:px-8">
-                        <div className="mx-auto max-w-7xl space-y-12">
-                            {sections.affiliations && (
-                                <LogoStrip
-                                    section={sections.affiliations}
-                                    items={affiliations}
-                                />
-                            )}
-                            {sections.sponsors && (
-                                <LogoStrip
-                                    section={sections.sponsors}
-                                    items={sponsors}
-                                />
-                            )}
+                {sections.affiliations?.enabled && affiliations.length > 0 && (
+                    <section
+                        id="partners"
+                        {...sectionAppearance(
+                            sections.affiliations,
+                            'px-5 py-16 sm:px-8',
+                        )}
+                    >
+                        <div className="mx-auto max-w-7xl">
+                            <LogoStrip
+                                section={sections.affiliations}
+                                items={affiliations}
+                            />
                         </div>
                     </section>
-                ) : null}
+                )}
+
+                {sections.sponsors?.enabled && sponsors.length > 0 && (
+                    <section
+                        id="sponsors"
+                        {...sectionAppearance(
+                            sections.sponsors,
+                            'px-5 py-16 sm:px-8',
+                        )}
+                    >
+                        <div className="mx-auto max-w-7xl">
+                            <LogoStrip
+                                section={sections.sponsors}
+                                items={sponsors}
+                            />
+                        </div>
+                    </section>
+                )}
 
                 {sections.faq?.enabled && faqs.length > 0 && (
                     <section
                         id="faq"
-                        className="bg-white px-5 py-20 sm:px-8 lg:py-24"
+                        {...sectionAppearance(
+                            sections.faq,
+                            'bg-white px-5 py-20 sm:px-8 lg:py-24',
+                        )}
                     >
                         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.7fr_1.3fr]">
                             <SectionHeading section={sections.faq} />

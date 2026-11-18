@@ -383,7 +383,7 @@ class PublicApplicationController extends Controller
                 'name' => $academy->name, 'type' => $academy->academy_type,
                 'logo_url' => $academy->logo_path ? $baseUrl.'/logo' : null,
                 'member_singular' => $academy->member_label_singular, 'member_plural' => $academy->member_label_plural,
-                'currency' => $academy->currency, 'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color),
+                'currency' => $academy->currency, 'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color, $academy->heading_color),
             ],
             'site' => ['subdomain' => $website->subdomain, 'theme_key' => $website->theme_key, 'sections' => $website->resolvedSections()],
             'base_url' => $baseUrl,

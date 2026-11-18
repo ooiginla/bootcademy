@@ -106,6 +106,7 @@ class RecaptchaTest extends TestCase
             'password_confirmation' => 'password',
             'academy_name' => 'Bright Futures Academy',
             'academy_type' => 'Language',
+            'country' => 'NG',
             'timezone' => 'Africa/Lagos',
             'currency' => 'NGN',
             ...$extra,

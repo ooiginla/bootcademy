@@ -227,7 +227,7 @@ class PublicStoreController extends Controller
 
         return [$website, ['academy' => ['name' => $academy->name, 'type' => $academy->academy_type, 'logo_url' => $academy->logo_path ? $base.'/logo' : null,
             'member_singular' => $academy->member_label_singular, 'member_plural' => $academy->member_label_plural, 'currency' => $academy->currency,
-            'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color)],
+            'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color, $academy->heading_color)],
             'site' => ['subdomain' => $subdomain, 'theme_key' => $website->theme_key, 'sections' => $sections], 'base_url' => $base]];
     }
 }

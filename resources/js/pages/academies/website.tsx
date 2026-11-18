@@ -1,13 +1,16 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, useForm } from '@inertiajs/react';
 import {
     ArrowUpRight,
     CheckCircle2,
     ChevronDown,
     Globe2,
     LayoutTemplate,
+    Palette,
     Save,
     ShoppingBag,
 } from 'lucide-react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,10 +18,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import type { AcademyTheme } from '@/types/auth';
 
 type FieldDefinition = {
     label: string;
-    type: 'text' | 'textarea' | 'lines' | 'select';
+    type: 'text' | 'textarea' | 'lines' | 'select' | 'color';
     default: string;
     help: string;
     options?: Record<string, string>;
@@ -40,14 +44,80 @@ type Website = {
     public_url: string;
 };
 
+function readableForeground(background: string): string {
+    if (!/^#[0-9A-Fa-f]{6}$/.test(background)) return '#111827';
+
+    const channels = [1, 3, 5].map((start) => {
+        const value =
+            Number.parseInt(background.slice(start, start + 2), 16) / 255;
+        return value <= 0.04045
+            ? value / 12.92
+            : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    const luminance =
+        0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+
+    return 1.05 / (luminance + 0.05) >= (luminance + 0.05) / 0.05
+        ? '#FFFFFF'
+        : '#111827';
+}
+
+function OptionalColourInput({
+    id,
+    name,
+    label,
+    initialValue,
+}: {
+    id: string;
+    name: string;
+    label: string;
+    initialValue: string;
+}) {
+    const [value, setValue] = useState(initialValue);
+    const pickerValue = /^#[0-9A-F]{6}$/i.test(value) ? value : '#FFFFFF';
+
+    return (
+        <div className="flex flex-wrap gap-2">
+            <input
+                aria-label={`Choose ${label.toLowerCase()}`}
+                type="color"
+                value={pickerValue}
+                onChange={(event) => setValue(event.target.value.toUpperCase())}
+                className="h-10 w-14 cursor-pointer rounded-md border bg-background p-1"
+            />
+            <Input
+                id={id}
+                name={name}
+                value={value}
+                onChange={(event) => setValue(event.target.value.toUpperCase())}
+                maxLength={7}
+                pattern="#[0-9A-Fa-f]{6}"
+                placeholder="Use theme default"
+                className="min-w-44 flex-1"
+            />
+            {value && (
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setValue('')}
+                >
+                    Use theme default
+                </Button>
+            )}
+        </div>
+    );
+}
+
 export default function AcademyWebsite({
     website,
     definitions,
+    theme,
     tenant_domain,
     store_module,
 }: {
     website: Website;
     definitions: Record<string, SectionDefinition>;
+    theme: AcademyTheme;
     tenant_domain: string;
     store_module?: {
         enabled: boolean;
@@ -58,9 +128,21 @@ export default function AcademyWebsite({
         preview_url: string;
     };
 }) {
+    const themeForm = useForm({
+        primary_color: theme.primary,
+        secondary_color: theme.secondary,
+        heading_color: theme.heading,
+    });
     const enabledCount = Object.values(website.sections).filter(
         (section) => section.enabled,
     ).length;
+
+    function submitTheme(event: FormEvent) {
+        event.preventDefault();
+        themeForm.patch('/app/settings/academy/theme', {
+            preserveScroll: true,
+        });
+    }
 
     return (
         <>
@@ -91,6 +173,137 @@ export default function AcademyWebsite({
                         </a>
                     </Button>
                 </div>
+
+                <Card className="mb-6">
+                    <CardContent className="grid gap-6 pt-6 lg:grid-cols-[1fr_0.8fr]">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <Palette className="size-5 text-primary" />
+                                <h2 className="font-semibold">
+                                    Academy website colours
+                                </h2>
+                            </div>
+                            <p className="mt-2 text-sm text-muted-foreground">
+                                Set the public website's main action, accent and
+                                heading colours. Individual sections can
+                                override their background and text colours
+                                below.
+                            </p>
+                            <form
+                                onSubmit={submitTheme}
+                                className="mt-5 grid gap-5 sm:grid-cols-3"
+                            >
+                                {(
+                                    [
+                                        ['primary_color', 'Primary colour'],
+                                        ['secondary_color', 'Secondary colour'],
+                                        [
+                                            'heading_color',
+                                            'Headings text colour',
+                                        ],
+                                    ] as const
+                                ).map(([key, label]) => (
+                                    <div key={key} className="grid gap-2">
+                                        <Label htmlFor={`website-${key}`}>
+                                            {label}
+                                        </Label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                aria-label={`Choose ${label.toLowerCase()}`}
+                                                type="color"
+                                                value={themeForm.data[key]}
+                                                onChange={(event) =>
+                                                    themeForm.setData(
+                                                        key,
+                                                        event.target.value.toUpperCase(),
+                                                    )
+                                                }
+                                                className="h-10 w-12 cursor-pointer rounded-md border bg-background p-1"
+                                            />
+                                            <Input
+                                                id={`website-${key}`}
+                                                value={themeForm.data[key]}
+                                                onChange={(event) =>
+                                                    themeForm.setData(
+                                                        key,
+                                                        event.target.value.toUpperCase(),
+                                                    )
+                                                }
+                                                maxLength={7}
+                                            />
+                                        </div>
+                                        <InputError
+                                            message={themeForm.errors[key]}
+                                        />
+                                    </div>
+                                ))}
+                                <div className="sm:col-span-3">
+                                    <Button
+                                        type="submit"
+                                        disabled={
+                                            themeForm.processing ||
+                                            !themeForm.isDirty
+                                        }
+                                    >
+                                        {themeForm.processing
+                                            ? 'Saving…'
+                                            : 'Save academy colours'}
+                                    </Button>
+                                </div>
+                            </form>
+                        </div>
+                        <div className="grid grid-cols-3 self-start overflow-hidden rounded-2xl border">
+                            <div
+                                className="p-4"
+                                style={{
+                                    backgroundColor:
+                                        themeForm.data.primary_color,
+                                    color: readableForeground(
+                                        themeForm.data.primary_color,
+                                    ),
+                                }}
+                            >
+                                <Palette className="size-5" />
+                                <p className="mt-8 text-sm font-medium">
+                                    Primary
+                                </p>
+                            </div>
+                            <div
+                                className="p-4"
+                                style={{
+                                    backgroundColor:
+                                        themeForm.data.secondary_color,
+                                    color: readableForeground(
+                                        themeForm.data.secondary_color,
+                                    ),
+                                }}
+                            >
+                                <CheckCircle2 className="size-5" />
+                                <p className="mt-8 text-sm font-medium">
+                                    Secondary
+                                </p>
+                            </div>
+                            <div className="bg-white p-4">
+                                <span
+                                    className="text-lg font-bold"
+                                    style={{
+                                        color: themeForm.data.heading_color,
+                                    }}
+                                >
+                                    Aa
+                                </span>
+                                <p
+                                    className="mt-8 text-sm font-medium"
+                                    style={{
+                                        color: themeForm.data.heading_color,
+                                    }}
+                                >
+                                    Headings
+                                </p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 <Form
                     action="/app/settings/website"
@@ -446,7 +659,22 @@ export default function AcademyWebsite({
                                                                         }
                                                                     </Label>
                                                                     {field.type ===
-                                                                    'select' ? (
+                                                                    'color' ? (
+                                                                        <OptionalColourInput
+                                                                            id={`${sectionKey}-${fieldKey}`}
+                                                                            name={`sections[${sectionKey}][${fieldKey}]`}
+                                                                            label={
+                                                                                field.label
+                                                                            }
+                                                                            initialValue={String(
+                                                                                values[
+                                                                                    fieldKey
+                                                                                ] ??
+                                                                                    '',
+                                                                            )}
+                                                                        />
+                                                                    ) : field.type ===
+                                                                      'select' ? (
                                                                         <select
                                                                             id={`${sectionKey}-${fieldKey}`}
                                                                             name={`sections[${sectionKey}][${fieldKey}]`}

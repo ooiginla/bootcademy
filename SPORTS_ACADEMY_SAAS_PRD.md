@@ -158,6 +158,7 @@ These are **draft launch prices**, not immutable business rules. Plans and limit
 ### 4.13 Website CMS, advanced analytics, franchise tools (P2)
 
 - Opt-in public website content integration, news/events/gallery and controlled publishing.
+- Per-academy website palettes and optional, validated background/text colour overrides for each public section.
 - Retention, fee collection trends, attendance patterns, budgets, forecast assumptions.
 - Multi-location expansion/franchise structures only after real customer requirements are validated.
 
@@ -227,7 +228,7 @@ These are **draft launch prices**, not immutable business rules. Plans and limit
 
 **Attendance:** `attendance_records`, `attendance_change_logs`.
 
-**Growth:** `assessments`, `assessment_criteria`, `training_plans`, `announcements`, `notification_deliveries`, `referrals`, `referral_rewards`, `events`, `event_registrations`.
+**Growth:** `assessments`, `assessment_criteria`, `training_plans`, `announcements`, `notification_deliveries`, `reviews`, `review_responses`, `referrals`, `referral_rewards`, `events`, `event_registrations`.
 
 **Enterprise:** `products`, `stock_movements`, `orders`, `order_items`, `sponsors`, `scholarships`, `community_projects`, `media_assets`.
 

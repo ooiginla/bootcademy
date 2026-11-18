@@ -31,6 +31,7 @@ class AcademyBrandingTest extends TestCase
                 ->where('academy.theme.primary', '#5B5BD6')
                 ->where('branding.name', $academy->name)
                 ->where('branding.theme.primary', '#5B5BD6')
+                ->where('branding.theme.heading', '#0F172A')
             );
     }
 
@@ -44,6 +45,10 @@ class AcademyBrandingTest extends TestCase
             ->withSession(['active_academy_id' => $academy->id])
             ->patch(route('academy.branding.profile.update'), [
                 'name' => "  King's Court Football Academy  ",
+                'academy_type' => 'Football',
+                'country_code' => 'GH',
+                'timezone' => 'Africa/Accra',
+                'currency' => 'GHS',
             ])
             ->assertRedirect()
             ->assertInertiaFlash('toast.message', 'Academy profile updated.');
@@ -52,6 +57,10 @@ class AcademyBrandingTest extends TestCase
         $this->assertSame("King's Court Football Academy", $academy->name);
         $this->assertSame($originalSlug, $academy->slug);
         $this->assertSame('Foreign Academy', $foreignAcademy->fresh()->name);
+        $this->assertSame('Football', $academy->academy_type);
+        $this->assertSame('GH', $academy->country_code);
+        $this->assertSame('Africa/Accra', $academy->timezone);
+        $this->assertSame('GHS', $academy->currency);
         $this->assertDatabaseHas(AuditLog::class, [
             'academy_id' => $academy->id,
             'actor_user_id' => $user->id,
@@ -87,6 +96,7 @@ class AcademyBrandingTest extends TestCase
             ->patch(route('academy.branding.theme.update'), [
                 'primary_color' => '#123abc',
                 'secondary_color' => '#fedcba',
+                'heading_color' => '#334455',
             ])
             ->assertRedirect()
             ->assertInertiaFlash('toast.message', 'Academy theme updated.');
@@ -95,6 +105,7 @@ class AcademyBrandingTest extends TestCase
             'id' => $academy->id,
             'primary_color' => '#123ABC',
             'secondary_color' => '#FEDCBA',
+            'heading_color' => '#334455',
         ]);
         $this->assertDatabaseHas(AuditLog::class, [
             'academy_id' => $academy->id,
@@ -282,6 +293,7 @@ class AcademyBrandingTest extends TestCase
             ->patch(route('academy.branding.theme.update'), [
                 'primary_color' => '#123456',
                 'secondary_color' => '#ABCDEF',
+                'heading_color' => '#334455',
             ])
             ->assertForbidden();
     }

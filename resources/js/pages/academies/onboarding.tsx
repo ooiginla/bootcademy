@@ -1,5 +1,6 @@
 import { Form, Head } from '@inertiajs/react';
 import { Building2, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
 import AppLogoIcon from '@/components/app-logo-icon';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -11,10 +12,40 @@ type Props = {
     defaults: {
         timezone: string;
         currency: string;
+        country_code: string;
     };
+    countries: Array<{
+        code: string;
+        name: string;
+        timezone: string;
+        currency: string;
+    }>;
+    timezones: string[];
+    currencies: Array<{ code: string; name: string }>;
 };
 
-export default function AcademyOnboarding({ defaults }: Props) {
+const selectClass =
+    'h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs';
+
+export default function AcademyOnboarding({
+    defaults,
+    countries,
+    timezones,
+    currencies,
+}: Props) {
+    const [country, setCountry] = useState(defaults.country_code);
+    const [timezone, setTimezone] = useState(defaults.timezone);
+    const [currency, setCurrency] = useState(defaults.currency);
+
+    function selectCountry(code: string) {
+        setCountry(code);
+        const selected = countries.find((item) => item.code === code);
+        if (selected) {
+            setTimezone(selected.timezone);
+            setCurrency(selected.currency);
+        }
+    }
+
     return (
         <>
             <Head title="Set up your academy" />
@@ -100,17 +131,62 @@ export default function AcademyOnboarding({ defaults }: Props) {
                                         />
                                     </div>
 
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="country_code">
+                                            Country
+                                        </Label>
+                                        <select
+                                            id="country_code"
+                                            name="country_code"
+                                            required
+                                            value={country}
+                                            onChange={(event) =>
+                                                selectCountry(
+                                                    event.target.value,
+                                                )
+                                            }
+                                            className={selectClass}
+                                        >
+                                            {countries.map((item) => (
+                                                <option
+                                                    key={item.code}
+                                                    value={item.code}
+                                                >
+                                                    {item.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <InputError
+                                            message={errors.country_code}
+                                        />
+                                    </div>
+
                                     <div className="grid gap-5 sm:grid-cols-2">
                                         <div className="grid gap-2">
                                             <Label htmlFor="timezone">
                                                 Timezone
                                             </Label>
-                                            <Input
+                                            <select
                                                 id="timezone"
                                                 name="timezone"
                                                 required
-                                                defaultValue={defaults.timezone}
-                                            />
+                                                value={timezone}
+                                                onChange={(event) =>
+                                                    setTimezone(
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                className={selectClass}
+                                            >
+                                                {timezones.map((item) => (
+                                                    <option
+                                                        key={item}
+                                                        value={item}
+                                                    >
+                                                        {item}
+                                                    </option>
+                                                ))}
+                                            </select>
                                             <InputError
                                                 message={errors.timezone}
                                             />
@@ -119,14 +195,28 @@ export default function AcademyOnboarding({ defaults }: Props) {
                                             <Label htmlFor="currency">
                                                 Currency code
                                             </Label>
-                                            <Input
+                                            <select
                                                 id="currency"
                                                 name="currency"
                                                 required
-                                                maxLength={3}
-                                                defaultValue={defaults.currency}
-                                                className="uppercase"
-                                            />
+                                                value={currency}
+                                                onChange={(event) =>
+                                                    setCurrency(
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                className={selectClass}
+                                            >
+                                                {currencies.map((item) => (
+                                                    <option
+                                                        key={item.code}
+                                                        value={item.code}
+                                                    >
+                                                        {item.code} —{' '}
+                                                        {item.name}
+                                                    </option>
+                                                ))}
+                                            </select>
                                             <InputError
                                                 message={errors.currency}
                                             />

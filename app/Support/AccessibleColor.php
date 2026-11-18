@@ -30,17 +30,19 @@ class AccessibleColor
         return $whiteContrast >= $blackContrast ? '#FFFFFF' : '#111827';
     }
 
-    /** @return array{primary: string, primary_foreground: string, secondary: string, secondary_foreground: string} */
-    public static function theme(?string $primary, ?string $secondary): array
+    /** @return array{primary: string, primary_foreground: string, secondary: string, secondary_foreground: string, heading: string} */
+    public static function theme(?string $primary, ?string $secondary, ?string $heading = null): array
     {
         $primary = self::normalize($primary ?: config('branding.default_primary_color'));
         $secondary = self::normalize($secondary ?: config('branding.default_secondary_color'));
+        $heading = self::normalize($heading ?: config('branding.default_heading_color'));
 
         return [
             'primary' => $primary,
             'primary_foreground' => self::foreground($primary),
             'secondary' => $secondary,
             'secondary_foreground' => self::foreground($secondary),
+            'heading' => $heading,
         ];
     }
 

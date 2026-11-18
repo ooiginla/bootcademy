@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 class CreateAcademy
 {
     /**
-     * @param  array{name: string, academy_type: string, timezone: string, currency: string}  $data
+     * @param  array{name: string, academy_type: string, country_code: string, timezone: string, currency: string}  $data
      */
     public function handle(User $owner, array $data): Academy
     {
@@ -23,6 +23,7 @@ class CreateAcademy
                 'name' => trim($data['name']),
                 'slug' => $this->uniqueSlug($data['name']),
                 'academy_type' => trim($data['academy_type']),
+                'country_code' => strtoupper($data['country_code']),
                 'timezone' => $data['timezone'],
                 'currency' => strtoupper($data['currency']),
                 'created_by_user_id' => $owner->id,

@@ -1,3 +1,6 @@
+import type { CSSProperties } from 'react';
+import type { PublicSection } from '@/types/public-site';
+
 export function parseRows(
     value: string | boolean | undefined,
     columns: number,
@@ -48,4 +51,37 @@ export function initials(value: string) {
         .slice(0, 2)
         .map((part) => part[0]?.toUpperCase())
         .join('');
+}
+function optionalHex(value: string | boolean | undefined): string | undefined {
+    return typeof value === 'string' && /^#[0-9A-F]{6}$/i.test(value)
+        ? value
+        : undefined;
+}
+
+export function sectionAppearance(
+    section: PublicSection | undefined,
+    className = '',
+    chrome = false,
+): { className: string; style: CSSProperties } {
+    const backgroundColor = optionalHex(section?.background_color);
+    const color = optionalHex(section?.text_color);
+
+    return {
+        className: [
+            className,
+            color ? 'public-section-custom-text' : '',
+            color && chrome ? 'public-chrome-custom-text' : '',
+        ]
+            .filter(Boolean)
+            .join(' '),
+        style: {
+            ...(backgroundColor ? { backgroundColor } : {}),
+            ...(color
+                ? {
+                      color,
+                      '--public-section-text': color,
+                  }
+                : {}),
+        } as CSSProperties,
+    };
 }

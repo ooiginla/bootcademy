@@ -84,7 +84,7 @@ class HandleInertiaRequests extends Middleware
                     'active_member_count' => $academy->memberships()
                         ->where('status', 'active')
                         ->count(),
-                    'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color),
+                    'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color, $academy->heading_color),
                 ];
             },
             'academies' => fn (): array => $request->user()

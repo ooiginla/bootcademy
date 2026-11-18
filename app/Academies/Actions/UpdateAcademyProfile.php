@@ -12,19 +12,21 @@ class UpdateAcademyProfile
 {
     public function __construct(private readonly AuditLogger $audit) {}
 
-    public function handle(Academy $academy, User $actor, string $name, Request $request): void
+    /** @param array{name: string, academy_type: string, country_code: string, timezone: string, currency: string} $data */
+    public function handle(Academy $academy, User $actor, array $data, Request $request): void
     {
-        $previousName = $academy->name;
+        $fields = ['name', 'academy_type', 'country_code', 'timezone', 'currency'];
+        $before = $academy->only($fields);
 
-        DB::transaction(function () use ($academy, $actor, $name, $previousName, $request): void {
-            $academy->update(['name' => $name]);
+        DB::transaction(function () use ($academy, $actor, $data, $before, $request): void {
+            $academy->update($data);
 
             $this->audit->record(
                 'academy.profile.updated',
                 $actor,
                 $academy,
                 $academy,
-                ['before' => ['name' => $previousName], 'after' => ['name' => $name]],
+                ['before' => $before, 'after' => $data],
                 $request,
             );
         });

@@ -21,6 +21,7 @@ const props = {
             primary_foreground: '#ffffff',
             secondary: '#f59e0b',
             secondary_foreground: '#111827',
+            heading: '#0F172A',
         },
     },
     site: { subdomain: 'demo', theme_key: 'classic', sections: {} },

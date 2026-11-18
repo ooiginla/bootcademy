@@ -41,6 +41,7 @@ export default function PlatformAcademyBranding({ managedAcademy }: Props) {
     const form = useForm({
         primary_color: managedAcademy.theme.primary,
         secondary_color: managedAcademy.theme.secondary,
+        heading_color: managedAcademy.theme.heading,
     });
     const feeForm = useForm(managedAcademy.platform_fee);
     const syncForm = useForm({});
@@ -86,8 +87,9 @@ export default function PlatformAcademyBranding({ managedAcademy }: Props) {
                         {managedAcademy.name}
                     </h1>
                     <p className="mt-2 text-sm text-muted-foreground">
-                        Foreground colours are derived automatically to preserve
-                        readable contrast.
+                        Button foreground colours are derived automatically to
+                        preserve readable contrast. Public heading colour is
+                        selected directly.
                     </p>
                 </div>
 
@@ -114,6 +116,7 @@ export default function PlatformAcademyBranding({ managedAcademy }: Props) {
                                         {settlement.status}
                                     </dd>
                                 </div>
+
                                 <div>
                                     <dt className="text-xs text-muted-foreground">
                                         Subaccount code
@@ -314,6 +317,41 @@ export default function PlatformAcademyBranding({ managedAcademy }: Props) {
                                     />
                                 </div>
 
+                                <div className="grid gap-2">
+                                    <Label htmlFor="heading_color">
+                                        Headings text colour
+                                    </Label>
+                                    <div className="flex gap-3">
+                                        <input
+                                            id="heading_picker"
+                                            aria-label="Choose headings text colour"
+                                            type="color"
+                                            value={form.data.heading_color}
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'heading_color',
+                                                    event.target.value.toUpperCase(),
+                                                )
+                                            }
+                                            className="h-10 w-14 cursor-pointer rounded-md border bg-background p-1"
+                                        />
+                                        <Input
+                                            id="heading_color"
+                                            value={form.data.heading_color}
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'heading_color',
+                                                    event.target.value.toUpperCase(),
+                                                )
+                                            }
+                                            maxLength={7}
+                                        />
+                                    </div>
+                                    <InputError
+                                        message={form.errors.heading_color}
+                                    />
+                                </div>
+
                                 <Button
                                     type="submit"
                                     disabled={form.processing || !form.isDirty}
@@ -344,6 +382,12 @@ export default function PlatformAcademyBranding({ managedAcademy }: Props) {
                             </p>
                         </div>
                         <CardContent className="p-6">
+                            <h3
+                                className="mb-5 text-2xl font-bold"
+                                style={{ color: form.data.heading_color }}
+                            >
+                                Public heading preview
+                            </h3>
                             <div
                                 className="rounded-xl p-4"
                                 style={{

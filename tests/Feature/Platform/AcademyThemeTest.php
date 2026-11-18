@@ -21,6 +21,7 @@ class AcademyThemeTest extends TestCase
             ->patch(route('platform.academies.branding.update', $academy), [
                 'primary_color' => '#1a2b3c',
                 'secondary_color' => '#f4e3d2',
+                'heading_color' => '#334455',
             ])
             ->assertRedirect();
 
@@ -28,6 +29,7 @@ class AcademyThemeTest extends TestCase
             'id' => $academy->id,
             'primary_color' => '#1A2B3C',
             'secondary_color' => '#F4E3D2',
+            'heading_color' => '#334455',
         ]);
         $this->assertDatabaseHas(AuditLog::class, [
             'academy_id' => $academy->id,
@@ -49,6 +51,7 @@ class AcademyThemeTest extends TestCase
             ->patch(route('platform.academies.branding.update', $academy), [
                 'primary_color' => '#123456',
                 'secondary_color' => '#ABCDEF',
+                'heading_color' => '#334455',
             ])
             ->assertForbidden();
 
@@ -64,8 +67,9 @@ class AcademyThemeTest extends TestCase
             ->patch(route('platform.academies.branding.update', $academy), [
                 'primary_color' => 'red',
                 'secondary_color' => '#FFFF',
+                'heading_color' => 'navy',
             ])
-            ->assertSessionHasErrors(['primary_color', 'secondary_color']);
+            ->assertSessionHasErrors(['primary_color', 'secondary_color', 'heading_color']);
 
         $this->assertNull($academy->fresh()->primary_color);
         $this->assertDatabaseCount(AuditLog::class, 0);

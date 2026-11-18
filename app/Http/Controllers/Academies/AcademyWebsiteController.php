@@ -8,6 +8,7 @@ use App\Academies\Actions\UpdateAcademyWebsite;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Academies\UpdateAcademyWebsiteRequest;
 use App\Models\AcademyWebsite;
+use App\Support\AccessibleColor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -34,6 +35,11 @@ class AcademyWebsiteController extends Controller
                 'public_url' => 'https://'.$website->subdomain.'.'.config('branding.tenant_domain'),
             ],
             'definitions' => AcademyWebsiteDefaults::definitions(),
+            'theme' => AccessibleColor::theme(
+                $academy->primary_color,
+                $academy->secondary_color,
+                $academy->heading_color,
+            ),
             'tenant_domain' => config('branding.tenant_domain'),
             'store_module' => [
                 'enabled' => (bool) data_get($website->resolvedSections(), 'store.enabled', false),

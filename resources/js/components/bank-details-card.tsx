@@ -1,6 +1,7 @@
 import { useForm } from '@inertiajs/react';
 import { AlertTriangle, CheckCircle2, Landmark } from 'lucide-react';
 import type { FormEvent } from 'react';
+import { useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -106,6 +107,30 @@ export default function BankDetailsCard({
         bank_account_name: bankDetails.account_name ?? '',
         bank_account_number: bankDetails.account_number ?? '',
     });
+    const [bankSearch, setBankSearch] = useState('');
+    const filteredBanks = useMemo(() => {
+        const query = bankSearch.trim().toLocaleLowerCase();
+        if (!query) return banks;
+
+        return banks.filter(
+            (bank) =>
+                bank.name.toLocaleLowerCase().includes(query) ||
+                bank.code.toLocaleLowerCase().includes(query),
+        );
+    }, [bankSearch, banks]);
+    const visibleBanks = useMemo(() => {
+        const selected = banks.find(
+            (bank) => bank.code === form.data.bank_code,
+        );
+        if (
+            !selected ||
+            filteredBanks.some((bank) => bank.code === selected.code)
+        ) {
+            return filteredBanks;
+        }
+
+        return [selected, ...filteredBanks];
+    }, [banks, filteredBanks, form.data.bank_code]);
 
     function submit(event: FormEvent) {
         event.preventDefault();
@@ -133,6 +158,17 @@ export default function BankDetailsCard({
                         <div className="grid gap-4 sm:grid-cols-3">
                             <div className="grid gap-2">
                                 <Label htmlFor="bank_code">Bank</Label>
+                                <Input
+                                    id="bank_search"
+                                    type="search"
+                                    value={bankSearch}
+                                    onChange={(event) =>
+                                        setBankSearch(event.target.value)
+                                    }
+                                    placeholder="Search banks…"
+                                    aria-label="Search banks"
+                                    disabled={banks.length === 0}
+                                />
                                 <select
                                     id="bank_code"
                                     className={selectClass}
@@ -150,7 +186,7 @@ export default function BankDetailsCard({
                                             ? 'Bank list unavailable'
                                             : 'Select bank'}
                                     </option>
-                                    {banks.map((bank) => (
+                                    {visibleBanks.map((bank) => (
                                         <option
                                             key={bank.code}
                                             value={bank.code}
@@ -159,6 +195,12 @@ export default function BankDetailsCard({
                                         </option>
                                     ))}
                                 </select>
+                                {banks.length > 0 &&
+                                    filteredBanks.length === 0 && (
+                                        <p className="text-xs text-muted-foreground">
+                                            No banks match “{bankSearch}”.
+                                        </p>
+                                    )}
                                 {banks.length === 0 && (
                                     <p className="text-xs text-muted-foreground">
                                         Paystack’s bank list could not be

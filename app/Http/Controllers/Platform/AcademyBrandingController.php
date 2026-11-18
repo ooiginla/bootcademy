@@ -40,7 +40,7 @@ class AcademyBrandingController extends Controller
                     'memberships_count' => $academy->memberships_count,
                     'players_count' => $academy->players_count,
                     'applications_count' => $academy->applications_count,
-                    'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color),
+                    'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color, $academy->heading_color),
                 ]),
             'filters' => ['search' => $search],
         ]);
@@ -52,7 +52,7 @@ class AcademyBrandingController extends Controller
             'managedAcademy' => [
                 'id' => $academy->id,
                 'name' => $academy->name,
-                'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color),
+                'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color, $academy->heading_color),
                 'platform_fee' => [
                     'platform_percentage' => $academy->platform_fee_basis_points === null ? '' : number_format($academy->platform_fee_basis_points / 100, 2, '.', ''),
                     'platform_fixed_fee' => $academy->platform_fee_fixed_minor === null ? '' : Money::fromMinor($academy->platform_fee_fixed_minor),
@@ -85,6 +85,7 @@ class AcademyBrandingController extends Controller
             $request->user(),
             $request->string('primary_color')->toString(),
             $request->string('secondary_color')->toString(),
+            $request->string('heading_color')->toString(),
             $request,
         );
 

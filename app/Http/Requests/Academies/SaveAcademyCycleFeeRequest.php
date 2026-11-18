@@ -4,6 +4,7 @@ namespace App\Http\Requests\Academies;
 
 use App\Academies\AcademyContext;
 use App\Models\AcademyCycle;
+use App\Models\AcademyCycleFee;
 use App\Models\Cohort;
 use App\Models\ProgrammeCycle;
 use Illuminate\Database\Query\Builder;
@@ -27,8 +28,14 @@ class SaveAcademyCycleFeeRequest extends FormRequest
     public function authorize(): bool
     {
         $cycle = $this->route('cycle');
+        $fee = $this->route('fee');
         $context = app(AcademyContext::class);
         abort_unless($cycle instanceof AcademyCycle && $cycle->academy_id === $context->id(), 404);
+        abort_if(
+            $fee instanceof AcademyCycleFee
+            && ((int) $fee->academy_id !== $context->id() || (int) $fee->academy_cycle_id !== $cycle->id),
+            404,
+        );
 
         return $context->canManageFinance();
     }
@@ -38,11 +45,13 @@ class SaveAcademyCycleFeeRequest extends FormRequest
     {
         $academyId = app(AcademyContext::class)->id();
         $cycle = $this->route('cycle');
+        $fee = $this->route('fee');
         abort_unless($cycle instanceof AcademyCycle, 404);
+        abort_unless($fee === null || $fee instanceof AcademyCycleFee, 404);
         $forAcademy = fn (Builder $query): Builder => $query->where('academy_id', $academyId);
 
         return [
-            'name' => ['required', 'string', 'max:160', Rule::unique('academy_cycle_fees', 'name')->withoutTrashed()->where(
+            'name' => ['required', 'string', 'max:160', Rule::unique('academy_cycle_fees', 'name')->withoutTrashed()->ignore($fee)->where(
                 fn (Builder $query): Builder => $query
                     ->where('academy_id', $academyId)
                     ->where('academy_cycle_id', $cycle->id)

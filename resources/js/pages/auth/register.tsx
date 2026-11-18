@@ -1,4 +1,5 @@
 import { Form, Head } from '@inertiajs/react';
+import { useState } from 'react';
 import { useRecaptchaToken } from '@/lib/recaptcha';
 import RecaptchaField from '@/components/recaptcha-field';
 import InputError from '@/components/input-error';
@@ -13,10 +14,41 @@ import { store } from '@/routes/register';
 
 type Props = {
     passwordRules: string;
+    countries: Array<{
+        code: string;
+        name: string;
+        timezone: string;
+        currency: string;
+    }>;
+    timezones: string[];
+    currencies: Array<{ code: string; name: string }>;
 };
 
-export default function Register({ passwordRules }: Props) {
+const selectClass =
+    'h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50';
+
+export default function Register({
+    passwordRules,
+    countries,
+    timezones,
+    currencies,
+}: Props) {
     const recaptcha = useRecaptchaToken('register');
+    const defaultCountry = countries.find((country) => country.code === 'NG');
+    const [country, setCountry] = useState(defaultCountry?.code ?? '');
+    const [timezone, setTimezone] = useState(
+        defaultCountry?.timezone ?? 'Africa/Lagos',
+    );
+    const [currency, setCurrency] = useState(defaultCountry?.currency ?? 'NGN');
+
+    function selectCountry(code: string) {
+        setCountry(code);
+        const selected = countries.find((item) => item.code === code);
+        if (selected) {
+            setTimezone(selected.timezone);
+            setCurrency(selected.currency);
+        }
+    }
 
     return (
         <>
@@ -32,38 +64,6 @@ export default function Register({ passwordRules }: Props) {
                     <>
                         <div className="grid gap-6">
                             <div className="grid gap-2">
-                                <Label htmlFor="name">Name</Label>
-                                <Input
-                                    id="name"
-                                    type="text"
-                                    required
-                                    autoFocus
-                                    tabIndex={1}
-                                    autoComplete="name"
-                                    name="name"
-                                    placeholder="Full name"
-                                />
-                                <InputError
-                                    message={errors.name}
-                                    className="mt-2"
-                                />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    required
-                                    tabIndex={2}
-                                    autoComplete="email"
-                                    name="email"
-                                    placeholder="email@example.com"
-                                />
-                                <InputError message={errors.email} />
-                            </div>
-
-                            <div className="grid gap-2">
                                 <Label htmlFor="academy_name">
                                     Academy name
                                 </Label>
@@ -71,12 +71,16 @@ export default function Register({ passwordRules }: Props) {
                                     id="academy_name"
                                     type="text"
                                     required
-                                    tabIndex={3}
+                                    autoFocus
+                                    tabIndex={1}
                                     autoComplete="organization"
                                     name="academy_name"
                                     placeholder="Your academy name"
                                 />
-                                <InputError message={errors.academy_name} />
+                                <InputError
+                                    message={errors.academy_name}
+                                    className="mt-2"
+                                />
                             </div>
 
                             <div className="grid gap-2">
@@ -87,39 +91,113 @@ export default function Register({ passwordRules }: Props) {
                                     id="academy_type"
                                     type="text"
                                     required
-                                    tabIndex={4}
+                                    tabIndex={2}
                                     name="academy_type"
                                     placeholder="e.g. Football, language or music"
                                 />
                                 <InputError message={errors.academy_type} />
                             </div>
 
+                            <div className="grid gap-2">
+                                <Label htmlFor="email">Email address</Label>
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    required
+                                    tabIndex={3}
+                                    autoComplete="email"
+                                    name="email"
+                                    placeholder="email@example.com"
+                                />
+                                <InputError message={errors.email} />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="country">Country</Label>
+                                <select
+                                    id="country"
+                                    name="country"
+                                    required
+                                    tabIndex={4}
+                                    value={country}
+                                    onChange={(event) =>
+                                        selectCountry(event.target.value)
+                                    }
+                                    className={selectClass}
+                                >
+                                    <option value="">Select a country</option>
+                                    {countries.map((item) => (
+                                        <option
+                                            key={item.code}
+                                            value={item.code}
+                                        >
+                                            {item.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <InputError message={errors.country} />
+                            </div>
+
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div className="grid gap-2">
                                     <Label htmlFor="timezone">Timezone</Label>
-                                    <Input
+                                    <select
                                         id="timezone"
                                         name="timezone"
                                         required
                                         tabIndex={5}
-                                        defaultValue="Africa/Lagos"
-                                        placeholder="Africa/Lagos"
-                                    />
+                                        value={timezone}
+                                        onChange={(event) =>
+                                            setTimezone(event.target.value)
+                                        }
+                                        className={selectClass}
+                                    >
+                                        {timezones.map((item) => (
+                                            <option key={item} value={item}>
+                                                {item}
+                                            </option>
+                                        ))}
+                                    </select>
                                     <InputError message={errors.timezone} />
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="currency">Currency</Label>
-                                    <Input
+                                    <select
                                         id="currency"
                                         name="currency"
                                         required
                                         tabIndex={6}
-                                        maxLength={3}
-                                        defaultValue="NGN"
-                                        className="uppercase"
-                                    />
+                                        value={currency}
+                                        onChange={(event) =>
+                                            setCurrency(event.target.value)
+                                        }
+                                        className={selectClass}
+                                    >
+                                        {currencies.map((item) => (
+                                            <option
+                                                key={item.code}
+                                                value={item.code}
+                                            >
+                                                {item.code} — {item.name}
+                                            </option>
+                                        ))}
+                                    </select>
                                     <InputError message={errors.currency} />
                                 </div>
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="name">Full Name</Label>
+                                <Input
+                                    id="name"
+                                    type="text"
+                                    required
+                                    tabIndex={7}
+                                    autoComplete="name"
+                                    name="name"
+                                    placeholder="Your full name"
+                                />
+                                <InputError message={errors.name} />
                             </div>
 
                             <div className="grid gap-2">
@@ -127,7 +205,7 @@ export default function Register({ passwordRules }: Props) {
                                 <PasswordInput
                                     id="password"
                                     required
-                                    tabIndex={7}
+                                    tabIndex={8}
                                     autoComplete="new-password"
                                     name="password"
                                     placeholder="Password"
@@ -143,7 +221,7 @@ export default function Register({ passwordRules }: Props) {
                                 <PasswordInput
                                     id="password_confirmation"
                                     required
-                                    tabIndex={8}
+                                    tabIndex={9}
                                     autoComplete="new-password"
                                     name="password_confirmation"
                                     placeholder="Confirm password"
@@ -162,7 +240,7 @@ export default function Register({ passwordRules }: Props) {
                             <Button
                                 type="submit"
                                 className="mt-2 w-full"
-                                tabIndex={9}
+                                tabIndex={10}
                                 data-test="register-user-button"
                             >
                                 {processing && <Spinner />}
@@ -172,7 +250,7 @@ export default function Register({ passwordRules }: Props) {
 
                         <div className="text-center text-sm text-muted-foreground">
                             Already have an account?{' '}
-                            <TextLink href={login()} tabIndex={10}>
+                            <TextLink href={login()} tabIndex={11}>
                                 Log in
                             </TextLink>
                         </div>

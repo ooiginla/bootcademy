@@ -29,10 +29,10 @@ class PublicWebsiteTest extends TestCase
     {
         $create = app(CreateAcademy::class);
         $first = $create->handle(User::factory()->create(), [
-            'name' => 'Bright Future Academy', 'academy_type' => 'general', 'timezone' => 'Africa/Lagos', 'currency' => 'NGN',
+            'name' => 'Bright Future Academy', 'academy_type' => 'general', 'country_code' => 'NG', 'timezone' => 'Africa/Lagos', 'currency' => 'NGN',
         ]);
         $second = $create->handle(User::factory()->create(), [
-            'name' => 'Bright Future Academy', 'academy_type' => 'general', 'timezone' => 'Africa/Lagos', 'currency' => 'NGN',
+            'name' => 'Bright Future Academy', 'academy_type' => 'general', 'country_code' => 'NG', 'timezone' => 'Africa/Lagos', 'currency' => 'NGN',
         ]);
 
         $this->assertSame('bright-future-academy', $first->slug);
@@ -52,6 +52,8 @@ class PublicWebsiteTest extends TestCase
         $sections['hero']['headline'] = 'Build your future here';
         $sections['testimonials']['enabled'] = true;
         $sections['testimonials']['items'] = 'A genuine review | Parent Name | Parent';
+        $sections['topbar']['background_color'] = '#123abc';
+        $sections['topbar']['text_color'] = '#fefefe';
 
         $this->asAcademy($owner, $academy)->patch(route('academy.website.update'), [
             'subdomain' => 'future-studio',
@@ -64,6 +66,8 @@ class PublicWebsiteTest extends TestCase
         $this->assertSame('future-studio', $website->subdomain);
         $this->assertSame('Build your future here', $website->sections['hero']['headline']);
         $this->assertTrue($website->sections['testimonials']['enabled']);
+        $this->assertSame('#123ABC', $website->sections['topbar']['background_color']);
+        $this->assertSame('#FEFEFE', $website->sections['topbar']['text_color']);
         $this->assertDatabaseHas('audit_logs', [
             'academy_id' => $academy->id,
             'actor_user_id' => $owner->id,
@@ -74,6 +78,30 @@ class PublicWebsiteTest extends TestCase
         AcademyMembership::factory()->for($coach)->for($academy)->asRole(AcademyRole::Coach)->create();
         $this->asAcademy($coach, $academy)->get(route('academy.website.edit'))->assertForbidden();
         $this->asAcademy($coach, $academy)->patch(route('academy.website.update'), [])->assertForbidden();
+    }
+
+    public function test_section_colours_are_optional_and_must_use_six_digit_hex_values(): void
+    {
+        [$owner, $academy] = $this->academyWebsite('colour-academy');
+        $sections = AcademyWebsiteDefaults::sections();
+        $sections['footer']['background_color'] = 'navy';
+
+        $this->asAcademy($owner, $academy)->patch(route('academy.website.update'), [
+            'subdomain' => 'colour-academy',
+            'theme_key' => 'launch',
+            'is_published' => true,
+            'sections' => $sections,
+        ])->assertSessionHasErrors('sections.footer.background_color');
+
+        $sections['footer']['background_color'] = '';
+        $sections['footer']['text_color'] = '';
+
+        $this->asAcademy($owner, $academy)->patch(route('academy.website.update'), [
+            'subdomain' => 'colour-academy',
+            'theme_key' => 'launch',
+            'is_published' => true,
+            'sections' => $sections,
+        ])->assertSessionHasNoErrors();
     }
 
     public function test_legacy_string_section_flags_are_resolved_as_real_booleans(): void

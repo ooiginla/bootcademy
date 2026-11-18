@@ -129,7 +129,16 @@ class AcademyWebsiteDefaults
      */
     private static function section(string $label, string $description, array $fields, bool $enabled = true): array
     {
-        return ['label' => $label, 'description' => $description, 'enabled' => $enabled, 'title' => $label, 'fields' => $fields];
+        return [
+            'label' => $label,
+            'description' => $description,
+            'enabled' => $enabled,
+            'title' => $label,
+            'fields' => array_merge($fields, [
+                'background_color' => self::color('Background colour'),
+                'text_color' => self::color('Text colour'),
+            ]),
+        ];
     }
 
     /** @return array<string, mixed> */
@@ -148,6 +157,17 @@ class AcademyWebsiteDefaults
     private static function lines(string $label, string $default, string $help): array
     {
         return compact('label', 'default', 'help') + ['type' => 'lines'];
+    }
+
+    /** @return array<string, mixed> */
+    private static function color(string $label): array
+    {
+        return [
+            'label' => $label,
+            'default' => '',
+            'help' => 'Optional. Leave blank to use the website theme default.',
+            'type' => 'color',
+        ];
     }
 
     /** @param array<string, string> $options

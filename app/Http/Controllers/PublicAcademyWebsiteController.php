@@ -179,7 +179,7 @@ class PublicAcademyWebsiteController extends Controller
                 'guardian_plural' => $academy->guardian_label_plural,
                 'collect_guardian_information' => $academy->collect_guardian_information,
                 'currency' => $academy->currency,
-                'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color),
+                'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color, $academy->heading_color),
             ],
             'site' => [
                 'subdomain' => $website->subdomain,

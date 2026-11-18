@@ -5,6 +5,7 @@ namespace Tests\Feature\Academies;
 use App\Enums\AcademyRole;
 use App\Models\Academy;
 use App\Models\AcademyCycle;
+use App\Models\AcademyCycleFee;
 use App\Models\AcademyCycleTerm;
 use App\Models\AcademyMembership;
 use App\Models\Application;
@@ -100,6 +101,53 @@ class CycleFeeManagementTest extends TestCase
                 ->has('cycle.terms', 0)
                 ->where('cycle.terms_count', 0)
                 ->where('cycle.offerings.0.fee_items.0.academy_cycle_term_id', null));
+    }
+
+    public function test_owner_can_edit_an_additional_cycle_fee_without_cross_cycle_or_tenant_access(): void
+    {
+        [$owner, $academy] = $this->member(AcademyRole::OwnerAdmin);
+        $cycle = AcademyCycle::query()->create([
+            'academy_id' => $academy->id, 'name' => '2027 Academic Year', 'type' => 'fixed',
+            'starts_on' => '2027-01-01', 'ends_on' => '2027-12-31', 'status' => 'active',
+        ]);
+        $firstProgramme = Programme::factory()->for($academy)->create(['name' => 'Under 12']);
+        $secondProgramme = Programme::factory()->for($academy)->create(['name' => 'Under 17']);
+        $member = $this->actingAs($owner)->withSession(['active_academy_id' => $academy->id]);
+        $member->post(route('academy.cycles.fees.store', $cycle), [
+            'name' => 'Medical screening', 'category' => 'medical', 'amount' => '25000.00',
+            'is_compulsory' => false, 'applies_to_all_programmes' => false, 'is_active' => true,
+            'programme_ids' => [$firstProgramme->id],
+        ])->assertSessionHasNoErrors();
+        $fee = AcademyCycleFee::query()->sole();
+
+        $member->patch(route('academy.cycles.fees.update', [$cycle, $fee]), [
+            'name' => 'Medical screening', 'category' => 'health', 'amount' => '27500.00',
+            'is_compulsory' => true, 'applies_to_all_programmes' => false, 'is_active' => true,
+            'programme_ids' => [$secondProgramme->id],
+        ])->assertRedirect()->assertInertiaFlash('toast.message', 'Cycle fee updated.');
+
+        $fee->refresh();
+        $this->assertSame('health', $fee->category);
+        $this->assertSame(2750000, $fee->amount_minor);
+        $this->assertTrue($fee->is_compulsory);
+        $this->assertSame([$secondProgramme->id], $fee->programmes()->pluck('programmes.id')->all());
+        $this->assertDatabaseCount('academy_cycle_fees', 1);
+
+        $otherCycle = AcademyCycle::query()->create([
+            'academy_id' => $academy->id, 'name' => '2028 Academic Year', 'type' => 'fixed',
+            'starts_on' => '2028-01-01', 'ends_on' => '2028-12-31', 'status' => 'draft',
+        ]);
+        $member->patch(route('academy.cycles.fees.update', [$otherCycle, $fee]), [
+            'name' => 'Attack', 'category' => 'other', 'amount' => '1.00',
+            'is_compulsory' => false, 'applies_to_all_programmes' => true, 'is_active' => true,
+        ])->assertNotFound();
+
+        [$foreignOwner, $foreignAcademy] = $this->member(AcademyRole::OwnerAdmin);
+        $this->actingAs($foreignOwner)->withSession(['active_academy_id' => $foreignAcademy->id])
+            ->patch(route('academy.cycles.fees.update', [$cycle, $fee]), [
+                'name' => 'Attack', 'category' => 'other', 'amount' => '1.00',
+                'is_compulsory' => false, 'applies_to_all_programmes' => true, 'is_active' => true,
+            ])->assertNotFound();
     }
 
     public function test_programme_fee_has_no_prices_until_payment_plans_are_added(): void

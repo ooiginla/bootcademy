@@ -20,6 +20,7 @@ class UpdateAcademyThemeRequest extends FormRequest
         return [
             'primary_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'secondary_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'heading_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
         ];
     }
 }

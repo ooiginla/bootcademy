@@ -13,7 +13,7 @@ import {
 import type { CSSProperties, ReactNode } from 'react';
 import { useState } from 'react';
 import type { PublicAcademy, PublicSite } from '@/types/public-site';
-import { parseRows, resolveSiteUrl, safeUrl } from './utils';
+import { parseRows, resolveSiteUrl, safeUrl, sectionAppearance } from './utils';
 
 const menuSections = [
     ['about', 'about'],
@@ -30,7 +30,7 @@ const menuSections = [
     ['alumni', 'alumni'],
     ['gallery', 'gallery'],
     ['affiliations', 'partners'],
-    ['sponsors', 'partners'],
+    ['sponsors', 'sponsors'],
     ['faq', 'faq'],
 ] as const;
 
@@ -83,12 +83,13 @@ export default function PublicSiteShell({
         '--site-primary-fg': academy.theme.primary_foreground,
         '--site-secondary': academy.theme.secondary,
         '--site-secondary-fg': academy.theme.secondary_foreground,
+        '--site-heading': academy.theme.heading,
     } as CSSProperties;
 
     return (
         <div
             style={style}
-            className="min-h-screen bg-[#f7f7f2] font-sans text-slate-950"
+            className="public-site-theme min-h-screen bg-[#f7f7f2] font-sans text-slate-950"
         >
             <Head title={title ?? academy.name}>
                 {academy.logo_url && (
@@ -97,7 +98,13 @@ export default function PublicSiteShell({
             </Head>
 
             {topbar?.enabled && (
-                <div className="bg-slate-950 text-white">
+                <div
+                    {...sectionAppearance(
+                        topbar,
+                        'bg-slate-950 text-white',
+                        true,
+                    )}
+                >
                     <div className="mx-auto flex min-h-10 max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-5 py-2 text-xs sm:px-8">
                         <div className="flex flex-wrap items-center gap-4 text-white/75">
                             {contactPhone && (
@@ -146,7 +153,13 @@ export default function PublicSiteShell({
             )}
 
             {announcement?.enabled && announcement.text && (
-                <div className="overflow-hidden bg-[var(--site-primary)] py-2.5 text-[var(--site-primary-fg)]">
+                <div
+                    {...sectionAppearance(
+                        announcement,
+                        'overflow-hidden bg-[var(--site-primary)] py-2.5 text-[var(--site-primary-fg)]',
+                        true,
+                    )}
+                >
                     <div className="bootcademy-marquee flex w-max items-center gap-12 text-xs font-semibold tracking-[0.13em] whitespace-nowrap uppercase">
                         {[0, 1, 2].map((copy) => (
                             <span
@@ -162,7 +175,13 @@ export default function PublicSiteShell({
             )}
 
             {header?.enabled && (
-                <header className="sticky top-0 z-40 border-b border-black/5 bg-[#f7f7f2]/95 backdrop-blur-xl">
+                <header
+                    {...sectionAppearance(
+                        header,
+                        'sticky top-0 z-40 border-b border-black/5 bg-[#f7f7f2]/95 backdrop-blur-xl',
+                        true,
+                    )}
+                >
                     <div className="mx-auto flex h-24 max-w-7xl items-center justify-between gap-5 px-5 sm:px-8">
                         <a
                             href={homeUrl}
@@ -295,7 +314,13 @@ export default function PublicSiteShell({
             {children}
 
             {footer?.enabled && (
-                <footer className="bg-slate-950 text-white">
+                <footer
+                    {...sectionAppearance(
+                        footer,
+                        'bg-slate-950 text-white',
+                        true,
+                    )}
+                >
                     <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 sm:px-8 md:grid-cols-[1.2fr_0.8fr_0.8fr]">
                         <div>
                             <div className="flex items-center gap-3">
@@ -400,7 +425,11 @@ export default function PublicSiteShell({
                         target="_blank"
                         rel="noreferrer"
                         aria-label="Chat with the academy on WhatsApp"
-                        className="relative grid size-14 place-items-center rounded-full bg-[#25D366] text-white shadow-xl"
+                        {...sectionAppearance(
+                            whatsapp,
+                            'relative grid size-14 place-items-center rounded-full bg-[#25D366] text-white shadow-xl',
+                            true,
+                        )}
                     >
                         <span className="absolute inset-0 -z-10 animate-ping rounded-full bg-[#25D366]/45" />
                         <span className="absolute -inset-2 -z-20 rounded-full border border-[#25D366]/35" />

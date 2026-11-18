@@ -1,6 +1,7 @@
 import { ArrowRight, BookOpen, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import PublicSiteShell from '@/components/public-site/public-site-shell';
+import { sectionAppearance } from '@/components/public-site/utils';
 import type {
     PublicAcademy,
     PublicProgramme,
@@ -38,7 +39,12 @@ export default function PublicProgrammes({
             title={`${site.sections.programmes?.title ?? 'Programmes'} · ${academy.name}`}
         >
             <main>
-                <section className="relative overflow-hidden bg-slate-950 px-5 py-20 text-white sm:px-8 lg:py-28">
+                <section
+                    {...sectionAppearance(
+                        site.sections.programmes,
+                        'relative overflow-hidden bg-slate-950 px-5 py-20 text-white sm:px-8 lg:py-28',
+                    )}
+                >
                     <div
                         className="absolute -top-40 right-0 size-[34rem] rounded-full opacity-30 blur-3xl"
                         style={{ backgroundColor: academy.theme.primary }}
@@ -59,7 +65,12 @@ export default function PublicProgrammes({
                     </div>
                 </section>
 
-                <section className="px-5 py-16 sm:px-8 lg:py-24">
+                <section
+                    {...sectionAppearance(
+                        site.sections.programmes,
+                        'px-5 py-16 sm:px-8 lg:py-24',
+                    )}
+                >
                     <div className="mx-auto max-w-7xl">
                         <label className="relative block max-w-md">
                             <span className="sr-only">Search programmes</span>

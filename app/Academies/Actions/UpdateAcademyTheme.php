@@ -18,19 +18,23 @@ class UpdateAcademyTheme
         User $actor,
         string $primaryColor,
         string $secondaryColor,
+        string $headingColor,
         Request $request,
     ): void {
         $primary = AccessibleColor::normalize($primaryColor);
         $secondary = AccessibleColor::normalize($secondaryColor);
+        $heading = AccessibleColor::normalize($headingColor);
         $previous = [
             'primary_color' => $academy->primary_color,
             'secondary_color' => $academy->secondary_color,
+            'heading_color' => $academy->heading_color,
         ];
 
-        DB::transaction(function () use ($academy, $actor, $primary, $secondary, $previous, $request): void {
+        DB::transaction(function () use ($academy, $actor, $primary, $secondary, $heading, $previous, $request): void {
             $academy->update([
                 'primary_color' => $primary,
                 'secondary_color' => $secondary,
+                'heading_color' => $heading,
             ]);
 
             $this->audit->record(
@@ -38,7 +42,7 @@ class UpdateAcademyTheme
                 $actor,
                 $academy,
                 $academy,
-                ['before' => $previous, 'after' => ['primary_color' => $primary, 'secondary_color' => $secondary]],
+                ['before' => $previous, 'after' => ['primary_color' => $primary, 'secondary_color' => $secondary, 'heading_color' => $heading]],
                 $request,
             );
         });

@@ -12,9 +12,23 @@ class UpdateAcademyWebsiteRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
+        $sections = $this->input('sections');
+        if (is_array($sections)) {
+            foreach (AcademyWebsiteDefaults::definitions() as $sectionKey => $definition) {
+                foreach ($definition['fields'] as $fieldKey => $field) {
+                    if ($field['type'] !== 'color' || ! isset($sections[$sectionKey][$fieldKey])) {
+                        continue;
+                    }
+
+                    $sections[$sectionKey][$fieldKey] = strtoupper(trim((string) $sections[$sectionKey][$fieldKey]));
+                }
+            }
+        }
+
         $this->merge([
             'subdomain' => mb_strtolower(trim((string) $this->input('subdomain'))),
             'is_published' => $this->boolean('is_published'),
+            'sections' => $sections,
         ]);
     }
 
@@ -49,6 +63,9 @@ class UpdateAcademyWebsiteRequest extends FormRequest
                 $fieldRules = ['nullable', 'string', 'max:20000'];
                 if ($field['type'] === 'select') {
                     $fieldRules[] = Rule::in(array_keys($field['options']));
+                }
+                if ($field['type'] === 'color') {
+                    $fieldRules[] = 'regex:/^#[0-9A-F]{6}$/';
                 }
                 $rules["sections.$key.$fieldKey"] = $fieldRules;
             }

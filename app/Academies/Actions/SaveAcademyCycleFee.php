@@ -23,7 +23,12 @@ class SaveAcademyCycleFee
     {
         return DB::transaction(function () use ($academy, $cycle, $actor, $data, $request, $fee): AcademyCycleFee {
             $fee ??= new AcademyCycleFee(['academy_id' => $academy->id, 'academy_cycle_id' => $cycle->id]);
-            abort_unless($cycle->academy_id === $academy->id && $fee->academy_id === $academy->id, 404);
+            abort_unless(
+                $cycle->academy_id === $academy->id
+                && $fee->academy_id === $academy->id
+                && ((int) $fee->academy_cycle_id === $cycle->id),
+                404,
+            );
             $fee->fill([
                 'name' => trim((string) $data['name']), 'category' => trim((string) $data['category']),
                 'academy_cycle_term_id' => $data['academy_cycle_term_id'] ?? null,

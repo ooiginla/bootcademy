@@ -16,6 +16,7 @@ use App\Http\Requests\Academies\UpdateAcademyThemeRequest;
 use App\Models\Academy;
 use App\Payments\Contracts\PaymentProvider;
 use App\Platform\AuditLogger;
+use App\Support\AcademyLocaleOptions;
 use App\Support\AccessibleColor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -36,10 +37,15 @@ class AcademyBrandingController extends Controller
         return Inertia::render('academies/branding', [
             'branding' => [
                 'name' => $context->academy()->name,
+                'academy_type' => $context->academy()->academy_type,
+                'country_code' => $context->academy()->country_code,
+                'timezone' => $context->academy()->timezone,
+                'currency' => $context->academy()->currency,
                 'logo_url' => $context->academy()->logo_path ? route('academy.logo') : null,
                 'theme' => AccessibleColor::theme(
                     $context->academy()->primary_color,
                     $context->academy()->secondary_color,
+                    $context->academy()->heading_color,
                 ),
                 'terminology' => [
                     'singular' => $context->academy()->member_label_singular,
@@ -60,6 +66,9 @@ class AcademyBrandingController extends Controller
             ],
             'uses_paystack' => filled(config('services.paystack.secret_key')),
             'banks' => $this->banks($provider),
+            'countries' => AcademyLocaleOptions::countries(),
+            'timezones' => AcademyLocaleOptions::timezones(),
+            'currencies' => AcademyLocaleOptions::currencies(),
         ]);
     }
 
@@ -108,6 +117,7 @@ class AcademyBrandingController extends Controller
             $request->user(),
             $request->string('primary_color')->toString(),
             $request->string('secondary_color')->toString(),
+            $request->string('heading_color')->toString(),
             $request,
         );
 
@@ -121,12 +131,9 @@ class AcademyBrandingController extends Controller
         AcademyContext $context,
         UpdateAcademyProfile $updateProfile,
     ): RedirectResponse {
-        $updateProfile->handle(
-            $context->academy(),
-            $request->user(),
-            $request->string('name')->toString(),
-            $request,
-        );
+        /** @var array{name: string, academy_type: string, country_code: string, timezone: string, currency: string} $profile */
+        $profile = $request->validated();
+        $updateProfile->handle($context->academy(), $request->user(), $profile, $request);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Academy profile updated.']);
 

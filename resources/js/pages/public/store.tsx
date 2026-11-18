@@ -14,6 +14,7 @@ import type { CSSProperties } from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import PublicSiteShell from '@/components/public-site/public-site-shell';
+import { sectionAppearance } from '@/components/public-site/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -222,7 +223,12 @@ export default function Store({
             title={`Store · ${academy.name}`}
         >
             <main className="min-h-[70vh] bg-[#f7f7f2]">
-                <section className="bg-slate-950 px-5 py-16 text-white sm:px-8">
+                <section
+                    {...sectionAppearance(
+                        site.sections.store,
+                        'bg-slate-950 px-5 py-16 text-white sm:px-8',
+                    )}
+                >
                     <div className="mx-auto flex max-w-7xl flex-wrap items-end justify-between gap-6">
                         <div>
                             <p className="text-xs font-bold tracking-[.2em] text-[var(--site-primary)] uppercase">
@@ -244,7 +250,12 @@ export default function Store({
                         </Button>
                     </div>
                 </section>
-                <section className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
+                <section
+                    {...sectionAppearance(
+                        site.sections.store,
+                        'mx-auto max-w-7xl px-5 py-10 sm:px-8',
+                    )}
+                >
                     <div className="mb-8 flex flex-wrap gap-3">
                         <Input
                             className="max-w-sm bg-white"

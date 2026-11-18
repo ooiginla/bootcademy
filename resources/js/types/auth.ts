@@ -16,6 +16,7 @@ export type AcademyTheme = {
     primary_foreground: string;
     secondary: string;
     secondary_foreground: string;
+    heading: string;
 };
 
 export type ActiveAcademy = {

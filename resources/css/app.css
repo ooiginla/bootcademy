@@ -7,6 +7,25 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.public-site-theme :is(h1, h2, h3):not(.text-white *) {
+    color: var(--site-heading);
+}
+
+.public-site-theme .public-section-custom-text {
+    color: var(--public-section-text);
+}
+
+.public-site-theme
+    .public-section-custom-text
+    :is(h1, h2, h3, h4, p, li, blockquote, summary, figcaption) {
+    color: inherit !important;
+}
+
+.public-site-theme .public-chrome-custom-text,
+.public-site-theme .public-chrome-custom-text * {
+    color: var(--public-section-text) !important;
+}
+
 @theme {
     --font-sans:
         ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',

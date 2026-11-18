@@ -8,6 +8,7 @@ import {
     LayoutDashboard,
     Mail,
     Megaphone,
+    MessageSquareQuote,
     ClipboardList,
     Braces,
     CalendarRange,
@@ -121,6 +122,11 @@ export function AppSidebar() {
                             title: coachTerminology.plural,
                             href: '/app/coaches',
                             icon: Dumbbell,
+                        },
+                        {
+                            title: 'Reviews',
+                            href: '/app/reviews',
+                            icon: MessageSquareQuote,
                         },
                     ]
                   : []),

@@ -6,6 +6,7 @@ use App\Enums\AcademyRole;
 use App\Models\Academy;
 use App\Models\AcademyMembership;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
 
@@ -24,7 +25,13 @@ class RegistrationTest extends TestCase
     {
         $response = $this->get(route('register'));
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('auth/register')
+                ->has('countries')
+                ->has('timezones')
+                ->has('currencies')
+            );
     }
 
     public function test_new_users_can_register()
@@ -36,6 +43,7 @@ class RegistrationTest extends TestCase
             'password_confirmation' => 'password',
             'academy_name' => 'Bright Futures Academy',
             'academy_type' => 'Language',
+            'country' => 'NG',
             'timezone' => 'Africa/Lagos',
             'currency' => 'NGN',
         ]);
@@ -45,6 +53,9 @@ class RegistrationTest extends TestCase
         $this->assertDatabaseHas(Academy::class, [
             'name' => 'Bright Futures Academy',
             'academy_type' => 'Language',
+            'country_code' => 'NG',
+            'timezone' => 'Africa/Lagos',
+            'currency' => 'NGN',
         ]);
         $this->assertDatabaseHas(AcademyMembership::class, [
             'role' => AcademyRole::OwnerAdmin->value,

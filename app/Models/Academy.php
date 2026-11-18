@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property string $slug
  * @property string $academy_type
+ * @property string|null $country_code
  * @property string $member_label_singular
  * @property string $member_label_plural
  * @property string $staff_label_singular
@@ -43,6 +44,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $logo_path
  * @property string|null $primary_color
  * @property string|null $secondary_color
+ * @property string|null $heading_color
  * @property int $created_by_user_id
  * @property int $memberships_count
  * @property Carbon|null $created_at
@@ -52,6 +54,7 @@ use Illuminate\Support\Carbon;
     'name',
     'slug',
     'academy_type',
+    'country_code',
     'member_label_singular',
     'member_label_plural',
     'staff_label_singular',
@@ -78,6 +81,7 @@ use Illuminate\Support\Carbon;
     'logo_path',
     'primary_color',
     'secondary_color',
+    'heading_color',
     'created_by_user_id',
 ])]
 class Academy extends Model
@@ -226,6 +230,12 @@ class Academy extends Model
     public function announcements(): HasMany
     {
         return $this->hasMany(Announcement::class);
+    }
+
+    /** @return HasMany<Review, $this> */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
     }
 
     /** @return HasMany<NotificationDelivery, $this> */

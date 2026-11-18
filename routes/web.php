@@ -30,6 +30,7 @@ use App\Http\Controllers\Academies\PlayerImportController;
 use App\Http\Controllers\Academies\ProgrammeController;
 use App\Http\Controllers\Academies\ProgrammeCyclePaymentPlanController;
 use App\Http\Controllers\Academies\ReferralController;
+use App\Http\Controllers\Academies\ReviewController;
 use App\Http\Controllers\Academies\ScholarshipController;
 use App\Http\Controllers\Academies\StoreController;
 use App\Http\Controllers\Academies\SubscriptionController;
@@ -43,6 +44,7 @@ use App\Http\Controllers\Platform\PlatformSettingsController;
 use App\Http\Controllers\Platform\SupportAccessController;
 use App\Http\Controllers\PublicAcademyWebsiteController;
 use App\Http\Controllers\PublicApplicationController;
+use App\Http\Controllers\PublicReviewController;
 use App\Http\Controllers\PublicStoreController;
 use App\Http\Controllers\RequiredPasswordController;
 use App\Http\Middleware\EnsureEmailIsVerifiedWhenRequired;
@@ -125,6 +127,12 @@ Route::middleware('throttle:20,1')->group(function (): void {
         ->name('academy.invites.show');
     Route::post('invites/{token}', [AcceptAcademyInvitationController::class, 'accept'])
         ->name('academy.invites.accept');
+});
+
+Route::prefix('reviews/{token}')->name('public.reviews.')->group(function (): void {
+    Route::get('/', [PublicReviewController::class, 'show'])->name('show');
+    Route::post('/', [PublicReviewController::class, 'store'])->middleware('throttle:10,1')->name('store');
+    Route::get('complete', [PublicReviewController::class, 'complete'])->name('complete');
 });
 
 Route::middleware('auth')->group(function (): void {
@@ -225,6 +233,18 @@ Route::middleware([
         Route::post('app/referrals/reconcile', [ReferralController::class, 'reconcile'])->name('academy.referrals.reconcile');
         Route::patch('app/referrals/rewards/{reward}/approve', [ReferralController::class, 'approve'])->name('academy.referrals.rewards.approve');
         Route::patch('app/referrals/rewards/{reward}/paid', [ReferralController::class, 'markPaid'])->name('academy.referrals.rewards.paid');
+        Route::get('app/reviews', [ReviewController::class, 'index'])->name('academy.reviews.index');
+        Route::get('app/reviews/create', [ReviewController::class, 'create'])->name('academy.reviews.create');
+        Route::post('app/reviews', [ReviewController::class, 'store'])->name('academy.reviews.store');
+        Route::get('app/reviews/{review}', [ReviewController::class, 'show'])->whereNumber('review')->name('academy.reviews.show');
+        Route::get('app/reviews/{review}/edit', [ReviewController::class, 'edit'])->whereNumber('review')->name('academy.reviews.edit');
+        Route::patch('app/reviews/{review}', [ReviewController::class, 'update'])->whereNumber('review')->name('academy.reviews.update');
+        Route::get('app/reviews/{review}/responses/{response}', [ReviewController::class, 'response'])
+            ->whereNumber(['review', 'response'])
+            ->name('academy.reviews.responses.show');
+        Route::delete('app/reviews/{review}/responses/{response}', [ReviewController::class, 'destroyResponse'])
+            ->whereNumber(['review', 'response'])
+            ->name('academy.reviews.responses.destroy');
         Route::get('app/scholarships', [ScholarshipController::class, 'index'])->name('academy.scholarships.index');
         Route::post('app/scholarships/sponsors', [ScholarshipController::class, 'storeSponsor'])->name('academy.scholarships.sponsors.store');
         Route::patch('app/scholarships/sponsors/{sponsor}', [ScholarshipController::class, 'updateSponsor'])->name('academy.scholarships.sponsors.update');
@@ -282,6 +302,7 @@ Route::middleware([
         Route::patch('app/players/{player}/enrollments/{enrollment}', [PlayerController::class, 'updateEnrollment'])->name('academy.players.enrollments.update');
         Route::post('app/players/{player}/fees', [PlayerController::class, 'bookFee'])->name('academy.players.fees.store');
         Route::post('app/finance/cycles/{cycle}/fees', [AcademyCycleController::class, 'storeFee'])->name('academy.cycles.fees.store');
+        Route::patch('app/finance/cycles/{cycle}/fees/{fee}', [AcademyCycleController::class, 'updateFee'])->name('academy.cycles.fees.update');
         Route::delete('app/finance/cycles/{cycle}/fees/{fee}', [AcademyCycleController::class, 'destroyFee'])->name('academy.cycles.fees.destroy');
         Route::get('app/settings/academy', [AcademyBrandingController::class, 'edit'])
             ->name('academy.branding.edit');

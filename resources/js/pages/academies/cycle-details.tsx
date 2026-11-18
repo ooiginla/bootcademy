@@ -127,31 +127,49 @@ function CycleFeeDialog({
     currency,
     terms,
     cohorts,
+    fee,
 }: {
     cycle: CycleDetails;
     programmes: Option[];
     currency: string;
     terms: Term[];
     cohorts: CohortOption[];
+    fee?: CycleFee;
 }) {
-    const [allProgrammes, setAllProgrammes] = useState(true);
+    const [open, setOpen] = useState(false);
+    const editing = Boolean(fee);
+    const [allProgrammes, setAllProgrammes] = useState(
+        fee?.applies_to_all_programmes ?? true,
+    );
     const form = useForm({
-        name: '',
-        category: '',
-        amount: '',
-        is_compulsory: false,
-        applies_to_all_programmes: true,
-        is_active: true,
-        programme_ids: [] as number[],
-        academy_cycle_term_id: '',
-        cohort_id: '',
+        name: fee?.name ?? '',
+        category: fee?.category ?? '',
+        amount: fee?.amount ?? '',
+        is_compulsory: fee?.is_compulsory ?? false,
+        applies_to_all_programmes: fee?.applies_to_all_programmes ?? true,
+        is_active: fee?.is_active ?? true,
+        programme_ids: fee?.programmes.map((programme) => programme.id) ?? [],
+        academy_cycle_term_id: String(fee?.academy_cycle_term_id ?? ''),
+        cohort_id: String(fee?.cohort_id ?? ''),
     });
 
     function submit(event: FormEvent) {
         event.preventDefault();
-        form.post(`/app/finance/cycles/${cycle.id}/fees`, {
-            onSuccess: () => form.reset(),
-        });
+        const options = {
+            preserveScroll: true,
+            onSuccess: () => {
+                setOpen(false);
+                if (!editing) form.reset();
+            },
+        };
+        if (editing) {
+            form.patch(
+                `/app/finance/cycles/${cycle.id}/fees/${fee?.id}`,
+                options,
+            );
+        } else {
+            form.post(`/app/finance/cycles/${cycle.id}/fees`, options);
+        }
     }
 
     function toggleProgramme(programmeId: number, checked: boolean) {
@@ -164,19 +182,33 @@ function CycleFeeDialog({
     }
 
     return (
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="h-10 bg-orange-600 text-white hover:bg-orange-700">
-                    <Plus className="size-4" />
-                    Add cycle fee
-                </Button>
+                {editing ? (
+                    <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Edit cycle fee ${fee?.name}`}
+                        title="Edit cycle fee"
+                    >
+                        <Pencil className="size-4" />
+                    </Button>
+                ) : (
+                    <Button className="h-10 bg-orange-600 text-white hover:bg-orange-700">
+                        <Plus className="size-4" />
+                        Add cycle fee
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-xl">
                 <DialogHeader>
-                    <DialogTitle>Add bookable fee</DialogTitle>
+                    <DialogTitle>
+                        {editing ? 'Edit' : 'Add'} bookable fee
+                    </DialogTitle>
                     <DialogDescription>
                         Create a compulsory or optional fee for all or selected
-                        programmes in this cycle.
+                        programmes in this cycle. Existing invoices keep their
+                        original amounts.
                     </DialogDescription>
                 </DialogHeader>
                 <form className="space-y-4" onSubmit={submit}>
@@ -341,7 +373,8 @@ function CycleFeeDialog({
                             </Button>
                         </DialogClose>
                         <Button type="submit" disabled={form.processing}>
-                            {form.processing && <Spinner />}Save fee
+                            {form.processing && <Spinner />}
+                            {editing ? 'Update fee' : 'Save fee'}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -678,11 +711,19 @@ function TermDialog({ cycle, term }: { cycle: CycleDetails; term?: Term }) {
 }
 
 function CycleFeesTable({
-    cycleId,
+    cycle,
     fees,
+    programmes,
+    currency,
+    terms,
+    cohorts,
 }: {
-    cycleId: number;
+    cycle: CycleDetails;
     fees: CycleFee[];
+    programmes: Option[];
+    currency: string;
+    terms: Term[];
+    cohorts: CohortOption[];
 }) {
     if (fees.length === 0)
         return (
@@ -743,11 +784,23 @@ function CycleFeesTable({
                                 {fee.is_active ? 'Active' : 'Inactive'}
                             </td>
                             <td className="px-4 py-3 text-right">
-                                <DeleteRecordButton
-                                    action={`/app/finance/cycles/${cycleId}/fees/${fee.id}`}
-                                    label="cycle fee"
-                                    name={fee.name}
-                                />
+                                <div className="flex justify-end gap-1">
+                                    <CycleFeeDialog
+                                        cycle={cycle}
+                                        programmes={programmes}
+                                        currency={currency}
+                                        terms={terms}
+                                        cohorts={cohorts}
+                                        fee={fee}
+                                    />
+                                    <DeleteRecordButton
+                                        action={`/app/finance/cycles/${cycle.id}/fees/${fee.id}`}
+                                        label="cycle fee"
+                                        name={fee.name}
+                                        size="icon"
+                                        variant="ghost"
+                                    />
+                                </div>
                             </td>
                         </tr>
                     ))}
@@ -1079,8 +1132,12 @@ export default function CycleDetailsPage({
                                     <Card className="overflow-hidden py-0">
                                         <CardContent className="p-0">
                                             <CycleFeesTable
-                                                cycleId={cycle.id}
+                                                cycle={cycle}
                                                 fees={termCycleFees}
+                                                programmes={programmes}
+                                                currency={currency}
+                                                terms={cycle.terms}
+                                                cohorts={cohorts}
                                             />
                                         </CardContent>
                                     </Card>
@@ -1128,8 +1185,12 @@ export default function CycleDetailsPage({
                 <Card className="overflow-hidden py-0">
                     <CardContent className="p-0">
                         <CycleFeesTable
-                            cycleId={cycle.id}
+                            cycle={cycle}
                             fees={generalCycleFees}
+                            programmes={programmes}
+                            currency={currency}
+                            terms={cycle.terms}
+                            cohorts={cohorts}
                         />
                     </CardContent>
                 </Card>

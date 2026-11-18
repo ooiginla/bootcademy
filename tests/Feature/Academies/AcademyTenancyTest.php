@@ -22,6 +22,7 @@ class AcademyTenancyTest extends TestCase
         $response = $this->actingAs($user)->post(route('academy.onboarding.store'), [
             'name' => 'All Stars Music Academy',
             'academy_type' => 'Music',
+            'country_code' => 'NG',
             'timezone' => 'Africa/Lagos',
             'currency' => 'ngn',
         ]);

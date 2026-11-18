@@ -37,4 +37,11 @@ class AccessibleColorTest extends TestCase
 
         AccessibleColor::normalize('blue');
     }
+
+    public function test_theme_includes_the_configured_heading_colour(): void
+    {
+        $theme = AccessibleColor::theme('#123456', '#ABCDEF', '#334455');
+
+        $this->assertSame('#334455', $theme['heading']);
+    }
 }

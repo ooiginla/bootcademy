@@ -159,6 +159,19 @@ class AcademyCycleController extends Controller
         return back();
     }
 
+    public function updateFee(
+        SaveAcademyCycleFeeRequest $request,
+        AcademyCycle $cycle,
+        AcademyCycleFee $fee,
+        AcademyContext $context,
+        SaveAcademyCycleFee $save,
+    ): RedirectResponse {
+        $save->handle($context->academy(), $cycle, $request->user(), $request->validated(), $request, $fee);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Cycle fee updated.']);
+
+        return back();
+    }
+
     public function updateOffering(
         SaveProgrammeCycleRequest $request,
         AcademyCycle $cycle,
