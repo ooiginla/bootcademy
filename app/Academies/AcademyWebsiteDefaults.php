@@ -26,6 +26,10 @@ class AcademyWebsiteDefaults
                 'description' => self::textarea('Fallback description', 'A welcoming academy experience built around purposeful learning, expert guidance and a community that helps every learner thrive.'),
                 'media_type' => self::select('Hero format', 'slides', ['slides' => 'Slides', 'video' => 'Video']),
                 'media_opacity' => self::number('Image / video opacity (%)', '100', 0, 100, 1, 'Use 100 for a fully opaque image or video, or a lower value to make it transparent.'),
+                'media_fit' => self::select('Image / video fit', 'contain', [
+                    'contain' => 'Fit entire media — no cropping',
+                    'cover' => 'Fill hero area — may crop edges',
+                ]),
                 'media_overlay' => self::select('Image / video dark overlay', 'left_to_right', [
                     'left_to_right' => 'Left to right',
                     'right_to_left' => 'Right to left',

@@ -89,6 +89,7 @@ const site: PublicSite = {
             description: 'Practical learning for ambitious people.',
             media_type: 'slides',
             media_opacity: '100',
+            media_fit: 'contain',
             media_overlay: 'left_to_right',
             slides: 'A future worth building | Practical learning for ambitious people. | | Explore | /programmes',
             primary_button_enabled: true,
@@ -418,6 +419,7 @@ describe('Bootcademy public website', () => {
         expect(heroMedia).toHaveStyle({
             opacity: '0.76',
         });
+        expect(heroMedia).toHaveClass('object-contain', 'object-center');
         expect(heroSection).not.toBeNull();
         expect(
             heroSection?.querySelector('.hero-media-overlay'),
@@ -436,6 +438,35 @@ describe('Bootcademy public website', () => {
         expect(
             within(heroSection!).queryByText('Find your pathway'),
         ).not.toBeInTheDocument();
+    });
+
+    it('can fill the hero with media when edge cropping is acceptable', () => {
+        const coverMediaSite: PublicSite = {
+            ...site,
+            sections: {
+                ...site.sections,
+                hero: {
+                    ...site.sections.hero,
+                    media_fit: 'cover',
+                    slides: 'Custom headline | Custom description | https://example.test/hero.jpg | |',
+                },
+            },
+        };
+
+        const { container } = render(
+            <PublicHome
+                academy={academy}
+                site={coverMediaSite}
+                base_url="/sites/future-academy"
+                programmes={[]}
+                locations={[]}
+            />,
+        );
+
+        expect(container.querySelector('.hero-media')).toHaveClass(
+            'object-cover',
+            'object-center',
+        );
     });
 
     it('can reverse the hero media overlay direction', () => {

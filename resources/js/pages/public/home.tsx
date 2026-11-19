@@ -213,6 +213,8 @@ export default function PublicHome({
         Boolean(secondaryButtonLabel && secondaryButtonUrl);
     const showPathway = sectionToggle(hero?.pathway_enabled, true);
     const heroMediaOpacity = percentage(hero?.media_opacity, 100) / 100;
+    const heroMediaFit = sectionString(hero?.media_fit) || 'contain';
+    const heroMediaClassName = `hero-media absolute inset-0 -z-20 size-full object-center ${heroMediaFit === 'cover' ? 'object-cover' : 'object-contain'}`;
     const heroMediaOverlay =
         sectionString(hero?.media_overlay) || 'left_to_right';
     const heroMediaOverlayBackground =
@@ -248,14 +250,14 @@ export default function PublicHome({
                                 muted
                                 loop
                                 playsInline
-                                className="hero-media absolute inset-0 -z-20 size-full object-cover"
+                                className={heroMediaClassName}
                                 style={{ opacity: heroMediaOpacity }}
                             />
                         ) : slide[2] && /^https?:\/\//i.test(slide[2]) ? (
                             <img
                                 src={slide[2]}
                                 alt=""
-                                className="hero-media absolute inset-0 -z-20 size-full object-cover"
+                                className={heroMediaClassName}
                                 style={{ opacity: heroMediaOpacity }}
                             />
                         ) : null}
