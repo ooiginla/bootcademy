@@ -1,4 +1,3 @@
-import { Head } from '@inertiajs/react';
 import {
     CheckCircle2,
     CircleAlert,
@@ -41,7 +40,6 @@ export default function PublicApplicationComplete({
             baseUrl={base_url}
             title={`Application submitted · ${academy.name}`}
         >
-            <Head title={`Application submitted · ${academy.name}`} />
             <main className="min-h-[70vh] bg-slate-50 px-5 py-14 sm:px-8 lg:py-24">
                 <div className="mx-auto max-w-3xl">
                     <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60">

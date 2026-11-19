@@ -6,6 +6,7 @@ use App\Academies\Actions\ConfigurePublicApplicationFees;
 use App\Academies\Actions\SaveApplication;
 use App\Academies\ApplicationIntakeAvailability;
 use App\Academies\PublicProgrammePaymentPlans;
+use App\Academies\PublicSiteSeo;
 use App\Commerce\ApplyCoupon;
 use App\Enums\AcademyInvoicePurpose;
 use App\Http\Requests\Public\StorePublicApplicationRequest;
@@ -113,7 +114,7 @@ class PublicApplicationController extends Controller
             ->where('status', '!=', 'void')
             ->pluck('academy_cycle_fee_id');
 
-        return Inertia::render('public/application-fees', $this->common($website, $baseUrl) + [
+        return Inertia::render('public/application-fees', $this->common($website, $baseUrl, 'Application fees') + [
             'submitted' => $request->boolean('submitted'),
             'application' => [
                 'reference' => $application->reference,
@@ -213,7 +214,7 @@ class PublicApplicationController extends Controller
         $baseUrl = $request->routeIs('public.tenant.*') ? '' : '/sites/'.$website->subdomain;
         $payment = $intent?->getRelation('payment');
 
-        return Inertia::render('public/application-complete', $this->common($website, $baseUrl) + [
+        return Inertia::render('public/application-complete', $this->common($website, $baseUrl, 'Application submitted') + [
             'application' => [
                 'reference' => $application->reference,
                 'name' => trim($application->first_name.' '.$application->middle_name.' '.$application->last_name),
@@ -410,18 +411,21 @@ class PublicApplicationController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function common(AcademyWebsite $website, string $baseUrl): array
+    private function common(AcademyWebsite $website, string $baseUrl, string $title): array
     {
         $academy = $website->academy;
+        $seo = app(PublicSiteSeo::class);
+        // These pages carry an applicant's private reference, so search engines must not index them.
+        $pageSeo = $seo->for(request(), $website, $baseUrl, ['title' => $title.' · '.$academy->name, 'indexable' => false]);
 
         return [
             'academy' => [
                 'name' => $academy->name, 'type' => $academy->academy_type,
-                'logo_url' => $academy->logo_path ? $baseUrl.'/logo' : null,
+                'logo_url' => $seo->logoUrl(request(), $website, $baseUrl),
                 'member_singular' => $academy->member_label_singular, 'member_plural' => $academy->member_label_plural,
                 'currency' => $academy->currency, 'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color, $academy->heading_color),
             ],
-            'site' => ['subdomain' => $website->subdomain, 'theme_key' => $website->theme_key, 'sections' => $website->resolvedSections()],
+            'site' => ['subdomain' => $website->subdomain, 'theme_key' => $website->theme_key, 'sections' => $website->resolvedSections(), 'seo' => $pageSeo],
             'base_url' => $baseUrl,
         ];
     }

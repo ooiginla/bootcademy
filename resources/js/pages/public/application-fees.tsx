@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import {
     CheckCircle2,
     CircleAlert,
@@ -418,9 +418,8 @@ export default function PublicApplicationFees({
             academy={academy}
             site={site}
             baseUrl={base_url}
-            title={`Fees · ${academy.name}`}
+            title={`Application fees · ${academy.name}`}
         >
-            <Head title={`Application fees · ${academy.name}`} />
             <Dialog
                 open={submittedDialogOpen}
                 onOpenChange={setSubmittedDialogOpen}

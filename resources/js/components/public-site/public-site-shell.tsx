@@ -13,6 +13,7 @@ import {
 import type { CSSProperties, ReactNode } from 'react';
 import { useState } from 'react';
 import type { PublicAcademy, PublicSite } from '@/types/public-site';
+import { publicSiteTitlePrefix } from './seo';
 import { parseRows, resolveSiteUrl, safeUrl, sectionAppearance } from './utils';
 
 const menuSections = [
@@ -78,6 +79,13 @@ export default function PublicSiteShell({
         }));
     const primaryMenuItems = enabledMenuItems.slice(0, 4);
     const secondaryMenuItems = enabledMenuItems.slice(4);
+    const seo = site.seo;
+    const pageTitle = title ?? seo?.title ?? academy.name;
+    const seoDescription =
+        seo?.description ||
+        `Learn about ${academy.name}, its programmes, locations and how to apply.`;
+    const iconUrl = seo?.icon_url ?? academy.logo_url;
+    const imageUrl = seo?.image_url ?? academy.logo_url;
     const style = {
         '--site-primary': academy.theme.primary,
         '--site-primary-fg': academy.theme.primary_foreground,
@@ -91,9 +99,45 @@ export default function PublicSiteShell({
             style={style}
             className="public-site-theme min-h-screen bg-[#f7f7f2] font-sans text-slate-950"
         >
-            <Head title={title ?? academy.name}>
-                {academy.logo_url && (
-                    <link rel="icon" href={academy.logo_url} />
+            <Head title={`${publicSiteTitlePrefix}${pageTitle}`}>
+                <meta name="description" content={seoDescription} />
+                {seo?.keywords && (
+                    <meta name="keywords" content={seo.keywords} />
+                )}
+                <meta
+                    name="robots"
+                    content={
+                        seo?.robots ?? 'index, follow, max-image-preview:large'
+                    }
+                />
+                <meta name="theme-color" content={academy.theme.primary} />
+                {seo?.canonical_url && (
+                    <link rel="canonical" href={seo.canonical_url} />
+                )}
+                {iconUrl && <link rel="icon" href={iconUrl} sizes="any" />}
+                {iconUrl && <link rel="apple-touch-icon" href={iconUrl} />}
+                <meta property="og:type" content="website" />
+                <meta property="og:site_name" content={academy.name} />
+                <meta property="og:title" content={pageTitle} />
+                <meta property="og:description" content={seoDescription} />
+                {seo?.canonical_url && (
+                    <meta property="og:url" content={seo.canonical_url} />
+                )}
+                {imageUrl && <meta property="og:image" content={imageUrl} />}
+                {imageUrl && (
+                    <meta property="og:image:alt" content={pageTitle} />
+                )}
+                <meta
+                    name="twitter:card"
+                    content={imageUrl ? 'summary_large_image' : 'summary'}
+                />
+                <meta name="twitter:title" content={pageTitle} />
+                <meta name="twitter:description" content={seoDescription} />
+                {imageUrl && <meta name="twitter:image" content={imageUrl} />}
+                {seo?.structured_data && (
+                    <script type="application/ld+json">
+                        {JSON.stringify(seo.structured_data)}
+                    </script>
                 )}
             </Head>
 

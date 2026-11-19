@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Academies\ApplicationIntakeAvailability;
 use App\Academies\PublicProgrammePaymentPlans;
+use App\Academies\PublicSiteSeo;
 use App\Enums\AcademyCycleStatus;
 use App\Models\AcademyCustomField;
 use App\Models\AcademyWebsite;
@@ -48,6 +49,8 @@ class PublicAcademyWebsiteController extends Controller
     public function programmes(Request $request, string $subdomain): Response
     {
         [$website, $common] = $this->common($request, $subdomain);
+        $sectionTitle = data_get($common, 'site.sections.programmes.title') ?: 'Programmes';
+        $common = $this->withPageSeo($request, $website, $common, ['title' => $sectionTitle.' · '.$website->academy->name]);
 
         return Inertia::render('public/programmes', $common + [
             'programmes' => $website->academy->programmes()->where('is_active', true)->orderBy('name')->get()
@@ -60,6 +63,13 @@ class PublicAcademyWebsiteController extends Controller
         [$website, $common] = $this->common($request, $subdomain);
         $academy = $website->academy;
         $record = $academy->programmes()->where('is_active', true)->findOrFail($programme);
+        $common = $this->withPageSeo($request, $website, $common, [
+            'title' => $record->name.' · '.$academy->name,
+            'description' => $record->description,
+            'image_url' => $record->hero_image_path
+                ? $common['base_url'].'/programmes/'.$record->id.'/image?v='.$record->updated_at->timestamp
+                : null,
+        ]);
         $offerings = $academy->programmeCycles()->where('programme_id', $record->id)->where('is_active', true)
             ->whereHas('cycle', fn ($query) => $query->where('status', AcademyCycleStatus::Active->value))
             ->with(['cycle', 'branch'])->get();
@@ -82,6 +92,7 @@ class PublicAcademyWebsiteController extends Controller
     ): Response {
         [$website, $common] = $this->common($request, $subdomain);
         $academy = $website->academy;
+        $common = $this->withPageSeo($request, $website, $common, ['title' => 'Apply · '.$academy->name]);
         $intakes = $availability->query($academy)
             ->with(['programmeCycle.cycle', 'programmeCycle.programme', 'programmeCycle.branch', 'cohort', 'branch'])
             ->orderBy('programme_cycle_id')->get();
@@ -160,6 +171,20 @@ class PublicAcademyWebsiteController extends Controller
         ]);
     }
 
+    /**
+     * Replaces the site-wide SEO with values for one page.
+     *
+     * @param  array<string, mixed>  $common
+     * @param  array{title?: string|null, description?: string|null, image_url?: string|null, indexable?: bool}  $page
+     * @return array<string, mixed>
+     */
+    private function withPageSeo(Request $request, AcademyWebsite $website, array $common, array $page): array
+    {
+        $common['site']['seo'] = app(PublicSiteSeo::class)->for($request, $website, (string) $common['base_url'], $page);
+
+        return $common;
+    }
+
     /** @return array{AcademyWebsite, array<string, mixed>} */
     private function common(Request $request, string $subdomain): array
     {
@@ -167,12 +192,14 @@ class PublicAcademyWebsiteController extends Controller
             ->with('academy')->firstOrFail();
         $academy = $website->academy;
         $baseUrl = $request->routeIs('public.tenant.*') ? '' : '/sites/'.$website->subdomain;
+        $seo = app(PublicSiteSeo::class);
+        $logoUrl = $seo->logoUrl($request, $website, $baseUrl);
 
         return [$website, [
             'academy' => [
                 'name' => $academy->name,
                 'type' => $academy->academy_type,
-                'logo_url' => $academy->logo_path ? $baseUrl.'/logo' : null,
+                'logo_url' => $logoUrl,
                 'member_singular' => $academy->member_label_singular,
                 'member_plural' => $academy->member_label_plural,
                 'guardian_singular' => $academy->guardian_label_singular,
@@ -185,6 +212,7 @@ class PublicAcademyWebsiteController extends Controller
                 'subdomain' => $website->subdomain,
                 'theme_key' => $website->theme_key,
                 'sections' => $website->resolvedSections(),
+                'seo' => $seo->for($request, $website, $baseUrl),
             ],
             'base_url' => $baseUrl,
         ]];

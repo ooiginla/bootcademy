@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Academies\AcademyWebsiteDefaults;
+use App\Academies\PublicSiteSeo;
 use App\Commerce\PlaceStoreOrder;
 use App\Commerce\SettleStoreOrderPayment;
 use App\Models\AcademyWebsite;
@@ -34,7 +35,7 @@ class PublicStoreController extends Controller
 {
     public function index(Request $request, string $subdomain): Response
     {
-        [$website, $common] = $this->resolve($request, $subdomain);
+        [$website, $common] = $this->resolve($request, $subdomain, ['title' => 'Store']);
 
         return Inertia::render('public/store', $common + $this->catalog($website, $common['base_url']));
     }
@@ -67,7 +68,8 @@ class PublicStoreController extends Controller
 
     public function show(Request $request, string $subdomain, string $token): Response
     {
-        [$website, $common] = $this->resolve($request, $subdomain);
+        // An order page is reached by a private link, so it is never indexed.
+        [$website, $common] = $this->resolve($request, $subdomain, ['title' => 'Your order', 'indexable' => false]);
         $order = StoreOrder::query()->where('academy_id', $website->academy_id)->where('public_token_hash', hash('sha256', $token))->with(['items', 'payments', 'branch'])->firstOrFail();
 
         $academy = $website->academy;
@@ -218,18 +220,26 @@ class PublicStoreController extends Controller
         ]);
     }
 
-    /** @return array{AcademyWebsite, array<string, mixed>} */
-    private function resolve(Request $request, string $subdomain): array
+    /**
+     * @param  array{title?: string, indexable?: bool}  $page
+     * @return array{AcademyWebsite, array<string, mixed>}
+     */
+    private function resolve(Request $request, string $subdomain, array $page = []): array
     {
         $website = AcademyWebsite::query()->where('subdomain', $subdomain)->where('is_published', true)->with('academy')->firstOrFail();
         $sections = AcademyWebsiteDefaults::merge($website->sections);
         abort_unless(($sections['store']['enabled'] ?? false) === true, 404);
         $academy = $website->academy;
         $base = $request->routeIs('public.tenant.*') ? '' : '/sites/'.$subdomain;
+        $seo = app(PublicSiteSeo::class);
+        $pageSeo = $seo->for($request, $website, $base, [
+            ...$page,
+            'title' => isset($page['title']) ? $page['title'].' · '.$academy->name : null,
+        ]);
 
-        return [$website, ['academy' => ['name' => $academy->name, 'type' => $academy->academy_type, 'logo_url' => $academy->logo_path ? $base.'/logo' : null,
+        return [$website, ['academy' => ['name' => $academy->name, 'type' => $academy->academy_type, 'logo_url' => $seo->logoUrl($request, $website, $base),
             'member_singular' => $academy->member_label_singular, 'member_plural' => $academy->member_label_plural, 'currency' => $academy->currency,
             'theme' => AccessibleColor::theme($academy->primary_color, $academy->secondary_color, $academy->heading_color)],
-            'site' => ['subdomain' => $subdomain, 'theme_key' => $website->theme_key, 'sections' => $sections], 'base_url' => $base]];
+            'site' => ['subdomain' => $subdomain, 'theme_key' => $website->theme_key, 'sections' => $sections, 'seo' => $pageSeo], 'base_url' => $base]];
     }
 }

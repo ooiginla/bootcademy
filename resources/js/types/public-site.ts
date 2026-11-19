@@ -28,6 +28,16 @@ export type PublicSite = {
     subdomain: string;
     theme_key: string;
     sections: Record<string, PublicSection>;
+    seo?: {
+        title: string;
+        description: string;
+        keywords: string;
+        canonical_url: string;
+        image_url: string | null;
+        icon_url: string | null;
+        robots: string;
+        structured_data: Record<string, unknown>;
+    };
 };
 
 export type PublicProgramme = {

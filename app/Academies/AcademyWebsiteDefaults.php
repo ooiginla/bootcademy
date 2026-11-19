@@ -19,6 +19,9 @@ class AcademyWebsiteDefaults
             ]),
             'header' => self::section('Header and navigation', 'Uses the academy logo and builds navigation from enabled sections.', [
                 'application_label' => self::text('Application button label', 'Apply now'),
+                'seo_title' => self::text('SEO title override', '', 'Optional. Leave blank to use the academy name. Keep this concise and specific.'),
+                'seo_description' => self::textarea('SEO description', '', 'Optional. Describe the academy and its offering in no more than 160 characters.'),
+                'seo_keywords' => self::text('SEO keywords', '', 'Optional. Separate accurate business and programme terms with commas.'),
             ]),
             'hero' => self::section('Hero', 'Use rotating slides or a direct video file URL.', [
                 'eyebrow' => self::text('Eyebrow', 'Learn. Grow. Belong.'),

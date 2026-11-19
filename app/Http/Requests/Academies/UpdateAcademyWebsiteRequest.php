@@ -79,6 +79,15 @@ class UpdateAcademyWebsiteRequest extends FormRequest
                 if ($field['type'] === 'number') {
                     $fieldRules = ['nullable', 'numeric', 'between:'.$field['min'].','.$field['max']];
                 }
+                if ($key === 'header' && $fieldKey === 'seo_title') {
+                    $fieldRules = ['nullable', 'string', 'max:70'];
+                }
+                if ($key === 'header' && $fieldKey === 'seo_description') {
+                    $fieldRules = ['nullable', 'string', 'max:160'];
+                }
+                if ($key === 'header' && $fieldKey === 'seo_keywords') {
+                    $fieldRules = ['nullable', 'string', 'max:500'];
+                }
                 $rules["sections.$key.$fieldKey"] = $fieldRules;
             }
         }
