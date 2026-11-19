@@ -395,7 +395,7 @@ describe('Bootcademy public website', () => {
                     description: null,
                     media_opacity: '76',
                     media_overlay: 'none',
-                    slides: ' | | https://example.test/hero.jpg | | ',
+                    slides: ' | | https://example.test/hero.jpg | | \n | | https://example.test/hero-2.jpg | | ',
                     primary_button_enabled: false,
                     secondary_button_enabled: false,
                     pathway_enabled: false,
@@ -415,12 +415,22 @@ describe('Bootcademy public website', () => {
 
         const heroMedia = container.querySelector('.hero-media');
         const heroSection = heroMedia?.closest('section');
+        const heroContent = heroSection?.querySelector('.hero-content');
 
         expect(heroMedia).toHaveStyle({
             opacity: '0.76',
         });
         expect(heroMedia).toHaveClass('object-contain', 'object-center');
         expect(heroSection).not.toBeNull();
+        expect(
+            heroSection?.querySelector('.mobile-hero-media-sizer'),
+        ).toHaveAttribute('src', 'https://example.test/hero.jpg');
+        expect(heroContent).toHaveClass(
+            'absolute',
+            'inset-0',
+            'sm:relative',
+            'sm:min-h-[680px]',
+        );
         expect(
             heroSection?.querySelector('.hero-media-overlay'),
         ).not.toBeInTheDocument();
@@ -467,6 +477,9 @@ describe('Bootcademy public website', () => {
             'object-cover',
             'object-center',
         );
+        expect(
+            container.querySelector('.mobile-hero-media-sizer'),
+        ).not.toBeInTheDocument();
     });
 
     it('can reverse the hero media overlay direction', () => {

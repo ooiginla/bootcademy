@@ -215,6 +215,17 @@ export default function PublicHome({
     const heroMediaOpacity = percentage(hero?.media_opacity, 100) / 100;
     const heroMediaFit = sectionString(hero?.media_fit) || 'contain';
     const heroMediaClassName = `hero-media absolute inset-0 -z-20 size-full object-center ${heroMediaFit === 'cover' ? 'object-cover' : 'object-contain'}`;
+    const heroSlideImage =
+        slide[2] && /^https?:\/\//i.test(slide[2]) ? slide[2] : '';
+    const useNaturalMobileMediaHeight =
+        hero?.media_type !== 'video' &&
+        heroMediaFit === 'contain' &&
+        Boolean(heroSlideImage) &&
+        !sectionString(hero?.eyebrow) &&
+        !heroHeadline &&
+        !heroDescription &&
+        !showPrimaryButton &&
+        !showSecondaryButton;
     const heroMediaOverlay =
         sectionString(hero?.media_overlay) || 'left_to_right';
     const heroMediaOverlayBackground =
@@ -243,6 +254,14 @@ export default function PublicHome({
                             'relative isolate overflow-hidden bg-slate-950 text-white',
                         )}
                     >
+                        {useNaturalMobileMediaHeight && (
+                            <img
+                                src={heroSlideImage}
+                                alt=""
+                                aria-hidden="true"
+                                className="mobile-hero-media-sizer block h-auto w-full opacity-0 sm:hidden"
+                            />
+                        )}
                         {hero.media_type === 'video' && hero.video_url ? (
                             <video
                                 src={safeUrl(String(hero.video_url), '')}
@@ -253,9 +272,9 @@ export default function PublicHome({
                                 className={heroMediaClassName}
                                 style={{ opacity: heroMediaOpacity }}
                             />
-                        ) : slide[2] && /^https?:\/\//i.test(slide[2]) ? (
+                        ) : heroSlideImage ? (
                             <img
-                                src={slide[2]}
+                                src={heroSlideImage}
                                 alt=""
                                 className={heroMediaClassName}
                                 style={{ opacity: heroMediaOpacity }}
@@ -278,7 +297,7 @@ export default function PublicHome({
                             </>
                         )}
                         <div
-                            className={`mx-auto grid min-h-[680px] max-w-7xl items-center gap-12 px-5 py-20 sm:px-8 ${showPathway ? 'lg:grid-cols-[1fr_0.72fr]' : ''}`}
+                            className={`hero-content mx-auto grid max-w-7xl items-center gap-12 px-5 py-20 sm:px-8 ${useNaturalMobileMediaHeight ? 'absolute inset-0 w-full sm:relative sm:inset-auto sm:min-h-[680px]' : 'min-h-[680px]'} ${showPathway ? 'lg:grid-cols-[1fr_0.72fr]' : ''}`}
                         >
                             <div className="max-w-3xl">
                                 {sectionString(hero.eyebrow) && (
