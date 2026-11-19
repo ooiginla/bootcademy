@@ -41,6 +41,32 @@ type Location = {
     phone: string | null;
 };
 
+function sectionString(value: string | boolean | null | undefined): string {
+    return typeof value === 'string' ? value : '';
+}
+
+function sectionToggle(
+    value: string | boolean | null | undefined,
+    fallback: boolean,
+): boolean {
+    if (typeof value === 'boolean') return value;
+    if (value === '1' || value === 'true') return true;
+    if (value === '0' || value === 'false') return false;
+
+    return fallback;
+}
+
+function percentage(
+    value: string | boolean | null | undefined,
+    fallback: number,
+): number {
+    const parsed = typeof value === 'string' ? Number(value) : Number.NaN;
+
+    return Number.isFinite(parsed)
+        ? Math.min(100, Math.max(0, parsed))
+        : fallback;
+}
+
 function SectionHeading({
     section,
     intro,
@@ -152,11 +178,11 @@ export default function PublicHome({
         ? heroSlides
         : [
               [
-                  String(hero?.headline ?? ''),
-                  String(hero?.description ?? ''),
+                  sectionString(hero?.headline),
+                  sectionString(hero?.description),
                   '',
-                  'Explore programmes',
-                  '/programmes',
+                  '',
+                  '',
               ],
           ];
     const [activeSlide, setActiveSlide] = useState(0);
@@ -171,6 +197,22 @@ export default function PublicHome({
     }, [slides.length]);
 
     const slide = slides[activeSlide] ?? slides[0];
+    const heroHeadline = slide[0] || sectionString(hero?.headline);
+    const heroDescription = slide[1] || sectionString(hero?.description);
+    const primaryButtonLabel =
+        slide[3] || sectionString(hero?.primary_button_label);
+    const primaryButtonUrl =
+        slide[4] || sectionString(hero?.primary_button_url);
+    const secondaryButtonLabel = sectionString(hero?.secondary_button_label);
+    const secondaryButtonUrl = sectionString(hero?.secondary_button_url);
+    const showPrimaryButton =
+        sectionToggle(hero?.primary_button_enabled, true) &&
+        Boolean(primaryButtonLabel && primaryButtonUrl);
+    const showSecondaryButton =
+        sectionToggle(hero?.secondary_button_enabled, true) &&
+        Boolean(secondaryButtonLabel && secondaryButtonUrl);
+    const showPathway = sectionToggle(hero?.pathway_enabled, true);
+    const heroMediaOpacity = percentage(hero?.media_opacity, 100) / 100;
     const experienceItems = parseRows(sections.experience?.items, 2);
     const events = parseRows(sections.events?.items, 4);
     const news = parseRows(sections.news?.items, 5);
@@ -200,13 +242,15 @@ export default function PublicHome({
                                 muted
                                 loop
                                 playsInline
-                                className="absolute inset-0 -z-20 size-full object-cover opacity-45"
+                                className="hero-media absolute inset-0 -z-20 size-full object-cover"
+                                style={{ opacity: heroMediaOpacity }}
                             />
                         ) : slide[2] && /^https?:\/\//i.test(slide[2]) ? (
                             <img
                                 src={slide[2]}
                                 alt=""
-                                className="absolute inset-0 -z-20 size-full object-cover opacity-45"
+                                className="hero-media absolute inset-0 -z-20 size-full object-cover"
+                                style={{ opacity: heroMediaOpacity }}
                             />
                         ) : null}
                         <div className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,rgba(2,6,23,.97)_10%,rgba(2,6,23,.72)_60%,rgba(2,6,23,.3))]" />
@@ -214,38 +258,53 @@ export default function PublicHome({
                             className="absolute -top-28 right-0 -z-10 size-[32rem] rounded-full opacity-30 blur-3xl"
                             style={{ backgroundColor: academy.theme.primary }}
                         />
-                        <div className="mx-auto grid min-h-[680px] max-w-7xl items-center gap-12 px-5 py-20 sm:px-8 lg:grid-cols-[1fr_0.72fr]">
+                        <div
+                            className={`mx-auto grid min-h-[680px] max-w-7xl items-center gap-12 px-5 py-20 sm:px-8 ${showPathway ? 'lg:grid-cols-[1fr_0.72fr]' : ''}`}
+                        >
                             <div className="max-w-3xl">
-                                {hero.eyebrow && (
+                                {sectionString(hero.eyebrow) && (
                                     <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold tracking-[0.16em] uppercase backdrop-blur">
                                         <Sparkles className="size-3.5 text-[var(--site-primary)]" />
-                                        {String(hero.eyebrow)}
+                                        {sectionString(hero.eyebrow)}
                                     </p>
                                 )}
-                                <h1 className="text-5xl leading-[0.98] font-black tracking-[-0.055em] text-balance sm:text-6xl lg:text-7xl">
-                                    {slide[0] || String(hero.headline)}
-                                </h1>
-                                <p className="mt-7 max-w-2xl text-lg leading-8 text-white/70 sm:text-xl">
-                                    {slide[1] || String(hero.description)}
-                                </p>
-                                <div className="mt-9 flex flex-wrap gap-3">
-                                    <a
-                                        href={resolveSiteUrl(
-                                            base_url,
-                                            slide[4] || '/programmes',
+                                {heroHeadline && (
+                                    <h1 className="text-5xl leading-[0.98] font-black tracking-[-0.055em] text-balance sm:text-6xl lg:text-7xl">
+                                        {heroHeadline}
+                                    </h1>
+                                )}
+                                {heroDescription && (
+                                    <p className="mt-7 max-w-2xl text-lg leading-8 text-white/70 sm:text-xl">
+                                        {heroDescription}
+                                    </p>
+                                )}
+                                {(showPrimaryButton || showSecondaryButton) && (
+                                    <div className="mt-9 flex flex-wrap gap-3">
+                                        {showPrimaryButton && (
+                                            <a
+                                                href={resolveSiteUrl(
+                                                    base_url,
+                                                    primaryButtonUrl,
+                                                )}
+                                                className="inline-flex items-center gap-2 rounded-full bg-[var(--site-primary)] px-6 py-3.5 text-sm font-extrabold text-[var(--site-primary-fg)] transition hover:-translate-y-0.5"
+                                            >
+                                                {primaryButtonLabel}
+                                                <ArrowRight className="size-4" />
+                                            </a>
                                         )}
-                                        className="inline-flex items-center gap-2 rounded-full bg-[var(--site-primary)] px-6 py-3.5 text-sm font-extrabold text-[var(--site-primary-fg)] transition hover:-translate-y-0.5"
-                                    >
-                                        {slide[3] || 'Explore programmes'}
-                                        <ArrowRight className="size-4" />
-                                    </a>
-                                    <a
-                                        href={`${base_url}/apply`}
-                                        className="inline-flex items-center gap-2 rounded-full border border-white/25 px-6 py-3.5 text-sm font-bold text-white transition hover:bg-white/10"
-                                    >
-                                        Start an application
-                                    </a>
-                                </div>
+                                        {showSecondaryButton && (
+                                            <a
+                                                href={resolveSiteUrl(
+                                                    base_url,
+                                                    secondaryButtonUrl,
+                                                )}
+                                                className="inline-flex items-center gap-2 rounded-full border border-white/25 px-6 py-3.5 text-sm font-bold text-white transition hover:bg-white/10"
+                                            >
+                                                {secondaryButtonLabel}
+                                            </a>
+                                        )}
+                                    </div>
+                                )}
                                 {slides.length > 1 && (
                                     <div className="mt-12 flex items-center gap-3">
                                         <button
@@ -292,27 +351,29 @@ export default function PublicHome({
                                     </div>
                                 )}
                             </div>
-                            <div className="hidden lg:block">
-                                <div className="ml-auto max-w-sm rounded-[2rem] border border-white/15 bg-white/10 p-6 backdrop-blur-xl">
-                                    <div className="grid size-12 place-items-center rounded-2xl bg-[var(--site-primary)] text-[var(--site-primary-fg)]">
-                                        <Compass className="size-6" />
+                            {showPathway && (
+                                <div className="hidden lg:block">
+                                    <div className="ml-auto max-w-sm rounded-[2rem] border border-white/15 bg-white/10 p-6 backdrop-blur-xl">
+                                        <div className="grid size-12 place-items-center rounded-2xl bg-[var(--site-primary)] text-[var(--site-primary-fg)]">
+                                            <Compass className="size-6" />
+                                        </div>
+                                        <p className="mt-12 text-xs font-bold tracking-[0.15em] text-white/50 uppercase">
+                                            Find your pathway
+                                        </p>
+                                        <p className="mt-3 text-2xl font-bold">
+                                            Explore programmes built for
+                                            meaningful progress.
+                                        </p>
+                                        <a
+                                            href={`${base_url}/programmes`}
+                                            className="mt-7 flex items-center justify-between border-t border-white/15 pt-5 text-sm font-bold"
+                                        >
+                                            View all programmes
+                                            <ArrowRight className="size-4" />
+                                        </a>
                                     </div>
-                                    <p className="mt-12 text-xs font-bold tracking-[0.15em] text-white/50 uppercase">
-                                        Find your pathway
-                                    </p>
-                                    <p className="mt-3 text-2xl font-bold">
-                                        Explore programmes built for meaningful
-                                        progress.
-                                    </p>
-                                    <a
-                                        href={`${base_url}/programmes`}
-                                        className="mt-7 flex items-center justify-between border-t border-white/15 pt-5 text-sm font-bold"
-                                    >
-                                        View all programmes
-                                        <ArrowRight className="size-4" />
-                                    </a>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </section>
                 )}

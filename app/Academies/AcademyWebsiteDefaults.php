@@ -25,8 +25,16 @@ class AcademyWebsiteDefaults
                 'headline' => self::text('Fallback headline', 'Where potential becomes progress.'),
                 'description' => self::textarea('Fallback description', 'A welcoming academy experience built around purposeful learning, expert guidance and a community that helps every learner thrive.'),
                 'media_type' => self::select('Hero format', 'slides', ['slides' => 'Slides', 'video' => 'Video']),
+                'media_opacity' => self::number('Image / video opacity (%)', '100', 0, 100, 1, 'Use 100 for a fully opaque image or video, or a lower value to make it transparent.'),
                 'video_url' => self::text('Direct video URL', '', 'Use an HTTPS link to an MP4 or WebM video.'),
                 'slides' => self::lines('Slides', "Where potential becomes progress. | Discover programmes designed for purposeful growth. |  | Explore programmes | /programmes\nYour next chapter starts here. | Meet the people, places and experiences that make our academy special. |  | Apply now | /apply", 'One per line: Heading | Description | Image URL | Button label | Button URL'),
+                'primary_button_enabled' => self::toggle('Show primary hero button', true, 'A slide button label and URL override the fallback values below.'),
+                'primary_button_label' => self::text('Fallback primary button label', 'Explore programmes'),
+                'primary_button_url' => self::text('Fallback primary button URL', '/programmes'),
+                'secondary_button_enabled' => self::toggle('Show secondary hero button', true),
+                'secondary_button_label' => self::text('Fallback secondary button label', 'Start an application'),
+                'secondary_button_url' => self::text('Fallback secondary button URL', '/apply'),
+                'pathway_enabled' => self::toggle('Show “Find your pathway” panel', true),
             ]),
             'about' => self::section('About the academy', 'Introduce the academy and its purpose.', [
                 'body' => self::textarea('Overview', 'We create an environment where learners can build skill, confidence and character through structured programmes and committed support.'),
@@ -115,10 +123,17 @@ class AcademyWebsiteDefaults
      */
     public static function merge(?array $sections): array
     {
-        return collect(self::sections())->mapWithKeys(function (array $defaults, string $key) use ($sections): array {
+        $definitions = self::definitions();
+
+        return collect(self::sections())->mapWithKeys(function (array $defaults, string $key) use ($definitions, $sections): array {
             $stored = is_array($sections[$key] ?? null) ? $sections[$key] : [];
             $merged = array_replace($defaults, array_intersect_key($stored, $defaults));
             $merged['enabled'] = filter_var($merged['enabled'], FILTER_VALIDATE_BOOLEAN);
+            foreach ($definitions[$key]['fields'] as $fieldKey => $field) {
+                if ($field['type'] === 'toggle') {
+                    $merged[$fieldKey] = filter_var($merged[$fieldKey], FILTER_VALIDATE_BOOLEAN);
+                }
+            }
 
             return [$key => $merged];
         })->all();
@@ -176,5 +191,23 @@ class AcademyWebsiteDefaults
     private static function select(string $label, string $default, array $options): array
     {
         return compact('label', 'default', 'options') + ['type' => 'select', 'help' => ''];
+    }
+
+    /** @return array<string, mixed> */
+    private static function toggle(string $label, bool $default, string $help = ''): array
+    {
+        return compact('label', 'default', 'help') + ['type' => 'toggle'];
+    }
+
+    /** @return array<string, mixed> */
+    private static function number(
+        string $label,
+        string $default,
+        int $min,
+        int $max,
+        int $step = 1,
+        string $help = '',
+    ): array {
+        return compact('label', 'default', 'min', 'max', 'step', 'help') + ['type' => 'number'];
     }
 }

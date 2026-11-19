@@ -22,10 +22,20 @@ import type { AcademyTheme } from '@/types/auth';
 
 type FieldDefinition = {
     label: string;
-    type: 'text' | 'textarea' | 'lines' | 'select' | 'color';
-    default: string;
+    type:
+        | 'text'
+        | 'textarea'
+        | 'lines'
+        | 'select'
+        | 'color'
+        | 'toggle'
+        | 'number';
+    default: string | boolean;
     help: string;
     options?: Record<string, string>;
+    min?: number;
+    max?: number;
+    step?: number;
 };
 type SectionDefinition = {
     label: string;
@@ -34,7 +44,7 @@ type SectionDefinition = {
     title: string;
     fields: Record<string, FieldDefinition>;
 };
-type SectionValue = Record<string, string | boolean>;
+type SectionValue = Record<string, string | boolean | null>;
 type Website = {
     subdomain: string;
     theme_key: string;
@@ -659,7 +669,36 @@ export default function AcademyWebsite({
                                                                         }
                                                                     </Label>
                                                                     {field.type ===
-                                                                    'color' ? (
+                                                                    'toggle' ? (
+                                                                        <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
+                                                                            <input
+                                                                                type="hidden"
+                                                                                name={`sections[${sectionKey}][${fieldKey}]`}
+                                                                                value="0"
+                                                                            />
+                                                                            <input
+                                                                                id={`${sectionKey}-${fieldKey}`}
+                                                                                type="checkbox"
+                                                                                name={`sections[${sectionKey}][${fieldKey}]`}
+                                                                                value="1"
+                                                                                defaultChecked={
+                                                                                    values[
+                                                                                        fieldKey
+                                                                                    ] ===
+                                                                                        true ||
+                                                                                    values[
+                                                                                        fieldKey
+                                                                                    ] ===
+                                                                                        '1'
+                                                                                }
+                                                                                className="size-4 accent-primary"
+                                                                            />
+                                                                            <span className="text-sm text-muted-foreground">
+                                                                                Enabled
+                                                                            </span>
+                                                                        </div>
+                                                                    ) : field.type ===
+                                                                      'color' ? (
                                                                         <OptionalColourInput
                                                                             id={`${sectionKey}-${fieldKey}`}
                                                                             name={`sections[${sectionKey}][${fieldKey}]`}
@@ -672,6 +711,28 @@ export default function AcademyWebsite({
                                                                                 ] ??
                                                                                     '',
                                                                             )}
+                                                                        />
+                                                                    ) : field.type ===
+                                                                      'number' ? (
+                                                                        <Input
+                                                                            id={`${sectionKey}-${fieldKey}`}
+                                                                            type="number"
+                                                                            name={`sections[${sectionKey}][${fieldKey}]`}
+                                                                            defaultValue={String(
+                                                                                values[
+                                                                                    fieldKey
+                                                                                ] ??
+                                                                                    field.default,
+                                                                            )}
+                                                                            min={
+                                                                                field.min
+                                                                            }
+                                                                            max={
+                                                                                field.max
+                                                                            }
+                                                                            step={
+                                                                                field.step
+                                                                            }
                                                                         />
                                                                     ) : field.type ===
                                                                       'select' ? (

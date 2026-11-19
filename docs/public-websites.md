@@ -10,6 +10,8 @@ Academy owners edit the website at `/app/settings/website`. Local previews use:
 http://127.0.0.1:8000/sites/{academy-subdomain}
 ```
 
+Hero settings include an image/video opacity percentage, configurable fallback labels and URLs for both calls to action, independent button visibility controls, and a visibility control for the “Find your pathway” panel. An opacity of `100` keeps media fully opaque; lower values progressively reveal the hero background. Empty fallback copy is rendered as empty content rather than the text `null`.
+
 Programme pages and the application flow are beneath that URL. The first step validates and saves the applicant, guardian consent, selected programme/cycle and custom-field values. The saved application then opens a private, token-protected fee page; payment-plan choices are deliberately not collected on the biodata form.
 
 The fee page is generated from server-side invoices. It can offer the compulsory application fee by itself, the application fee plus the complete programme balance, or the application fee plus a configured installment. Browser-supplied amounts are ignored. Paystack Popup V2 receives an access code created by the Laravel backend, while verification, allocation and receipt delivery happen server-side.

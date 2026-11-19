@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import type { PublicSection } from '@/types/public-site';
 
 export function parseRows(
-    value: string | boolean | undefined,
+    value: string | boolean | null | undefined,
     columns: number,
 ) {
     if (typeof value !== 'string') return [];
@@ -52,7 +52,9 @@ export function initials(value: string) {
         .map((part) => part[0]?.toUpperCase())
         .join('');
 }
-function optionalHex(value: string | boolean | undefined): string | undefined {
+function optionalHex(
+    value: string | boolean | null | undefined,
+): string | undefined {
     return typeof value === 'string' && /^#[0-9A-F]{6}$/i.test(value)
         ? value
         : undefined;

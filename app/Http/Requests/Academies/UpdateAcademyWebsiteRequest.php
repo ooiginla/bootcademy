@@ -15,12 +15,18 @@ class UpdateAcademyWebsiteRequest extends FormRequest
         $sections = $this->input('sections');
         if (is_array($sections)) {
             foreach (AcademyWebsiteDefaults::definitions() as $sectionKey => $definition) {
+                if (! is_array($sections[$sectionKey] ?? null)) {
+                    continue;
+                }
+
                 foreach ($definition['fields'] as $fieldKey => $field) {
-                    if ($field['type'] !== 'color' || ! isset($sections[$sectionKey][$fieldKey])) {
+                    if (! array_key_exists($fieldKey, $sections[$sectionKey])) {
                         continue;
                     }
 
-                    $sections[$sectionKey][$fieldKey] = strtoupper(trim((string) $sections[$sectionKey][$fieldKey]));
+                    if ($field['type'] === 'color') {
+                        $sections[$sectionKey][$fieldKey] = strtoupper(trim((string) $sections[$sectionKey][$fieldKey]));
+                    }
                 }
             }
         }
@@ -66,6 +72,12 @@ class UpdateAcademyWebsiteRequest extends FormRequest
                 }
                 if ($field['type'] === 'color') {
                     $fieldRules[] = 'regex:/^#[0-9A-F]{6}$/';
+                }
+                if ($field['type'] === 'toggle') {
+                    $fieldRules = ['nullable', 'boolean'];
+                }
+                if ($field['type'] === 'number') {
+                    $fieldRules = ['nullable', 'numeric', 'between:'.$field['min'].','.$field['max']];
                 }
                 $rules["sections.$key.$fieldKey"] = $fieldRules;
             }

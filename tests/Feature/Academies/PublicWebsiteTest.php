@@ -50,6 +50,9 @@ class PublicWebsiteTest extends TestCase
         [$owner, $academy, $website] = $this->academyWebsite('studio-one');
         $sections = AcademyWebsiteDefaults::sections();
         $sections['hero']['headline'] = 'Build your future here';
+        $sections['hero']['media_opacity'] = '72';
+        $sections['hero']['primary_button_enabled'] = false;
+        $sections['hero']['pathway_enabled'] = false;
         $sections['testimonials']['enabled'] = true;
         $sections['testimonials']['items'] = 'A genuine review | Parent Name | Parent';
         $sections['topbar']['background_color'] = '#123abc';
@@ -65,6 +68,9 @@ class PublicWebsiteTest extends TestCase
         $website->refresh();
         $this->assertSame('future-studio', $website->subdomain);
         $this->assertSame('Build your future here', $website->sections['hero']['headline']);
+        $this->assertSame('72', $website->sections['hero']['media_opacity']);
+        $this->assertFalse($website->sections['hero']['primary_button_enabled']);
+        $this->assertFalse($website->sections['hero']['pathway_enabled']);
         $this->assertTrue($website->sections['testimonials']['enabled']);
         $this->assertSame('#123ABC', $website->sections['topbar']['background_color']);
         $this->assertSame('#FEFEFE', $website->sections['topbar']['text_color']);
@@ -104,17 +110,58 @@ class PublicWebsiteTest extends TestCase
         ])->assertSessionHasNoErrors();
     }
 
+    public function test_hero_media_opacity_must_be_a_percentage(): void
+    {
+        [$owner, $academy] = $this->academyWebsite('hero-opacity-academy');
+        $sections = AcademyWebsiteDefaults::sections();
+        $sections['hero']['media_opacity'] = '101';
+
+        $this->asAcademy($owner, $academy)->patch(route('academy.website.update'), [
+            'subdomain' => 'hero-opacity-academy',
+            'theme_key' => 'launch',
+            'is_published' => true,
+            'sections' => $sections,
+        ])->assertSessionHasErrors('sections.hero.media_opacity');
+
+        $sections['hero']['media_opacity'] = '0';
+        $sections['hero']['primary_button_enabled'] = 'sometimes';
+
+        $this->asAcademy($owner, $academy)->patch(route('academy.website.update'), [
+            'subdomain' => 'hero-opacity-academy',
+            'theme_key' => 'launch',
+            'is_published' => true,
+            'sections' => $sections,
+        ])->assertSessionHasErrors('sections.hero.primary_button_enabled');
+
+        $sections['hero']['primary_button_enabled'] = false;
+
+        $this->asAcademy($owner, $academy)->patch(route('academy.website.update'), [
+            'subdomain' => 'hero-opacity-academy',
+            'theme_key' => 'launch',
+            'is_published' => true,
+            'sections' => $sections,
+        ])->assertSessionHasNoErrors();
+    }
+
     public function test_legacy_string_section_flags_are_resolved_as_real_booleans(): void
     {
         [, , $website] = $this->academyWebsite('boolean-academy');
         $website->update(['sections' => [
             'events' => ['enabled' => '0'],
             'news' => ['enabled' => '1'],
+            'hero' => [
+                'primary_button_enabled' => '0',
+                'secondary_button_enabled' => '1',
+                'pathway_enabled' => 'false',
+            ],
         ]]);
 
         $sections = $website->fresh()->resolvedSections();
         $this->assertFalse($sections['events']['enabled']);
         $this->assertTrue($sections['news']['enabled']);
+        $this->assertFalse($sections['hero']['primary_button_enabled']);
+        $this->assertTrue($sections['hero']['secondary_button_enabled']);
+        $this->assertFalse($sections['hero']['pathway_enabled']);
     }
 
     public function test_public_site_is_tenant_scoped_and_unpublished_sites_return_not_found(): void

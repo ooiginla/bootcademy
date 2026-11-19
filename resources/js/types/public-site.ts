@@ -19,7 +19,7 @@ export type PublicAcademy = {
     theme: PublicTheme;
 };
 
-export type PublicSection = Record<string, string | boolean> & {
+export type PublicSection = Record<string, string | boolean | null> & {
     enabled: boolean;
     title: string;
 };

@@ -88,7 +88,15 @@ const site: PublicSite = {
             headline: 'A future worth building',
             description: 'Practical learning for ambitious people.',
             media_type: 'slides',
+            media_opacity: '100',
             slides: 'A future worth building | Practical learning for ambitious people. | | Explore | /programmes',
+            primary_button_enabled: true,
+            primary_button_label: 'Explore programmes',
+            primary_button_url: '/programmes',
+            secondary_button_enabled: true,
+            secondary_button_label: 'Start an application',
+            secondary_button_url: '/apply',
+            pathway_enabled: true,
         },
         programmes: {
             enabled: true,
@@ -371,6 +379,92 @@ describe('Bootcademy public website', () => {
             backgroundColor: '#102030',
             color: '#F8FAFC',
         });
+    });
+
+    it('respects hero opacity, nullable copy, button toggles, and the pathway toggle', () => {
+        const controlledHeroSite: PublicSite = {
+            ...site,
+            sections: {
+                ...site.sections,
+                hero: {
+                    ...site.sections.hero,
+                    eyebrow: null,
+                    headline: null,
+                    description: null,
+                    media_opacity: '76',
+                    slides: ' | | https://example.test/hero.jpg | | ',
+                    primary_button_enabled: false,
+                    secondary_button_enabled: false,
+                    pathway_enabled: false,
+                },
+            },
+        };
+
+        const { container } = render(
+            <PublicHome
+                academy={academy}
+                site={controlledHeroSite}
+                base_url="/sites/future-academy"
+                programmes={[]}
+                locations={[]}
+            />,
+        );
+
+        const heroMedia = container.querySelector('.hero-media');
+        const heroSection = heroMedia?.closest('section');
+
+        expect(heroMedia).toHaveStyle({
+            opacity: '0.76',
+        });
+        expect(heroSection).not.toBeNull();
+        expect(container).not.toHaveTextContent('null');
+        expect(
+            within(heroSection!).queryByRole('link', {
+                name: 'Explore programmes',
+            }),
+        ).not.toBeInTheDocument();
+        expect(
+            within(heroSection!).queryByRole('link', {
+                name: 'Start an application',
+            }),
+        ).not.toBeInTheDocument();
+        expect(
+            within(heroSection!).queryByText('Find your pathway'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('uses configured hero button fallbacks when a slide omits its button cells', () => {
+        const fallbackButtonSite: PublicSite = {
+            ...site,
+            sections: {
+                ...site.sections,
+                hero: {
+                    ...site.sections.hero,
+                    slides: 'Custom headline | Custom description | | |',
+                    primary_button_label: 'See courses',
+                    primary_button_url: '/programmes',
+                    secondary_button_label: 'Join today',
+                    secondary_button_url: '/apply',
+                },
+            },
+        };
+
+        render(
+            <PublicHome
+                academy={academy}
+                site={fallbackButtonSite}
+                base_url="/sites/future-academy"
+                programmes={[]}
+                locations={[]}
+            />,
+        );
+
+        expect(
+            screen.getByRole('link', { name: 'See courses' }),
+        ).toHaveAttribute('href', '/sites/future-academy/programmes');
+        expect(
+            screen.getByRole('link', { name: 'Join today' }),
+        ).toHaveAttribute('href', '/sites/future-academy/apply');
     });
 
     it('keeps four priority links visible and groups other enabled sections under Explore', () => {
