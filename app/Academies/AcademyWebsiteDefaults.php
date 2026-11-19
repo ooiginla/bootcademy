@@ -26,6 +26,11 @@ class AcademyWebsiteDefaults
                 'description' => self::textarea('Fallback description', 'A welcoming academy experience built around purposeful learning, expert guidance and a community that helps every learner thrive.'),
                 'media_type' => self::select('Hero format', 'slides', ['slides' => 'Slides', 'video' => 'Video']),
                 'media_opacity' => self::number('Image / video opacity (%)', '100', 0, 100, 1, 'Use 100 for a fully opaque image or video, or a lower value to make it transparent.'),
+                'media_overlay' => self::select('Image / video dark overlay', 'left_to_right', [
+                    'left_to_right' => 'Left to right',
+                    'right_to_left' => 'Right to left',
+                    'none' => 'None — show media at full brightness',
+                ]),
                 'video_url' => self::text('Direct video URL', '', 'Use an HTTPS link to an MP4 or WebM video.'),
                 'slides' => self::lines('Slides', "Where potential becomes progress. | Discover programmes designed for purposeful growth. |  | Explore programmes | /programmes\nYour next chapter starts here. | Meet the people, places and experiences that make our academy special. |  | Apply now | /apply", 'One per line: Heading | Description | Image URL | Button label | Button URL'),
                 'primary_button_enabled' => self::toggle('Show primary hero button', true, 'A slide button label and URL override the fallback values below.'),

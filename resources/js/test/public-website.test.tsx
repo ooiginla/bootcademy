@@ -89,6 +89,7 @@ const site: PublicSite = {
             description: 'Practical learning for ambitious people.',
             media_type: 'slides',
             media_opacity: '100',
+            media_overlay: 'left_to_right',
             slides: 'A future worth building | Practical learning for ambitious people. | | Explore | /programmes',
             primary_button_enabled: true,
             primary_button_label: 'Explore programmes',
@@ -392,6 +393,7 @@ describe('Bootcademy public website', () => {
                     headline: null,
                     description: null,
                     media_opacity: '76',
+                    media_overlay: 'none',
                     slides: ' | | https://example.test/hero.jpg | | ',
                     primary_button_enabled: false,
                     secondary_button_enabled: false,
@@ -417,6 +419,9 @@ describe('Bootcademy public website', () => {
             opacity: '0.76',
         });
         expect(heroSection).not.toBeNull();
+        expect(
+            heroSection?.querySelector('.hero-media-overlay'),
+        ).not.toBeInTheDocument();
         expect(container).not.toHaveTextContent('null');
         expect(
             within(heroSection!).queryByRole('link', {
@@ -431,6 +436,35 @@ describe('Bootcademy public website', () => {
         expect(
             within(heroSection!).queryByText('Find your pathway'),
         ).not.toBeInTheDocument();
+    });
+
+    it('can reverse the hero media overlay direction', () => {
+        const reversedOverlaySite: PublicSite = {
+            ...site,
+            sections: {
+                ...site.sections,
+                hero: {
+                    ...site.sections.hero,
+                    media_overlay: 'right_to_left',
+                    slides: 'Custom headline | Custom description | https://example.test/hero.jpg | |',
+                },
+            },
+        };
+
+        const { container } = render(
+            <PublicHome
+                academy={academy}
+                site={reversedOverlaySite}
+                base_url="/sites/future-academy"
+                programmes={[]}
+                locations={[]}
+            />,
+        );
+
+        expect(container.querySelector('.hero-media-overlay')).toHaveStyle({
+            background:
+                'linear-gradient(260deg, rgba(2, 6, 23, .97) 10%, rgba(2, 6, 23, .72) 60%, rgba(2, 6, 23, .3))',
+        });
     });
 
     it('uses configured hero button fallbacks when a slide omits its button cells', () => {

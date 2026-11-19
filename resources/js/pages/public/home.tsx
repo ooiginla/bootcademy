@@ -213,6 +213,12 @@ export default function PublicHome({
         Boolean(secondaryButtonLabel && secondaryButtonUrl);
     const showPathway = sectionToggle(hero?.pathway_enabled, true);
     const heroMediaOpacity = percentage(hero?.media_opacity, 100) / 100;
+    const heroMediaOverlay =
+        sectionString(hero?.media_overlay) || 'left_to_right';
+    const heroMediaOverlayBackground =
+        heroMediaOverlay === 'right_to_left'
+            ? 'linear-gradient(260deg, rgba(2, 6, 23, .97) 10%, rgba(2, 6, 23, .72) 60%, rgba(2, 6, 23, .3))'
+            : 'linear-gradient(100deg, rgba(2, 6, 23, .97) 10%, rgba(2, 6, 23, .72) 60%, rgba(2, 6, 23, .3))';
     const experienceItems = parseRows(sections.experience?.items, 2);
     const events = parseRows(sections.events?.items, 4);
     const news = parseRows(sections.news?.items, 5);
@@ -253,11 +259,22 @@ export default function PublicHome({
                                 style={{ opacity: heroMediaOpacity }}
                             />
                         ) : null}
-                        <div className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,rgba(2,6,23,.97)_10%,rgba(2,6,23,.72)_60%,rgba(2,6,23,.3))]" />
-                        <div
-                            className="absolute -top-28 right-0 -z-10 size-[32rem] rounded-full opacity-30 blur-3xl"
-                            style={{ backgroundColor: academy.theme.primary }}
-                        />
+                        {heroMediaOverlay !== 'none' && (
+                            <>
+                                <div
+                                    className="hero-media-overlay absolute inset-0 -z-10"
+                                    style={{
+                                        background: heroMediaOverlayBackground,
+                                    }}
+                                />
+                                <div
+                                    className="absolute -top-28 right-0 -z-10 size-[32rem] rounded-full opacity-30 blur-3xl"
+                                    style={{
+                                        backgroundColor: academy.theme.primary,
+                                    }}
+                                />
+                            </>
+                        )}
                         <div
                             className={`mx-auto grid min-h-[680px] max-w-7xl items-center gap-12 px-5 py-20 sm:px-8 ${showPathway ? 'lg:grid-cols-[1fr_0.72fr]' : ''}`}
                         >
