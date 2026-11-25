@@ -517,7 +517,7 @@ export default function PublicHome({
                                 <p className="text-xs font-extrabold tracking-[0.2em] uppercase opacity-60">
                                     {sections.welcome.title}
                                 </p>
-                                <blockquote className="mt-5 text-2xl leading-10 font-bold tracking-tight sm:text-3xl sm:leading-12">
+                                <blockquote className="mt-5 text-base leading-7 font-normal sm:text-lg sm:leading-8">
                                     “{String(sections.welcome.message ?? '')}”
                                 </blockquote>
                                 <div className="mt-7 border-t border-current/15 pt-5">
