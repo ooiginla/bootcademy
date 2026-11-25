@@ -1,6 +1,6 @@
 # Academy SaaS implementation status
 
-Last updated: 2026-11-12
+Last updated: 2026-11-25
 
 This is the live execution checklist. It complements `SPORTS_ACADEMY_SAAS_PRD.md`, which contains the full product requirements, and `AGENTS.md`, which contains engineering rules. Update this file whenever a feature starts, completes, is reordered by the product owner, or becomes blocked by a business decision.
 
@@ -19,6 +19,7 @@ This is the live execution checklist. It complements `SPORTS_ACADEMY_SAAS_PRD.md
 - `[x]` **External applicant API:** tenant API keys, configuration endpoint, idempotent applicant submission, status lookup, consent capture and duplicate detection.
 - `[x]` **Cohorts and application intake:** tenant-scoped delivery cohorts, default-cohort normalization, intake date/branch controls, public/API availability gating and cohort-based enrolment/attendance.
 - `[x]` **Bootcademy public sites:** unique academy subdomains, editable Launch theme, tenant-branded public pages, programme details and a non-submitting application-form preview.
+- `[x]` **Website Resource Library:** owner-managed, tenant-scoped public website assets with validated uploads, opaque copyable URLs, previews, audited deletion and cross-tenant protection.
 - `[x]` **M3 finance foundation:** fixed/rolling cycles, cycle-specific programme fees, immutable invoices, installments, verified offline payments, cycle enrollment and player ledgers.
 - `[x]` **M3 attendance foundation:** tenant-scoped session rosters, mobile marking and immutable correction history.
 - `[x]` **M3 complete:** sessions, attendance, offline finance, receipts, reversals, expenses, operational dashboard and tenant-safe CSV reporting.

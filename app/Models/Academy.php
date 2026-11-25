@@ -118,6 +118,12 @@ class Academy extends Model
         return $this->hasMany(Programme::class);
     }
 
+    /** @return HasMany<AcademyResource, $this> */
+    public function resources(): HasMany
+    {
+        return $this->hasMany(AcademyResource::class);
+    }
+
     /** @return HasMany<TrainingSession, $this> */
     public function trainingSessions(): HasMany
     {

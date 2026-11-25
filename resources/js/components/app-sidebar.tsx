@@ -22,6 +22,7 @@ import {
     UserRound,
     Dumbbell,
     Globe2,
+    FolderOpen,
     WalletCards,
     ShoppingBag,
     TicketPercent,
@@ -179,6 +180,11 @@ export function AppSidebar() {
                               title: 'Public website',
                               href: '/app/settings/website',
                               icon: Globe2,
+                          },
+                          {
+                              title: 'Resources',
+                              href: '/app/resources',
+                              icon: FolderOpen,
                           },
                           {
                               title: 'Team and roles',

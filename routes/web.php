@@ -11,6 +11,7 @@ use App\Http\Controllers\Academies\AcademyInvoiceController;
 use App\Http\Controllers\Academies\AcademyLogoController;
 use App\Http\Controllers\Academies\AcademyOnboardingController;
 use App\Http\Controllers\Academies\AcademyPaymentController;
+use App\Http\Controllers\Academies\AcademyResourceController;
 use App\Http\Controllers\Academies\AcademyTeamController;
 use App\Http\Controllers\Academies\AcademyWebsiteController;
 use App\Http\Controllers\Academies\AcceptAcademyInvitationController;
@@ -44,6 +45,7 @@ use App\Http\Controllers\Platform\PlanController;
 use App\Http\Controllers\Platform\PlatformSettingsController;
 use App\Http\Controllers\Platform\SupportAccessController;
 use App\Http\Controllers\Platform\TenantSubscriptionController;
+use App\Http\Controllers\PublicAcademyResourceController;
 use App\Http\Controllers\PublicAcademyWebsiteController;
 use App\Http\Controllers\PublicApplicationController;
 use App\Http\Controllers\PublicReviewController;
@@ -57,6 +59,10 @@ use App\Http\Middleware\ResolveActiveAcademy;
 use App\Platform\Subscriptions\SubscriptionPresenter;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+Route::get('assets/{resource}', PublicAcademyResourceController::class)
+    ->whereUuid('resource')
+    ->name('public.resources.show');
 
 Route::get('/', function (SubscriptionPresenter $presenter) {
     return Inertia::render('welcome', [
@@ -343,6 +349,13 @@ Route::middleware([
             ->name('academy.website.edit');
         Route::patch('app/settings/website', [AcademyWebsiteController::class, 'update'])
             ->name('academy.website.update');
+        Route::get('app/resources', [AcademyResourceController::class, 'index'])
+            ->name('academy.resources.index');
+        Route::post('app/resources', [AcademyResourceController::class, 'store'])
+            ->name('academy.resources.store');
+        Route::delete('app/resources/{resource}', [AcademyResourceController::class, 'destroy'])
+            ->whereUuid('resource')
+            ->name('academy.resources.destroy');
         Route::get('app/settings/audit-log', AcademyAuditLogController::class)
             ->name('academy.audit-log.index');
         Route::get('app/academy/logo', AcademyLogoController::class)

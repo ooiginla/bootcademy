@@ -15,6 +15,8 @@ return [
 
     'default' => env('FILESYSTEM_DISK', 'local'),
 
+    'resource_library_disk' => env('RESOURCE_LIBRARY_DISK', 'local'),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks
